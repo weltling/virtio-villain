@@ -1,0 +1,1516 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+"""
+virtio-villain test runner.
+
+Spawns one VM per test to isolate VMM crashes. Collects serial output
+and exit codes, prints a summary.
+"""
+
+import argparse
+import fnmatch
+import os
+import re
+import shlex
+import signal
+import subprocess
+import sys
+import termios
+import shutil
+import tempfile
+import threading
+import platform
+import time
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+sys.stdout.reconfigure(line_buffering=True)
+
+_print_lock = threading.Lock()
+
+
+def _bump_maxmem(mem_str):
+    """Return a maxmem string strictly larger than *mem_str* (e.g. '1G' -> '2G')."""
+    m = re.fullmatch(r"(\d+)\s*([KMGkmg])?", mem_str)
+    if not m:
+        return "2G"
+    val, suffix = int(m.group(1)), (m.group(2) or "M").upper()
+    sizes = {"K": 1, "M": 1024, "G": 1024 * 1024}
+    kb = val * sizes.get(suffix, 1)
+    # At least double, minimum 2G
+    target = max(kb * 2, 2 * 1024 * 1024)
+    if target % (1024 * 1024) == 0:
+        return f"{target // (1024 * 1024)}G"
+    if target % 1024 == 0:
+        return f"{target // 1024}M"
+    return f"{target}K"
+
+
+INITRAMFS = os.path.join("target", "initramfs.cpio.gz")
+DISK_SIZE = 16 * 1024 * 1024  # 16 MiB
+DISK_FORMATS = ("raw", "qcow2", "vhd", "vhdx")
+KERNEL_BASE_URL = "https://github.com/cloud-hypervisor/linux/releases/latest/download"
+KERNEL_NAMES = {
+    "x86_64": "vmlinux-x86_64",
+    "aarch64": "Image-arm64",
+}
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def print_banner(f=sys.stderr):
+    """Emit the virtio-villain banner. Sourced from target/init
+    --banner when available so the artwork lives in one place."""
+    init_bin = os.path.join(_SCRIPT_DIR, "target", "init")
+    try:
+        out = subprocess.check_output([init_bin, "--banner"],
+                                      stderr=subprocess.DEVNULL)
+        f.write(out.decode())
+        f.flush()
+    except (FileNotFoundError, OSError, subprocess.CalledProcessError):
+        pass
+
+
+# ---------------------------------------------------------------------------
+# VMM backends
+# ---------------------------------------------------------------------------
+
+class VmmBackend:
+    """Base class for VMM-specific command building and settings."""
+
+    name = None
+    console_device = "hvc0"
+    mmio_transport = False
+
+    def __init__(self, binary):
+        self.binary = binary
+
+    def build_cmd(self, kernel, initramfs, disk_path, cmdline, opts=None):
+        raise NotImplementedError
+
+
+class CloudHypervisor(VmmBackend):
+    name = "ch"
+    # Runner output rides on ttyS0 so the virtio-console device stays
+    # available for the console tests to claim without hijacking init's
+    # stdout. The virtio-console device is still instantiated via
+    # `--console null`.
+    console_device = "ttyS0"
+    # CH uses MMIO transport on aarch64, PCI on x86_64
+    mmio_transport = (platform.machine() == "aarch64")
+    _cid_counter = 2
+    _cid_lock = threading.Lock()
+
+    @classmethod
+    def _next_cid(cls):
+        with cls._cid_lock:
+            cls._cid_counter += 1
+            return cls._cid_counter
+
+    def build_cmd(self, kernel, initramfs, disk_path, cmdline, opts=None):
+        opts = opts or {}
+        cpus = opts.get("cpus", 4)
+        mem = opts.get("memory", "512M")
+        blk_queues = opts.get("blk_queues", 4)
+        net_queues = opts.get("net_queues", 4)
+        pmem_path = opts.get("pmem_path")
+        fs_socket = opts.get("fs_socket")
+        api_socket = opts.get("api_socket")
+        # CH validation constraints (vmm/src/config.rs):
+        #   blk:  num_queues       <= boot_vcpus
+        #   net:  num_queues / 2   <= boot_vcpus  (rx+tx pairs)
+        #   fs:   num_queues       <= boot_vcpus  (fs uses 1)
+        # vsock has no such check. Earlier code summed all queues and
+        # added +3, inflating cpus far above what CH requires. With
+        # parallel jobs this caused severe host oversubscription and
+        # guest rcu_sched stalls. Use the real minimum.
+        min_cpus = max(blk_queues, (net_queues + 1) // 2, 1)
+        cpus = max(cpus, min_cpus)
+        cid = self._next_cid()
+        vsock_sock = disk_path.rsplit(".", 1)[0] + ".vsock"
+        ext = disk_path.rsplit(".", 1)[-1]
+        fmt_map = {"raw": "raw", "qcow2": "qcow2", "vhd": "vhd", "vhdx": "vhdx"}
+        disk_fmt = fmt_map.get(ext, "raw")
+        memory_arg = (f"size={mem},shared=on"
+                      f",hotplug_size=256M,hotplug_method=virtio-mem"
+                      if fs_socket
+                      else f"size={mem},hotplug_size=256M,hotplug_method=virtio-mem")
+        cmd = [
+            self.binary,
+            "--kernel", kernel,
+            "--initramfs", initramfs,
+            "--disk", f"path={disk_path},image_type={disk_fmt},num_queues={blk_queues},iommu=on",
+            "--net", f"tap=,num_queues={net_queues}",
+            "--vsock", f"cid={cid},socket={vsock_sock}",
+            "--balloon", "size=0",
+            "--watchdog",
+            "--rng", "src=/dev/urandom",
+            "--cmdline", cmdline,
+            "--cpus", f"boot={cpus}",
+            "--memory", memory_arg,
+            "--serial", "tty",
+            "--console", "null",
+            # CH's seccomp filter intermittently kills the VMM mid run
+            # (e.g. ctrl-vq or re-init paths in some test workloads).
+            # That is a CH issue separate from what this harness tests.
+            # Disable it so VMM policy bugs do not surface as test FAILs.
+            "--seccomp", "false",
+        ]
+        if pmem_path:
+            cmd += ["--pmem", f"file={pmem_path},size=128M,discard_writes=on"]
+        if fs_socket:
+            cmd += ["--fs", f"tag=vvfs,socket={fs_socket},num_queues=1,queue_size=128"]
+        if api_socket:
+            cmd += ["--api-socket", f"path={api_socket}"]
+        return cmd
+
+
+class Qemu(VmmBackend):
+    name = "qemu"
+    console_device = "ttyS0"
+    _cid_counter = 2  # start above reserved CIDs (0=hypervisor, 1=local, 2=host)
+    _cid_lock = threading.Lock()
+
+    @classmethod
+    def _next_cid(cls):
+        with cls._cid_lock:
+            cls._cid_counter += 1
+            return cls._cid_counter
+
+    def build_cmd(self, kernel, initramfs, disk_path, cmdline, opts=None):
+        opts = opts or {}
+        cpus = opts.get("cpus", 1)
+        mem = opts.get("memory", "512M")
+        blk_queues = opts.get("blk_queues", 4)
+        packed = opts.get("packed", True)
+        pmem_path = opts.get("pmem_path")
+        fs_socket = opts.get("fs_socket")
+        api_socket = opts.get("api_socket")
+        cid = self._next_cid()
+        ext = disk_path.rsplit(".", 1)[-1]
+        fmt_map = {"raw": "raw", "qcow2": "qcow2", "vhd": "vpc", "vhdx": "vhdx"}
+        qemu_fmt = fmt_map.get(ext, "raw")
+        packed_flag = "on" if packed else "off"
+        blk_dev = (f"virtio-blk-pci-non-transitional,drive=vd0"
+                   f",packed={packed_flag},num-queues={blk_queues}")
+        # Multiqueue net requires tap netdev which needs /dev/net/tun
+        # (CAP_NET_ADMIN). Since QEMU is typically a distro binary that
+        # cannot be given extra capabilities, we use the unprivileged
+        # user netdev which only supports a single queue.
+        net_dev = (f"virtio-net-pci-non-transitional,netdev=net0"
+                   f",packed={packed_flag}")
+        netdev = "user,id=net0"
+        cmd = [
+            self.binary,
+            "-enable-kvm",
+            "-kernel", kernel,
+            "-initrd", initramfs,
+            "-drive", f"file={disk_path},format={qemu_fmt},if=none,id=vd0",
+            "-device", blk_dev,
+            "-netdev", netdev,
+            "-device", net_dev,
+            "-device", f"vhost-vsock-pci,guest-cid={cid},packed={packed_flag}",
+            "-device", f"virtio-balloon-pci-non-transitional,packed={packed_flag}",
+            "-device", "virtio-iommu-pci",
+            "-device", f"virtio-serial-pci-non-transitional,packed={packed_flag}",
+            "-object", "rng-random,id=rng0,filename=/dev/urandom",
+            "-device", f"virtio-rng-pci-non-transitional,rng=rng0,packed={packed_flag}",
+            "-device", "isa-debug-exit,iobase=0x501,iosize=1",
+            "-append", cmdline,
+            "-nographic",
+            "-no-reboot",
+            "-m", f"{mem},maxmem={_bump_maxmem(mem)},slots=2",
+            "-smp", str(cpus),
+        ]
+        if pmem_path:
+            cmd += [
+                "-object", f"memory-backend-file,id=pmem0,mem-path={pmem_path},size=128M",
+                "-device", f"virtio-pmem-pci,memdev=pmem0,packed={packed_flag}",
+            ]
+        if fs_socket:
+            cmd += [
+                "-chardev", f"socket,id=fs0,path={fs_socket}",
+                "-device", f"vhost-user-fs-pci,chardev=fs0,tag=vvfs,packed={packed_flag}",
+                "-object", f"memory-backend-file,id=mem-fs,size={mem},mem-path=/dev/shm,share=on",
+                "-numa", "node,memdev=mem-fs",
+            ]
+        if api_socket:
+            cmd += ["-qmp", f"unix:{api_socket},server=on,wait=off"]
+        return cmd
+
+
+class QemuMicrovm(VmmBackend):
+    """QEMU with virtio-mmio transport (microvm on x86_64, virt on aarch64)."""
+    name = "qemu-mmio"
+    console_device = "ttyS0"
+    mmio_transport = True
+
+    def build_cmd(self, kernel, initramfs, disk_path, cmdline, opts=None):
+        opts = opts or {}
+        mem = opts.get("memory", "512M")
+        ext = disk_path.rsplit(".", 1)[-1]
+        fmt_map = {"raw": "raw", "qcow2": "qcow2", "vhd": "vpc", "vhdx": "vhdx"}
+        qemu_fmt = fmt_map.get(ext, "raw")
+        arch = platform.machine()
+        if arch == "aarch64":
+            machine_args = ["-M", "virt", "-cpu", "host"]
+            self.console_device = "ttyAMA0"
+        else:
+            machine_args = ["-M", "microvm,x-option-roms=off,rtc=off"]
+        cmd = [
+            self.binary,
+            *machine_args,
+            "-enable-kvm",
+            "-kernel", kernel,
+            "-initrd", initramfs,
+            "-drive", f"file={disk_path},format={qemu_fmt},if=none,id=vd0",
+            "-device", "virtio-blk-device,drive=vd0",
+            "-append", cmdline,
+            "-nographic",
+            "-no-reboot",
+            "-m", mem,
+            "-smp", "1",
+        ]
+        if arch != "aarch64":
+            cmd += ["-device", "isa-debug-exit,iobase=0x501,iosize=1"]
+        return cmd
+
+
+_VMM_BACKENDS = [CloudHypervisor, Qemu, QemuMicrovm]
+
+
+def detect_vmm(vmm_path):
+    """Detect VMM backend from binary name. Returns a VmmBackend instance."""
+    base = os.path.basename(vmm_path)
+    if "cloud-hypervisor" in base or base == "ch":
+        return CloudHypervisor(vmm_path)
+    if base.startswith("qemu-system"):
+        return Qemu(vmm_path)
+    names = ", ".join(cls.name for cls in _VMM_BACKENDS)
+    sys.exit(f"Cannot detect VMM type from '{base}'. "
+             f"Supported: {names}")
+
+
+def fetch_kernel():
+    """Download the CH guest kernel if not already cached."""
+    arch = platform.machine()
+    name = KERNEL_NAMES.get(arch)
+    if not name:
+        sys.exit(f"No pre-built kernel available for {arch}. Use --kernel.")
+    cache_path = os.path.join(_SCRIPT_DIR, "target", name)
+    if os.path.isfile(cache_path):
+        return cache_path
+    os.makedirs(os.path.dirname(cache_path), exist_ok=True)
+    url = f"{KERNEL_BASE_URL}/{name}"
+    print(f"Fetching kernel from {url} ...")
+    urllib.request.urlretrieve(url, cache_path)
+    print(f"Cached at {cache_path}")
+    return cache_path
+
+
+def get_test_list(init_binary=os.path.join("target", "init")):
+    """Get available tests by running target/init --list-tsv on the host.
+
+    Returns (list of test IDs, dict mapping ID to (desc, ver, section)).
+    The --list-tsv output is TAB separated:
+        name<TAB>desc<TAB>version<TAB>section
+    """
+    result = subprocess.run(
+        [init_binary, "--list-tsv"],
+        capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        sys.exit(f"Failed to list tests: {result.stderr}")
+    tests = []
+    info = {}
+    for line in result.stdout.splitlines():
+        if not line:
+            continue
+        fields = line.split("\t")
+        if len(fields) < 4:
+            continue
+        tid, desc, ver, sec = fields[0], fields[1], fields[2], fields[3]
+        tests.append(tid)
+        info[tid] = (desc, ver, sec)
+    return tests, info
+
+
+# Registry of live VMM subprocess handles. We track every Popen we
+# create so a Ctrl+C or unexpected exception path can SIGKILL them all
+# before the runner exits, instead of leaving CH/QEMU instances
+# reparented to init.
+_live_procs = set()
+_live_procs_lock = threading.Lock()
+
+
+def _register_proc(proc):
+    with _live_procs_lock:
+        _live_procs.add(proc)
+
+
+def _unregister_proc(proc):
+    with _live_procs_lock:
+        _live_procs.discard(proc)
+
+
+def _kill_all_live_procs():
+    """SIGKILL every tracked VMM proc. Best effort, never raises."""
+    with _live_procs_lock:
+        procs = list(_live_procs)
+    for p in procs:
+        try:
+            os.killpg(os.getpgid(p.pid), signal.SIGKILL)
+        except (ProcessLookupError, PermissionError, OSError):
+            pass
+        try:
+            p.kill()
+        except OSError:
+            pass
+    for p in procs:
+        try:
+            p.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            pass
+
+
+def _kill_proc(proc):
+    """Kill a process and its entire session group."""
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError, OSError):
+        pass
+    # Defensive: also signal the immediate proc in case the pgroup
+    # kill missed (e.g. the child re-setsid'd itself).
+    try:
+        proc.kill()
+    except OSError:
+        pass
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        try:
+            proc.kill()
+        except OSError:
+            pass
+        try:
+            proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            pass
+
+
+def _save_term():
+    """Save terminal attributes if stdout is a tty."""
+    try:
+        return termios.tcgetattr(sys.stdin.fileno())
+    except (termios.error, OSError):
+        return None
+
+
+def _restore_term(saved):
+    """Restore terminal attributes."""
+    if saved is None:
+        return
+    try:
+        termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, saved)
+    except (termios.error, OSError):
+        pass
+
+
+def _parse_result(output, returncode):
+    """Parse VM output into a result status string.
+
+    The verdict line is `[TAG] <name>` printed by the guest harness,
+    but the VMM may interleave its own log lines into the same stdout
+    stream at any character boundary (CH writes its own warnings
+    inline). Strip those log lines first, then look for the tag.
+    """
+    cleaned = re.sub(r"cloud-hypervisor:[^\n]*\n", "", output)
+    m = re.search(r"\[(XPASS|XFAIL|FAIL|REJECT|WEDGED|SKIP|PASS)\]", cleaned)
+    if m:
+        return m.group(1)
+    if returncode < 0:
+        return "FAIL"
+    if "[vv]" not in cleaned:
+        return "FAIL"
+    return "WEDGED"
+
+
+def _find_virtiofsd():
+    """Locate a virtiofsd binary on the host. Returns path or None.
+
+    Checked locations in order. The first match wins.
+    """
+    for cand in ("virtiofsd",
+                 "/usr/libexec/virtiofsd",
+                 "/usr/lib/virtiofsd",
+                 "/usr/lib/qemu/virtiofsd"):
+        p = shutil.which(cand) if "/" not in cand else cand
+        if p and os.path.exists(p) and os.access(p, os.X_OK):
+            return p
+    return None
+
+
+# Default timeout for VMM API control calls. Scaled at startup by the
+# host oversubscription factor so sidecars do not flake with a hard
+# 5s ceiling when ch-remote and the CH API thread are CPU starved.
+_VM_API_TIMEOUT = 5.0
+
+
+def vm_api(api_socket, backend, command, args=None, timeout=None):
+    """Send a control request to a running VM through its API socket.
+
+    For CH, backend must be a CloudHypervisor instance and the call
+    shells out to ch-remote. command is the subcommand name, for
+    example 'ping', 'info', 'snapshot', 'pause', 'add-disk'. args is
+    a list of extra positional or option arguments passed verbatim.
+    Returns CompletedProcess with captured stdout and stderr.
+
+    For QEMU, backend must be a Qemu instance and the call speaks
+    raw QMP JSON over the unix socket. command is the QMP execute
+    name, for example 'query-status' or 'stop'. args is a dict of
+    QMP arguments. Returns parsed JSON response or raw bytes on
+    parse failure. Raises OSError on connect failure.
+    """
+    if timeout is None:
+        timeout = _VM_API_TIMEOUT
+    deadline = time.time() + timeout
+    while not os.path.exists(api_socket):
+        if time.time() > deadline:
+            raise OSError(f"api socket not ready: {api_socket}")
+        time.sleep(0.02)
+
+    if isinstance(backend, CloudHypervisor):
+        ch_remote = _find_ch_remote(backend.binary)
+        if not ch_remote:
+            raise FileNotFoundError(
+                "ch-remote not found next to the cloud-hypervisor binary "
+                "or in PATH")
+        cmd = [ch_remote, "--api-socket", api_socket, command]
+        if args:
+            cmd += list(args)
+        return subprocess.run(cmd, capture_output=True, text=True,
+                              timeout=timeout)
+
+    if isinstance(backend, Qemu):
+        import json
+        import socket as _socket
+        s = _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM)
+        s.settimeout(timeout)
+        s.connect(api_socket)
+        try:
+            buf = b""
+            while b"\n" not in buf:
+                chunk = s.recv(4096)
+                if not chunk:
+                    break
+                buf += chunk
+            s.sendall(b'{"execute":"qmp_capabilities"}\n')
+            buf = b""
+            while b"\n" not in buf:
+                chunk = s.recv(4096)
+                if not chunk:
+                    break
+                buf += chunk
+            req = {"execute": command}
+            if args is not None:
+                req["arguments"] = args
+            s.sendall((json.dumps(req) + "\n").encode())
+            buf = b""
+            while True:
+                chunk = s.recv(4096)
+                if not chunk:
+                    break
+                buf += chunk
+                if b"\n" in buf:
+                    break
+            line = buf.split(b"\n", 1)[0]
+            try:
+                return json.loads(line.decode())
+            except (ValueError, UnicodeDecodeError):
+                return line
+        finally:
+            s.close()
+
+    raise ValueError(f"vm_api unsupported backend: {backend}")
+
+
+def _find_ch_remote(ch_binary):
+    """Locate the ch-remote client. Looks next to the cloud-hypervisor
+    binary first, then PATH.
+    """
+    sibling = os.path.join(os.path.dirname(os.path.abspath(ch_binary)),
+                           "ch-remote")
+    if os.path.isfile(sibling) and os.access(sibling, os.X_OK):
+        return sibling
+    return shutil.which("ch-remote")
+
+
+# ---------------------------------------------------------------------------
+# Sidecar mechanism. A sidecar is an optional Python file next to a C
+# test source. The runner imports it and calls run(ctx) on a daemon
+# thread alongside the guest test. The sidecar can drive anything on
+# the host side, for example flap a tap link, kill a vhost backend,
+# truncate the disk file, or call the VMM control socket. It is not
+# tied to the API socket. Tests that do not need a host actor simply
+# do not ship a sidecar.
+
+class _Ctx:
+    """Context object passed to a sidecar's run() function."""
+
+    def __init__(self, *, test_id, backend, vmm_pid, tmpdir, api_sock,
+                 disk, log, output_buf, output_lock, stop_event):
+        self.test_id = test_id
+        self.backend = backend
+        self.vmm_pid = vmm_pid
+        self.tmpdir = tmpdir
+        self.api_sock = api_sock
+        self.disk = disk
+        self.log = log
+        self.stop = stop_event
+        self._buf = output_buf
+        self._lock = output_lock
+
+    def vm_api(self, command, args=None, timeout=None):
+        """Convenience wrapper. Calls vm_api with this context's
+        api_sock and backend. Raises RuntimeError if the api socket
+        is disabled. When the VMM has already exited returns a
+        synthetic completed process with returncode 0 so the sidecar
+        does not have to special case post test races. Connection
+        refused on the API socket is treated the same way because the
+        VMM may exit between the alive check and the actual request.
+        """
+        if self.api_sock is None:
+            raise RuntimeError("api socket disabled for this test")
+        if not self.vm_alive():
+            return subprocess.CompletedProcess(
+                args=[command], returncode=0,
+                stdout="", stderr="vmm exited"
+            )
+        cp = vm_api(self.api_sock, self.backend, command, args,
+                    timeout=timeout)
+        if (isinstance(cp, subprocess.CompletedProcess)
+                and cp.returncode != 0):
+            msg = (cp.stderr or "") + (cp.stdout or "")
+            if ("Connection refused" in msg or "os error 111" in msg
+                    or "Connection reset" in msg or "os error 104" in msg
+                    or "Broken pipe" in msg or "os error 32" in msg):
+                return subprocess.CompletedProcess(
+                    args=cp.args, returncode=0,
+                    stdout=cp.stdout, stderr="vmm exited"
+                )
+        return cp
+
+    def vm_alive(self):
+        """Return True if the VMM process is still around. The guest
+        test may finish and the VMM may exit before the sidecar
+        reaches a later step. Sidecars should use this to skip
+        unnecessary follow up calls instead of erroring out.
+        """
+        if self.vmm_pid is None:
+            return False
+        try:
+            os.kill(self.vmm_pid, 0)
+        except OSError:
+            return False
+        return True
+
+    def wait_text(self, pattern, timeout=10.0):
+        """Block until the VMM stdout buffer contains pattern. Returns
+        True if seen, False on timeout or stop signal.
+        """
+        needle = pattern.encode() if isinstance(pattern, str) else pattern
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            if self.stop.is_set():
+                return False
+            with self._lock:
+                joined = b"".join(self._buf)
+            if needle in joined:
+                return True
+            time.sleep(0.05)
+        return False
+
+
+def _find_sidecar(test_name):
+    """Return absolute path to a sidecar .py for test_name, or None.
+
+    Sidecars live next to the C source under tests/<dir>/. Match is
+    case insensitive and accepts the bare ID stem or a stem followed
+    by an underscore and free form text.
+    """
+    td = _test_dir(test_name)
+    if not td:
+        return None
+    base = os.path.join(_SCRIPT_DIR, "tests", td)
+    if not os.path.isdir(base):
+        return None
+    low = test_name.lower()
+    for entry in os.listdir(base):
+        if not entry.endswith(".py"):
+            continue
+        stem = entry[:-3].lower()
+        if stem == low or stem.startswith(low + "_"):
+            return os.path.join(base, entry)
+    return None
+
+
+def _load_sidecar(path):
+    """Import a sidecar file as an anonymous module."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "vv_sidecar_" + os.path.splitext(os.path.basename(path))[0], path)
+    if spec is None or spec.loader is None:
+        raise ImportError(f"cannot load sidecar: {path}")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
+             disk_format="raw", opts=None):
+    """Run a single test in a fresh VM. Returns (test_name, status, output)."""
+    suffix = {"raw": ".raw", "qcow2": ".qcow2", "vhd": ".vhd",
+              "vhdx": ".vhdx"}[disk_format]
+    disk_path = tempfile.mktemp(suffix=suffix)
+    if disk_format == "raw":
+        with open(disk_path, "wb") as f:
+            f.truncate(DISK_SIZE)
+    else:
+        qemu_fmt = {"qcow2": "qcow2", "vhd": "vpc", "vhdx": "vhdx"}[disk_format]
+        cmd = ["qemu-img", "create", "-f", qemu_fmt]
+        if disk_format == "vhd":
+            cmd += ["-o", "subformat=fixed"]
+        cmd += [disk_path, str(DISK_SIZE)]
+        subprocess.run(cmd, check=True, capture_output=True)
+
+    cmdline = (f"console={backend.console_device} "
+               f"initcall_blacklist=virtio_blk_init vv.test={test_name}")
+    # Create pmem backing file
+    pmem_path = disk_path.rsplit(".", 1)[0] + ".pmem"
+    with open(pmem_path, "wb") as f:
+        f.truncate(128 * 1024 * 1024)  # 128 MiB
+    # Copy so per test mutations do not leak into the shared opts
+    # dict that the caller reuses across every test.
+    opts = dict(opts) if opts else {}
+    opts["pmem_path"] = pmem_path
+
+    api_socket = None
+    if opts.get("api_enabled") and backend.name in ("ch", "qemu"):
+        api_socket = disk_path.rsplit(".", 1)[0] + ".api"
+        opts["api_socket"] = api_socket
+    else:
+        opts.pop("api_socket", None)
+    opts.pop("api_enabled", None)
+
+    # Spawn virtiofsd if this test targets virtio-fs and a daemon is
+    # available. The shared directory is a fresh empty tmpdir per test.
+    fs_proc = None
+    fs_socket = None
+    fs_sharedir = None
+    if test_name.upper().startswith("F"):
+        fs_daemon = _find_virtiofsd()
+        if fs_daemon:
+            fs_socket = disk_path.rsplit(".", 1)[0] + ".fsd"
+            fs_sharedir = tempfile.mkdtemp(prefix="vvfs.")
+            fs_proc = subprocess.Popen(
+                [fs_daemon, "--socket-path", fs_socket,
+                 "--shared-dir", fs_sharedir,
+                 "--cache", "never"],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True,
+            )
+            # Wait briefly for the socket to appear so CH/QEMU can connect.
+            for _ in range(50):
+                if os.path.exists(fs_socket):
+                    break
+                time.sleep(0.02)
+            opts["fs_socket"] = fs_socket
+    cmd = backend.build_cmd(kernel, INITRAMFS, disk_path, cmdline, opts)
+
+    if verbose >= 1:
+        with _print_lock:
+            print(f"  $ {shlex.join(cmd)}")
+
+    # Result markers printed by the in-VM harness. As soon as we see one
+    # we kill the VM, since not every VMM cleanly exits on guest reboot
+    # (notably CH on triple fault, and any teardown wedged by a test).
+    # The VMM writes its own log lines into the same stdout stream and
+    # can split a verdict marker at any character boundary; strip those
+    # lines first, then match the tag.
+    vmm_noise_re = re.compile(rb"cloud-hypervisor:[^\n]*\n")
+    marker_re = re.compile(
+        rb"\[(?:PASS|FAIL|REJECT|WEDGED|SKIP|XFAIL|XPASS)\]")
+
+    saved_term = _save_term() if console else None
+    proc = None
+    sidecar_thread = None
+    sidecar_state = {"err": None}
+    sidecar_stop = threading.Event()
+    sidecar_tmpdir = None
+    sidecar_log_lines = []
+    output_lock = threading.Lock()
+    output = ""
+    status = "FAIL"
+    try:
+        old_sigint = None
+        if console:
+            old_sigint = signal.signal(signal.SIGINT, signal.SIG_IGN)
+        proc = subprocess.Popen(
+            cmd,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            start_new_session=not console,
+        )
+        _register_proc(proc)
+        sidecar_path = _find_sidecar(test_name)
+        chunks = []
+        if sidecar_path:
+            sidecar_tmpdir = tempfile.mkdtemp(prefix=f"vv-sc-{test_name}.")
+            sidecar_log_lines = []
+
+            def _sc_log(msg):
+                line = f"[vv-sidecar] {msg}"
+                sidecar_log_lines.append(line)
+                if console:
+                    print(line)
+
+            ctx = _Ctx(
+                test_id=test_name,
+                backend=backend,
+                vmm_pid=proc.pid,
+                tmpdir=sidecar_tmpdir,
+                api_sock=opts.get("api_socket"),
+                disk=disk_path,
+                log=_sc_log,
+                output_buf=chunks,
+                output_lock=output_lock,
+                stop_event=sidecar_stop,
+            )
+
+            def _sc_run():
+                try:
+                    mod = _load_sidecar(sidecar_path)
+                    if not hasattr(mod, "run"):
+                        raise AttributeError(
+                            f"sidecar {sidecar_path} has no run(ctx)")
+                    mod.run(ctx)
+                except BaseException as e:  # capture for the runner
+                    import traceback as _tb
+                    sidecar_state["err"] = (e, _tb.format_exc())
+
+            sidecar_thread = threading.Thread(
+                target=_sc_run, name=f"sidecar-{test_name}", daemon=True)
+            sidecar_thread.start()
+        timer_fired = [False]
+
+        def _on_timeout():
+            timer_fired[0] = True
+            if console:
+                proc.kill()
+            else:
+                _kill_proc(proc)
+        timer = threading.Timer(timeout, _on_timeout)
+        timer.start()
+        scan_from = 0
+        marker_seen = False
+        for chunk in iter(lambda: proc.stdout.read1(4096), b""):
+            if console:
+                sys.stdout.buffer.write(chunk)
+                sys.stdout.buffer.flush()
+            with output_lock:
+                chunks.append(chunk)
+            if not marker_seen:
+                with output_lock:
+                    joined = b"".join(chunks)
+                # Search only the unscanned tail, with a small overlap
+                # to catch a marker straddling a chunk boundary. Strip
+                # any interleaved VMM log lines so we still recognise
+                # markers split across CH's own writes.
+                tail_start = max(scan_from - 16, 0)
+                tail = joined[tail_start:]
+                if marker_re.search(vmm_noise_re.sub(b"", tail)):
+                    marker_seen = True
+                    if console:
+                        proc.kill()
+                    else:
+                        _kill_proc(proc)
+                scan_from = len(joined)
+        proc.wait()
+        timer.cancel()
+        timed_out = not marker_seen and timer_fired[0]
+        if old_sigint is not None:
+            signal.signal(signal.SIGINT, old_sigint)
+        if timed_out:
+            raise subprocess.TimeoutExpired(cmd, timeout)
+        output = b"".join(chunks).decode(errors="replace")
+        status = _parse_result(output, proc.returncode)
+    except subprocess.TimeoutExpired:
+        if proc:
+            proc.kill()
+            proc.wait()
+        output = f"TIMEOUT after {timeout}s"
+        status = "FAIL"
+    except KeyboardInterrupt:
+        if proc:
+            if console:
+                proc.kill()
+            else:
+                _kill_proc(proc)
+            proc.wait()
+        raise
+    except Exception as e:
+        output = str(e)
+        status = "FAIL"
+    finally:
+        # Defensive: under any exit path make sure the VMM is gone
+        # before we let the worker thread return. Otherwise an
+        # unexpected exception above can leak CH instances that get
+        # reparented to init when run exits.
+        if proc and proc.poll() is None:
+            try:
+                if console:
+                    proc.kill()
+                else:
+                    _kill_proc(proc)
+            except OSError:
+                pass
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                try:
+                    proc.kill()
+                except OSError:
+                    pass
+                try:
+                    proc.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    pass
+        if proc:
+            _unregister_proc(proc)
+        sidecar_stop.set()
+        if sidecar_thread is not None:
+            sidecar_thread.join(timeout=5.0)
+            if sidecar_thread.is_alive():
+                output += "\n[vv-sidecar] WARN: did not exit within 5s\n"
+            err = sidecar_state.get("err")
+            extra = ""
+            if sidecar_log_lines:
+                extra += "\n" + "\n".join(sidecar_log_lines) + "\n"
+            if err is not None:
+                extra += f"\n[vv-sidecar] FAIL: {err[0]}\n{err[1]}\n"
+                if status not in ("WEDGED", "PASS", "SKIP", "REJECT",
+                                  "XFAIL", "XPASS"):
+                    status = "FAIL"
+            output += extra
+        if sidecar_tmpdir:
+            shutil.rmtree(sidecar_tmpdir, ignore_errors=True)
+        _restore_term(saved_term)
+        if console:
+            signal.signal(signal.SIGINT, signal.default_int_handler)
+        if fs_proc:
+            try:
+                fs_proc.terminate()
+                fs_proc.wait(timeout=2)
+            except (subprocess.TimeoutExpired, OSError):
+                try:
+                    fs_proc.kill()
+                except OSError:
+                    pass
+        if fs_socket:
+            try:
+                os.unlink(fs_socket)
+            except FileNotFoundError:
+                pass
+            try:
+                os.unlink(fs_socket + ".pid")
+            except FileNotFoundError:
+                pass
+        if fs_sharedir:
+            shutil.rmtree(fs_sharedir, ignore_errors=True)
+        os.unlink(disk_path)
+        try:
+            os.unlink(pmem_path)
+        except FileNotFoundError:
+            pass
+        if api_socket:
+            try:
+                os.unlink(api_socket)
+            except FileNotFoundError:
+                pass
+        vsock_sock = disk_path.replace(suffix, ".vsock")
+        try:
+            os.unlink(vsock_sock)
+        except FileNotFoundError:
+            pass
+
+    return test_name, status, output
+
+
+# Maps test name prefix (leading uppercase letters) to the source
+# directory under tests/. Keep in sync with the layout in README.md.
+PREFIX_DIR = {
+    "T": "vring",
+    "P": "packed",
+    "PCI": "pci",
+    "M": "mmio",
+    "S": "state",
+    "A": "admin",
+    "B": "blk",
+    "Z": "blk",
+    "N": "net",
+    "C": "console",
+    "RNG": "rng",
+    "V": "vsock",
+    "L": "balloon",
+    "E": "pmem",
+    "R": "mem",
+    "D": "watchdog",
+    "I": "iommu",
+    "RTC": "rtc",
+    "F": "fs",
+}
+
+# Reverse: directory name to set of accepted prefixes.
+DIR_PREFIXES = {}
+for _p, _d in PREFIX_DIR.items():
+    DIR_PREFIXES.setdefault(_d, set()).add(_p)
+
+
+def _test_prefix(name):
+    """Return the leading uppercase prefix of a test name, or ''."""
+    m = re.match(r"^[A-Z]+", name)
+    return m.group(0) if m else ""
+
+
+def _test_dir(name):
+    """Return source directory for a test name, or None if unknown.
+
+    Matches the longest known prefix so that 'RTC0016' maps to 'rtc'
+    rather than 'R' or 'RT'.
+    """
+    pref = _test_prefix(name)
+    while pref:
+        if pref in PREFIX_DIR:
+            return PREFIX_DIR[pref]
+        pref = pref[:-1]
+    return None
+
+
+def _expand_dir_globs(patterns, flag_name):
+    """Expand each pattern against known directory names.
+
+    Plain names (no glob meta) must match exactly an entry in
+    DIR_PREFIXES, otherwise sys.exit. Glob patterns may match zero
+    or more entries and an empty match is allowed silently because
+    the user may legitimately want to test that a category is empty.
+    Matching is case insensitive.
+    """
+    expanded = set()
+    for pat in patterns or []:
+        low = pat.lower()
+        if any(c in low for c in "*?["):
+            for name in DIR_PREFIXES:
+                if fnmatch.fnmatchcase(name, low):
+                    expanded.add(name)
+        else:
+            if low not in DIR_PREFIXES:
+                sys.exit(f"Unknown test directory for {flag_name}: {pat}. "
+                         f"Known: {', '.join(sorted(DIR_PREFIXES))}")
+            expanded.add(low)
+    return expanded
+
+
+def filter_tests(tests, includes, excludes, dirs, exclude_dirs):
+    """Apply include/exclude pattern and directory filters.
+
+    Includes and dirs are unioned to form the whitelist. If both are
+    empty, every test is initially in the whitelist. Excludes and
+    exclude_dirs then remove entries. Pattern arguments accept shell
+    globs through fnmatch.
+    """
+    wanted_dirs = _expand_dir_globs(dirs, "--dir")
+    excl_dirs = _expand_dir_globs(exclude_dirs, "--exclude-dir")
+
+    if includes or dirs:
+        result = []
+        for t in tests:
+            hit = False
+            for pat in includes or []:
+                if fnmatch.fnmatchcase(t.upper(), pat.upper()):
+                    hit = True
+                    break
+            if not hit and wanted_dirs:
+                td = _test_dir(t)
+                if td and td in wanted_dirs:
+                    hit = True
+            if hit:
+                result.append(t)
+    else:
+        result = list(tests)
+
+    if excludes:
+        result = [t for t in result
+                  if not any(fnmatch.fnmatchcase(t.upper(), p.upper())
+                             for p in excludes)]
+    if excl_dirs:
+        result = [t for t in result
+                  if (_test_dir(t) or "") not in excl_dirs]
+    return result
+
+
+def main():
+    print_banner(sys.stderr)
+    parser = argparse.ArgumentParser(description="virtio-villain test runner")
+    parser.add_argument("-m", "--vmm", required=True, help="Path to VMM binary")
+    parser.add_argument("-k", "--kernel", default=None,
+                        help="Path to guest kernel, fetched automatically if omitted")
+    parser.add_argument("-t", "--timeout", type=int, default=30,
+                        help="Timeout for each test in seconds (default: 30)")
+    parser.add_argument("-l", "--log-dir", default=None,
+                        help="Save output for each test to files in this directory")
+    parser.add_argument("-c", "--console", action="store_true",
+                        help="Stream VM output directly to stdout")
+    parser.add_argument("-j", "--jobs", type=int, default=1,
+                        help="Run N tests in parallel (default: 1)")
+    parser.add_argument("-v", "--verbose", action="count", default=0,
+                        help="Increase verbosity (-v: commands, -vv: full output)")
+    parser.add_argument("-d", "--disk-type", choices=DISK_FORMATS, default="raw",
+                        help="Disk image format (default: raw)")
+    parser.add_argument("-s", "--cpus", type=int, default=None,
+                        help="Number of vCPUs (default: 4 for CH, 1 for QEMU)")
+    parser.add_argument("-M", "--memory", default="512M",
+                        help="Guest memory size (default: 512M)")
+    parser.add_argument("--blk-queues", type=int, default=4,
+                        help="Number of block device queues (default: 4)")
+    parser.add_argument("--net-queues", type=int, default=4,
+                        help="Number of net device queue pairs (default: 4)")
+    parser.add_argument("--packed", action="store_true", default=True,
+                        help="Use packed virtqueues (default)")
+    parser.add_argument("--no-packed", action="store_true",
+                        help="Use split virtqueues")
+    parser.add_argument("--no-api-socket", action="store_true",
+                        help="Disable per VM control socket "
+                             "(CH --api-socket or QEMU -qmp). The socket "
+                             "is enabled by default and required for "
+                             "save, restore and hotplug oriented tests.")
+    parser.add_argument("-i", "--include", action="append", default=[],
+                        metavar="GLOB",
+                        help="Run tests whose name matches the shell glob, "
+                             "ignores case. Repeatable. Examples: "
+                             "'RNG*', 'T0[1-5]', 'PCI00??', '*0001'. "
+                             "Combines with positional names, with --dir, "
+                             "and with --exclude or --exclude-dir.")
+    parser.add_argument("-x", "--exclude", action="append", default=[],
+                        metavar="GLOB",
+                        help="Skip tests whose name matches the shell glob, "
+                             "ignores case. Repeatable. Applied after "
+                             "--include and --dir. Examples: 'RTC*', "
+                             "'T01', 'PCI006?'.")
+    parser.add_argument("--dir", action="append", default=[], dest="dirs",
+                        metavar="NAME",
+                        help="Run tests whose source directory under tests/ "
+                             "matches NAME. Repeatable. Plain names match "
+                             "exactly. Shell globs match across known "
+                             "directories. Examples: rtc, pci, blk, vring, "
+                             "'p*' for packed, pci, pmem. Use with "
+                             "--exclude or --exclude-dir to refine the "
+                             "selection.")
+    parser.add_argument("--exclude-dir", action="append", default=[],
+                        metavar="NAME",
+                        help="Skip tests whose source directory under tests/ "
+                             "matches NAME. Repeatable. Plain names match "
+                             "exactly. Shell globs are supported. Applied "
+                             "after --include and --dir.")
+    parser.add_argument("tests", nargs="*",
+                        help="Test IDs to run (default: all)")
+    args = parser.parse_args()
+
+    profraw_dir = os.path.join(_SCRIPT_DIR, "target", "profraw")
+    os.makedirs(profraw_dir, exist_ok=True)
+    os.environ["LLVM_PROFILE_FILE"] = os.path.join(
+        profraw_dir, "%m_%p.profraw")
+
+    if args.no_packed:
+        args.packed = False
+
+    kernel = args.kernel or fetch_kernel()
+    backend = detect_vmm(args.vmm)
+
+    vm_opts = {
+        "cpus": args.cpus if args.cpus else (4 if backend.name == "ch" else 1),
+        "memory": args.memory,
+        "blk_queues": args.blk_queues,
+        "net_queues": args.net_queues,
+        "packed": args.packed,
+        "api_enabled": not args.no_api_socket,
+    }
+
+    # Scale the per VM wall clock deadline by the host oversubscription
+    # factor. When the user requests more total guest vCPUs than the
+    # host has cores, each VM thread gets only a fraction of real CPU
+    # time, so a test that normally completes in a few seconds of wall
+    # clock can exceed the fixed --timeout and be killed before it can
+    # emit a verdict marker. That manifests as random WEDGED results
+    # across unrelated tests. Honor an explicit user override by only
+    # extending, never shrinking, the requested timeout.
+    host_cpus = os.cpu_count() or 1
+    per_vm_cpus = max(1, int(vm_opts["cpus"]))
+    oversub = max(1.0, (args.jobs * per_vm_cpus) / host_cpus)
+    scaled_timeout = int(args.timeout * oversub)
+    if scaled_timeout > args.timeout:
+        print(f"Note: scaling per test timeout from {args.timeout}s to "
+              f"{scaled_timeout}s for oversubscription factor "
+              f"{oversub:.1f}x ({args.jobs} jobs x {per_vm_cpus} vCPUs "
+              f"on {host_cpus} host CPUs)",
+              file=sys.stderr)
+        args.timeout = scaled_timeout
+
+    # Scale the sidecar VMM API call timeout by the same factor so
+    # ch-remote and the CH API thread have headroom when CPU starved.
+    global _VM_API_TIMEOUT
+    _VM_API_TIMEOUT = 5.0 * oversub
+
+    # Only need a separate QEMU MMIO backend if main backend uses PCI
+    mmio_backend = None
+    if not backend.mmio_transport:
+        qemu_bin = os.path.basename(args.vmm)
+        if "qemu-system" in qemu_bin:
+            mmio_backend = QemuMicrovm(args.vmm)
+        else:
+            import shutil
+            arch = platform.machine()
+            qemu_path = shutil.which(f"qemu-system-{arch}")
+            if qemu_path:
+                mmio_backend = QemuMicrovm(qemu_path)
+
+    if args.log_dir:
+        os.makedirs(args.log_dir, exist_ok=True)
+
+    if not os.path.isfile(INITRAMFS):
+        sys.exit(f"{INITRAMFS} not found. Run 'make initramfs' first.")
+
+    if args.tests:
+        tests = args.tests
+        try:
+            known, test_info = get_test_list()
+        except (FileNotFoundError, OSError, SystemExit):
+            known, test_info = [], {}
+        if known and not os.environ.get("VV_ALLOW_UNKNOWN_TESTS"):
+            known_set = {t.upper() for t in known}
+            unknown = [t for t in tests if t.upper() not in known_set]
+            if unknown:
+                sys.exit(f"Unknown test name(s): {', '.join(unknown)}")
+    else:
+        tests, test_info = get_test_list()
+
+    tests = filter_tests(tests, args.include, args.exclude,
+                         args.dirs, args.exclude_dir)
+
+    if not tests:
+        sys.exit("No tests found.")
+
+    mmio_tests = [t for t in tests if t.startswith("M")]
+    if mmio_tests and not mmio_backend and not backend.mmio_transport:
+        print(f"Note: {len(mmio_tests)} MMIO test(s) need qemu-system-{platform.machine()} "
+              f"in PATH")
+        tests = [t for t in tests if not t.startswith("M")]
+
+    # Probe whether the kernel boots on the MMIO backend; if not, skip
+    if mmio_backend and mmio_tests:
+        probe_disk = tempfile.mktemp(suffix=".raw")
+        with open(probe_disk, "wb") as f:
+            f.truncate(DISK_SIZE)
+        probe_cmd = mmio_backend.build_cmd(
+            kernel, INITRAMFS, probe_disk,
+            f"console={mmio_backend.console_device} vv.test=list")
+        probe_ok = False
+        try:
+            result = subprocess.run(
+                probe_cmd, stdin=subprocess.DEVNULL,
+                capture_output=True, timeout=2,
+                start_new_session=True)
+            probe_ok = b"[vv]" in result.stdout
+        except (subprocess.TimeoutExpired, OSError):
+            pass
+        finally:
+            os.unlink(probe_disk)
+        if not probe_ok:
+            print(f"Note: kernel lacks virtio-mmio support; "
+                  f"skipping {len(mmio_tests)} MMIO test(s)")
+            mmio_backend = None
+            tests = [t for t in tests if not t.startswith("M")]
+
+    print(f"Running {len(tests)} test(s) against {args.vmm} ({backend.name})\n")
+
+    def _backend_for(test_name):
+        """Return (backend, kernel) for a given test."""
+        if test_name.startswith("M") and mmio_backend:
+            return mmio_backend, kernel
+        return backend, kernel
+
+    saved_term = _save_term()
+    results = []
+    is_tty = sys.stdout.isatty()
+
+    def _progress(done, total, current=""):
+        """Draw a progress line at the bottom (overwritten each time)."""
+        if not is_tty or args.console:
+            return
+        cols = os.get_terminal_size(sys.stdout.fileno()).columns
+        passed = sum(1 for _, s, _ in results if s == "PASS")
+        failed = sum(1 for _, s, _ in results if s == "FAIL")
+        wedged_cnt = sum(1 for _, s, _ in results if s == "WEDGED")
+        reject_cnt = sum(1 for _, s, _ in results if s == "REJECT")
+        skip_cnt = sum(1 for _, s, _ in results if s == "SKIP")
+        xfail_cnt = sum(1 for _, s, _ in results if s == "XFAIL")
+        xpass_cnt = sum(1 for _, s, _ in results if s == "XPASS")
+        parts = [f"{done}/{total}"]
+        if passed:
+            parts.append(f"\033[32m{passed}P\033[0m")
+        if failed:
+            parts.append(f"\033[31m{failed}F\033[0m")
+        if reject_cnt:
+            parts.append(f"\033[35m{reject_cnt}R\033[0m")
+        if wedged_cnt:
+            parts.append(f"\033[33m{wedged_cnt}W\033[0m")
+        if skip_cnt:
+            parts.append(f"\033[36m{skip_cnt}S\033[0m")
+        if xfail_cnt:
+            parts.append(f"\033[34m{xfail_cnt}XF\033[0m")
+        if xpass_cnt:
+            parts.append(f"\033[31m{xpass_cnt}XP\033[0m")
+        status = " ".join(parts)
+        if current:
+            line = f"{status} | {current}"
+        else:
+            line = status
+        # Truncate to terminal width (accounting for ANSI escapes)
+        sys.stdout.write(f"\r\033[K{line[:cols]}")
+        sys.stdout.flush()
+
+    def _clear_progress():
+        if is_tty and not args.console:
+            sys.stdout.write("\r\033[K")
+            sys.stdout.flush()
+
+    _STATUS_COLORS = {
+        "PASS": "\033[32m",
+        "FAIL": "\033[31m",
+        "REJECT": "\033[35m",
+        "WEDGED": "\033[33m",
+        "SKIP": "\033[36m",
+        "XFAIL": "\033[34m",
+        "XPASS": "\033[31m",
+    }
+    _RESET = "\033[0m"
+    _DIM = "\033[2m"
+
+    def _color_status(status):
+        if not is_tty:
+            return f"[{status}]"
+        c = _STATUS_COLORS.get(status, "")
+        return f"{c}[{status}]{_RESET}"
+
+    def _format_test_line(name, status):
+        """Format a full test result line fitting in terminal width."""
+        # Pad status tag to fixed 8 visual chars: [WEDGED] is longest
+        tag_fixed = 8
+        plain_tag = f"[{status}]"
+        padded_tag = plain_tag.ljust(tag_fixed)
+        if is_tty:
+            c = _STATUS_COLORS.get(status, "")
+            tag = f"{c}{padded_tag}{_RESET}"
+        else:
+            tag = padded_tag
+        # Fixed right columns: ver(4) + sp + sec(12)
+        ver_w = 4
+        sec_w = 12
+        name_w = 7
+        try:
+            cols = os.get_terminal_size(sys.stdout.fileno()).columns
+        except (OSError, ValueError):
+            cols = 80
+        # Layout: TAG(8) SP NAME(5) SP DESC SP VER(4) SP SEC(12)
+        fixed = tag_fixed + 1 + name_w + 1 + 1 + ver_w + 1 + sec_w
+        desc_max = cols - fixed
+        if desc_max < 10:
+            desc_max = 10
+        desc, ver, sec = test_info.get(name, ("", "", ""))
+        if len(desc) > desc_max:
+            desc = desc[:desc_max - 1] + "~"
+        body = f"{name:<{name_w}} {desc:<{desc_max}} {ver:<{ver_w}} {sec:<{sec_w}}"
+        return f"{tag} {body}"
+
+    def _report(name, status, output):
+        """Print one test result immediately."""
+        results.append((name, status, output))
+        if not args.console:
+            _clear_progress()
+            print(_format_test_line(name, status))
+        if args.log_dir and output:
+            log_path = os.path.join(args.log_dir, f"{name}.log")
+            with open(log_path, "w") as f:
+                f.write(output)
+            if status == "FAIL":
+                print(f"       log: {log_path}")
+        if not args.console and status == "FAIL" and output:
+            for line in output.splitlines()[-10:]:
+                print(f"{_DIM}       {line}{_RESET}" if is_tty else f"       {line}")
+
+    pool = None
+    try:
+        if args.jobs > 1 and not args.console:
+            pool = ThreadPoolExecutor(max_workers=args.jobs)
+            futures = {
+                pool.submit(
+                    run_test, *_backend_for(t),
+                    t, args.timeout, args.verbose, False,
+                    args.disk_type, vm_opts
+                ): t for t in tests
+            }
+            done = 0
+            _progress(done, len(tests), "starting...")
+            try:
+                for future in as_completed(futures):
+                    name, status, output = future.result()
+                    done += 1
+                    with _print_lock:
+                        _report(name, status, output)
+                        _progress(done, len(tests))
+            except KeyboardInterrupt:
+                _clear_progress()
+                print("\n\nInterrupted. Killing live VMMs...")
+                # Drop unstarted work and SIGKILL everything still
+                # running so worker threads can wake up and finish
+                # their finally blocks promptly.
+                try:
+                    pool.shutdown(wait=False, cancel_futures=True)
+                except TypeError:
+                    # Python < 3.9 fallback (no cancel_futures kw)
+                    pool.shutdown(wait=False)
+                _kill_all_live_procs()
+                # Now drain whatever finishes naturally. Don't propagate
+                # exceptions from cancelled futures.
+                for fut in futures:
+                    if fut.cancelled():
+                        continue
+                    try:
+                        fut.result(timeout=10)
+                    except (Exception, KeyboardInterrupt):
+                        pass
+                raise
+            finally:
+                if pool is not None:
+                    try:
+                        pool.shutdown(wait=True)
+                    except Exception:
+                        pass
+        else:
+            try:
+                for i, test_name in enumerate(tests):
+                    _progress(i, len(tests), test_name)
+                    name, status, output = run_test(
+                        *_backend_for(test_name), test_name, args.timeout,
+                        args.verbose, args.console, args.disk_type, vm_opts
+                    )
+                    _report(name, status, output)
+                    _progress(i + 1, len(tests))
+            except KeyboardInterrupt:
+                _clear_progress()
+                print("\n\nInterrupted. Killing live VMMs...")
+                _kill_all_live_procs()
+                raise
+    except KeyboardInterrupt:
+        _clear_progress()
+        print("\nInterrupted.")
+    finally:
+        _clear_progress()
+        _restore_term(saved_term)
+        # Final safety net: anything still tracked gets SIGKILL'd.
+        _kill_all_live_procs()
+
+    num_passed = sum(1 for _, s, _ in results if s == "PASS")
+    num_failed = sum(1 for _, s, _ in results if s == "FAIL")
+    num_reject = sum(1 for _, s, _ in results if s == "REJECT")
+    num_wedged = sum(1 for _, s, _ in results if s == "WEDGED")
+    num_skip = sum(1 for _, s, _ in results if s == "SKIP")
+    num_xfail = sum(1 for _, s, _ in results if s == "XFAIL")
+    num_xpass = sum(1 for _, s, _ in results if s == "XPASS")
+    total = len(results)
+
+    if is_tty:
+        summary = f"\n\033[1m{num_passed}/{total} tests passed\033[0m"
+        if num_failed:
+            summary += f", \033[31m{num_failed} failed\033[0m"
+        if num_reject:
+            summary += f", \033[35m{num_reject} rejected\033[0m"
+        if num_wedged:
+            summary += f", \033[33m{num_wedged} wedged\033[0m"
+        if num_skip:
+            summary += f", \033[36m{num_skip} skipped\033[0m"
+        if num_xfail:
+            summary += f", \033[34m{num_xfail} xfail\033[0m"
+        if num_xpass:
+            summary += f", \033[31m{num_xpass} xpass\033[0m"
+    else:
+        summary = f"\n{num_passed}/{total} tests passed"
+        if num_failed:
+            summary += f", {num_failed} failed"
+        if num_reject:
+            summary += f", {num_reject} rejected"
+        if num_wedged:
+            summary += f", {num_wedged} wedged"
+        if num_skip:
+            summary += f", {num_skip} skipped"
+        if num_xfail:
+            summary += f", {num_xfail} xfail"
+        if num_xpass:
+            summary += f", {num_xpass} xpass"
+    print(summary)
+
+    failed = [name for name, s, _ in results if s == "FAIL"]
+    if failed:
+        hdr = "\033[31mFAILED:\033[0m" if is_tty else "FAILED:"
+        print(f"\n{hdr}")
+        for name in failed:
+            desc, ver, sec = test_info.get(name, ("", "", ""))
+            print(f"  {name:<7} {desc}")
+
+    wedged = [name for name, s, _ in results if s == "WEDGED"]
+    if wedged:
+        hdr = "\033[33mWEDGED (device needs reset):\033[0m" if is_tty \
+              else "WEDGED (device needs reset):"
+        print(f"\n{hdr}")
+        for name in wedged:
+            desc, ver, sec = test_info.get(name, ("", "", ""))
+            print(f"  {name:<7} {desc}")
+
+    xfail = [name for name, s, _ in results if s == "XFAIL"]
+    if xfail:
+        hdr = "\033[34mXFAIL (expected failure, known VMM bug):\033[0m" \
+              if is_tty else "XFAIL (expected failure, known VMM bug):"
+        print(f"\n{hdr}")
+        for name in xfail:
+            desc, ver, sec = test_info.get(name, ("", "", ""))
+            print(f"  {name:<7} {desc}")
+
+    xpass = [name for name, s, _ in results if s == "XPASS"]
+    if xpass:
+        hdr = "\033[31mXPASS (xfail marker is stale, remove it):\033[0m" \
+              if is_tty else "XPASS (xfail marker is stale, remove it):"
+        print(f"\n{hdr}")
+        for name in xpass:
+            desc, ver, sec = test_info.get(name, ("", "", ""))
+            print(f"  {name:<7} {desc}")
+
+    sys.exit(0 if not failed and not wedged and not xpass else 1)
+
+
+if __name__ == "__main__":
+    # Handle lightweight utility subcommands before full arg parsing.
+    if len(sys.argv) >= 2 and sys.argv[1] == "fetch-kernel":
+        print(fetch_kernel())
+        sys.exit(0)
+    main()
