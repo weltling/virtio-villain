@@ -1,0 +1,15 @@
+# build outputs & runtime artifacts
+target/
+selftest/test_lib
+selftest/cloud-hypervisor
+
+# editor
+*.swp
+*~
+.vscode/
+
+# specs
+specs/
+
+# python
+__pycache__/
