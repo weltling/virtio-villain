@@ -1,0 +1,803 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+"""Selftests for the virtio-villain test runner."""
+
+import importlib.machinery
+import importlib.util
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(SCRIPT_DIR)
+RUN = os.path.join(ROOT_DIR, "run")
+MOCK_VMM = os.path.join(SCRIPT_DIR, "mock-vmm")
+
+# The runner needs a symlink named cloud-hypervisor to detect the backend.
+MOCK_LINK = os.path.join(SCRIPT_DIR, "cloud-hypervisor")
+
+
+def _load_run_module():
+    """Import run as a module so unit tests can call its helpers."""
+    tmp = os.path.join(tempfile.gettempdir(), "vv_run_under_test.py")
+    shutil.copyfile(RUN, tmp)
+    spec = importlib.util.spec_from_file_location("vv_run", tmp)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+RUN_MOD = None
+
+
+def setup():
+    """Create symlink, dummy initramfs, and load run.py module."""
+    global RUN_MOD
+    if not os.path.exists(MOCK_LINK):
+        os.symlink("mock-vmm", MOCK_LINK)
+    initramfs = os.path.join(ROOT_DIR, "target", "initramfs.cpio.gz")
+    os.makedirs(os.path.dirname(initramfs), exist_ok=True)
+    if not os.path.exists(initramfs):
+        open(initramfs, "w").close()
+    RUN_MOD = _load_run_module()
+
+
+def run_runner(*args):
+    """Run the test runner with mock VMM."""
+    cmd = [
+        sys.executable, RUN,
+        "--vmm", MOCK_LINK,
+        "--kernel", "/dev/null",
+        "--timeout", "5",
+    ] + list(args)
+    env = dict(os.environ)
+    env["VV_ALLOW_UNKNOWN_TESTS"] = "1"
+    result = subprocess.run(cmd, capture_output=True, text=True,
+                            cwd=ROOT_DIR, env=env)
+    return result
+
+
+def test_pass():
+    """Test that a passing test is reported correctly."""
+    r = run_runner("PASS")
+    assert r.returncode == 0, f"Expected rc=0, got {r.returncode}\n{r.stdout}"
+    assert "[PASS]" in r.stdout and "PASS" in r.stdout, f"Missing PASS in: {r.stdout}"
+    assert "1/1 tests passed" in r.stdout
+
+
+def test_fail():
+    """Test that a failing test is reported correctly."""
+    r = run_runner("FAIL")
+    assert r.returncode == 1, f"Expected rc=1, got {r.returncode}\n{r.stdout}"
+    assert "[FAIL]" in r.stdout and "FAIL" in r.stdout, f"Missing FAIL in: {r.stdout}"
+    assert "0/1 tests passed" in r.stdout
+    assert "FAILED:" in r.stdout
+
+
+def test_timeout():
+    """Test that a hanging VM is killed and reported as failure."""
+    r = run_runner("--timeout", "2", "HANG")
+    assert r.returncode == 1, f"Expected rc=1, got {r.returncode}\n{r.stdout}"
+    assert "[FAIL]" in r.stdout and "HANG" in r.stdout
+    assert "TIMEOUT" in r.stdout
+
+
+def test_crash():
+    """Test that a VMM crash is reported as failure."""
+    r = run_runner("CRASH")
+    assert r.returncode == 1, f"Expected rc=1, got {r.returncode}\n{r.stdout}"
+    assert "[FAIL]" in r.stdout and "CRASH" in r.stdout
+
+
+def test_multiple():
+    """Test running multiple tests in sequence."""
+    r = run_runner("PASS", "FAIL", "PASS")
+    assert r.returncode == 1
+    assert "2/3 tests passed" in r.stdout
+    assert "[PASS]" in r.stdout
+    assert "[FAIL]" in r.stdout
+
+
+def test_parallel():
+    """Test running multiple tests in parallel."""
+    r = run_runner("--jobs", "3", "PASS", "PASS", "PASS")
+    assert r.returncode == 0
+    assert "3/3 tests passed" in r.stdout
+
+
+def test_log_dir():
+    """Test that --log-dir writes per-test log files."""
+    with tempfile.TemporaryDirectory() as td:
+        r = run_runner("--log-dir", td, "FAIL")
+        assert r.returncode == 1
+        log = os.path.join(td, "FAIL.log")
+        assert os.path.isfile(log), f"Log file not created: {log}"
+        content = open(log).read()
+        assert "[FAIL]" in content
+
+
+def test_log_dir_pass():
+    """A passing test must also produce a log file."""
+    with tempfile.TemporaryDirectory() as td:
+        r = run_runner("--log-dir", td, "PASS")
+        assert r.returncode == 0
+        log = os.path.join(td, "PASS.log")
+        assert os.path.isfile(log), f"Log file not created: {log}"
+        assert "[PASS]" in open(log).read()
+
+
+def test_mixed_parallel():
+    """Mixed pass/fail under --jobs reports correct totals."""
+    r = run_runner("--jobs", "4", "PASS", "FAIL", "PASS", "FAIL")
+    assert r.returncode == 1, r.stdout
+    assert "2/4 tests passed" in r.stdout
+    assert r.stdout.count("[PASS]") >= 2
+    assert r.stdout.count("[FAIL]") >= 2
+
+
+def test_unknown_args_rejected():
+    """Unknown CLI flags must error out."""
+    r = run_runner("--this-flag-does-not-exist")
+    assert r.returncode != 0
+    assert "unrecognized" in r.stderr or "error" in r.stderr.lower()
+
+
+# ---------------------------------------------------------------------------
+# Unit tests for the test selection / filtering logic.
+
+def test_unit_test_prefix():
+    f = RUN_MOD._test_prefix
+    assert f("T01") == "T"
+    assert f("PCI0050") == "PCI"
+    assert f("RNG0001") == "RNG"
+    assert f("RTC0016") == "RTC"
+    assert f("B01") == "B"
+    assert f("Z01") == "Z"
+    assert f("99lower") == ""
+    assert f("") == ""
+
+
+def test_unit_test_dir_longest_prefix():
+    """Longest-prefix mapping must not misroute RTC* into mem (R)."""
+    f = RUN_MOD._test_dir
+    assert f("RTC0001") == "rtc"
+    assert f("RTC0016") == "rtc"
+    assert f("RNG0001") == "rng"
+    assert f("PCI0050") == "pci"
+    assert f("R0001") == "mem"
+    assert f("T01") == "vring"
+    assert f("B01") == "blk"
+    assert f("Z01") == "blk"
+    assert f("XYZZY") is None
+    assert f("") is None
+
+
+def test_unit_filter_no_filters_passthrough():
+    tests = ["T01", "RNG0001", "RTC0001"]
+    assert RUN_MOD.filter_tests(tests, [], [], [], []) == tests
+
+
+def test_unit_filter_include_glob():
+    tests = ["T01", "T02", "RNG0001", "RNG0014", "RTC0001"]
+    out = RUN_MOD.filter_tests(tests, ["RNG*"], [], [], [])
+    assert out == ["RNG0001", "RNG0014"]
+
+
+def test_unit_filter_include_case_insensitive():
+    tests = ["RNG0001", "rng0002", "T01"]
+    out = RUN_MOD.filter_tests(tests, ["rng000?"], [], [], [])
+    assert sorted(out) == sorted(["RNG0001", "rng0002"])
+
+
+def test_unit_filter_multiple_includes_union():
+    tests = ["T01", "B01", "RNG0001", "RTC0001"]
+    out = RUN_MOD.filter_tests(tests, ["T*", "B*"], [], [], [])
+    assert out == ["T01", "B01"]
+
+
+def test_unit_filter_exclude_glob():
+    tests = ["T01", "RNG0001", "RTC0001", "RTC0016"]
+    out = RUN_MOD.filter_tests(tests, [], ["RTC*"], [], [])
+    assert out == ["T01", "RNG0001"]
+
+
+def test_unit_filter_dir():
+    tests = ["T01", "T02", "B01", "Z01", "RNG0001", "RTC0001", "RTC0016"]
+    out = RUN_MOD.filter_tests(tests, [], [], ["rtc"], [])
+    assert out == ["RTC0001", "RTC0016"]
+    out = RUN_MOD.filter_tests(tests, [], [], ["blk"], [])
+    assert out == ["B01", "Z01"]
+
+
+def test_unit_filter_multiple_dirs_union():
+    tests = ["T01", "B01", "RNG0001", "RTC0001"]
+    out = RUN_MOD.filter_tests(tests, [], [], ["rng", "rtc"], [])
+    assert out == ["RNG0001", "RTC0001"]
+
+
+def test_unit_filter_exclude_dir():
+    tests = ["T01", "B01", "PCI0050", "RNG0001", "RTC0001"]
+    out = RUN_MOD.filter_tests(tests, [], [], [], ["pci", "vring"])
+    assert out == ["B01", "RNG0001", "RTC0001"]
+
+
+def test_unit_filter_include_and_exclude():
+    tests = ["RTC0001", "RTC0016", "RNG0001"]
+    out = RUN_MOD.filter_tests(tests, [], ["RTC0001"], ["rtc"], [])
+    assert out == ["RTC0016"]
+
+
+def test_unit_filter_dir_does_not_match_unknown_prefix():
+    tests = ["PASS", "FAIL", "RTC0001"]
+    out = RUN_MOD.filter_tests(tests, [], [], ["rtc"], [])
+    assert out == ["RTC0001"]
+
+
+def test_unit_filter_unknown_dir_rejected():
+    try:
+        RUN_MOD.filter_tests(["T01"], [], [], ["bogus"], [])
+    except SystemExit as e:
+        msg = str(e)
+        assert "bogus" in msg
+        assert "Known" in msg
+        return
+    raise AssertionError("expected SystemExit for unknown --dir")
+
+
+def test_unit_filter_unknown_exclude_dir_rejected():
+    try:
+        RUN_MOD.filter_tests(["T01"], [], [], [], ["nope"])
+    except SystemExit as e:
+        assert "nope" in str(e)
+        return
+    raise AssertionError("expected SystemExit for unknown --exclude-dir")
+
+
+def test_unit_filter_dir_glob_expands():
+    """--dir 'p*' must match packed, pci, pmem."""
+    tests = ["T01", "B01", "P01", "PCI0050", "E0001", "RNG0001"]
+    out = RUN_MOD.filter_tests(tests, [], [], ["p*"], [])
+    assert out == ["P01", "PCI0050", "E0001"]
+
+
+def test_unit_filter_dir_glob_question_mark():
+    """Single character glob in --dir."""
+    tests = ["T01", "RNG0001", "RTC0001"]
+    out = RUN_MOD.filter_tests(tests, [], [], ["r??"], [])
+    assert sorted(out) == ["RNG0001", "RTC0001"]
+
+
+def test_unit_filter_dir_glob_no_match_silent():
+    """Glob that matches nothing must not error, just return empty."""
+    tests = ["T01", "B01"]
+    out = RUN_MOD.filter_tests(tests, [], [], ["zz*"], [])
+    assert out == []
+
+
+def test_unit_filter_dir_plain_name_still_strict():
+    """Plain --dir name still rejects unknown values."""
+    try:
+        RUN_MOD.filter_tests(["T01"], [], [], ["bogus"], [])
+    except SystemExit as e:
+        assert "bogus" in str(e)
+        return
+    raise AssertionError("plain unknown --dir name must still abort")
+
+
+def test_unit_filter_exclude_dir_glob():
+    """Glob in --exclude-dir."""
+    tests = ["T01", "P01", "PCI0050", "E0001", "RNG0001", "RTC0001"]
+    out = RUN_MOD.filter_tests(tests, [], [], [], ["p*"])
+    assert out == ["T01", "RNG0001", "RTC0001"]
+
+
+def test_unit_filter_dir_case_insensitive_plain():
+    tests = ["T01", "RTC0001", "PCI0050"]
+    out = RUN_MOD.filter_tests(tests, [], [], ["RTC"], [])
+    assert out == ["RTC0001"]
+    out = RUN_MOD.filter_tests(tests, [], [], ["PcI"], [])
+    assert out == ["PCI0050"]
+
+
+def test_unit_filter_dir_case_insensitive_glob():
+    tests = ["P01", "PCI0050", "E0001", "T01"]
+    out = RUN_MOD.filter_tests(tests, [], [], ["P*"], [])
+    assert out == ["P01", "PCI0050", "E0001"]
+
+
+def test_unit_filter_exclude_dir_case_insensitive():
+    tests = ["T01", "PCI0050", "RTC0001"]
+    out = RUN_MOD.filter_tests(tests, [], [], [], ["RTC"])
+    assert out == ["T01", "PCI0050"]
+    out = RUN_MOD.filter_tests(tests, [], [], [], ["P*"])
+    assert out == ["T01", "RTC0001"]
+
+
+def test_unit_filter_include_lowercase_pattern():
+    """Lowercase --include glob still matches uppercase test names."""
+    tests = ["RTC0001", "RNG0001", "T01"]
+    out = RUN_MOD.filter_tests(tests, ["rtc*"], [], [], [])
+    assert out == ["RTC0001"]
+
+
+def test_unit_filter_exclude_lowercase_pattern():
+    tests = ["RTC0001", "RTC0016", "T01"]
+    out = RUN_MOD.filter_tests(tests, [], ["rtc*"], [], [])
+    assert out == ["T01"]
+
+
+# ---------------------------------------------------------------------------
+# Integration tests for filter flags driving the actual runner.
+
+def test_filter_include_runs_subset():
+    """--include narrows the set of executed tests."""
+    r = run_runner("--include", "RTC*", "RTC0001", "RNG0001", "T01")
+    assert r.returncode == 0, r.stdout
+    assert "1/1 tests passed" in r.stdout
+    assert "RTC0001" in r.stdout
+    assert "RNG0001" not in r.stdout
+    assert "T01" not in r.stdout
+
+
+def test_filter_exclude_drops_subset():
+    """--exclude removes matching tests."""
+    r = run_runner("--exclude", "RTC*", "RTC0001", "RNG0001", "T01")
+    assert r.returncode == 0, r.stdout
+    assert "2/2 tests passed" in r.stdout
+    assert "RTC0001" not in r.stdout
+    assert "RNG0001" in r.stdout
+    assert "T01" in r.stdout
+
+
+def test_filter_dir_keeps_only_matching():
+    """--dir rtc keeps only tests whose prefix maps to rtc."""
+    r = run_runner("--dir", "rtc", "RTC0001", "RTC0016", "RNG0001", "T01")
+    assert r.returncode == 0, r.stdout
+    assert "2/2 tests passed" in r.stdout
+    assert "RTC0001" in r.stdout
+    assert "RTC0016" in r.stdout
+    assert "RNG0001" not in r.stdout
+
+
+def test_filter_exclude_dir_drops_matching():
+    """--exclude-dir removes tests from the named directory."""
+    r = run_runner("--exclude-dir", "vring",
+                   "RTC0001", "RNG0001", "T01", "T02")
+    assert r.returncode == 0, r.stdout
+    assert "2/2 tests passed" in r.stdout
+    assert "T01" not in r.stdout
+    assert "T02" not in r.stdout
+    assert "RTC0001" in r.stdout
+    assert "RNG0001" in r.stdout
+
+
+def test_filter_include_and_exclude_compose():
+    """--include + --exclude apply in order: whitelist then blacklist."""
+    r = run_runner("--dir", "rtc", "--exclude", "RTC0001",
+                   "RTC0001", "RTC0016", "RNG0001")
+    assert r.returncode == 0, r.stdout
+    assert "1/1 tests passed" in r.stdout
+    assert "RTC0016" in r.stdout
+    assert "RTC0001 " not in r.stdout  # space avoids matching RTC0016 prefix
+
+
+def test_filter_unknown_dir_errors():
+    """Bogus --dir name aborts with a helpful message."""
+    r = run_runner("--dir", "nosuch", "T01")
+    assert r.returncode != 0
+    out = r.stdout + r.stderr
+    assert "nosuch" in out
+    assert "Known" in out
+
+
+def test_filter_no_match_errors():
+    """Filters that exclude every test still abort cleanly."""
+    r = run_runner("--include", "ZZZ*", "T01", "RNG0001")
+    assert r.returncode != 0
+    out = r.stdout + r.stderr
+    assert "No tests" in out
+
+
+# ---------------------------------------------------------------------------
+# API socket plumbing.
+
+def test_unit_ch_build_cmd_adds_api_socket():
+    """CH build_cmd emits --api-socket when opts.api_socket is set."""
+    be = RUN_MOD.CloudHypervisor("/usr/bin/cloud-hypervisor")
+    opts = {"cpus": 4, "memory": "256M", "blk_queues": 1, "net_queues": 1,
+            "api_socket": "/tmp/vv.api"}
+    cmd = be.build_cmd("/k", "/i", "/d.raw", "console=ttyS0", opts)
+    assert "--api-socket" in cmd
+    i = cmd.index("--api-socket")
+    assert cmd[i + 1] == "path=/tmp/vv.api"
+
+
+def test_unit_ch_build_cmd_omits_api_socket():
+    be = RUN_MOD.CloudHypervisor("/usr/bin/cloud-hypervisor")
+    opts = {"cpus": 4, "memory": "256M", "blk_queues": 1, "net_queues": 1}
+    cmd = be.build_cmd("/k", "/i", "/d.raw", "console=ttyS0", opts)
+    assert "--api-socket" not in cmd
+
+
+def test_unit_qemu_build_cmd_adds_qmp():
+    be = RUN_MOD.Qemu("/usr/bin/qemu-system-x86_64")
+    opts = {"memory": "256M", "blk_queues": 1, "net_queues": 1,
+            "api_socket": "/tmp/vv.api"}
+    cmd = be.build_cmd("/k", "/i", "/d.raw", "console=ttyS0", opts)
+    assert "-qmp" in cmd
+    i = cmd.index("-qmp")
+    assert cmd[i + 1] == "unix:/tmp/vv.api,server=on,wait=off"
+
+
+def test_unit_qemu_build_cmd_omits_qmp():
+    be = RUN_MOD.Qemu("/usr/bin/qemu-system-x86_64")
+    opts = {"memory": "256M", "blk_queues": 1, "net_queues": 1}
+    cmd = be.build_cmd("/k", "/i", "/d.raw", "console=ttyS0", opts)
+    assert "-qmp" not in cmd
+
+
+def test_unit_find_ch_remote_sibling():
+    """_find_ch_remote prefers a binary next to cloud-hypervisor."""
+    with tempfile.TemporaryDirectory() as td:
+        ch = os.path.join(td, "cloud-hypervisor")
+        rem = os.path.join(td, "ch-remote")
+        open(ch, "w").close()
+        open(rem, "w").close()
+        os.chmod(ch, 0o755)
+        os.chmod(rem, 0o755)
+        assert RUN_MOD._find_ch_remote(ch) == rem
+
+
+def test_unit_find_ch_remote_path_fallback():
+    """_find_ch_remote falls back to PATH when no sibling exists."""
+    with tempfile.TemporaryDirectory() as td:
+        ch = os.path.join(td, "cloud-hypervisor")
+        open(ch, "w").close()
+        os.chmod(ch, 0o755)
+        path_dir = tempfile.mkdtemp()
+        try:
+            rem = os.path.join(path_dir, "ch-remote")
+            open(rem, "w").close()
+            os.chmod(rem, 0o755)
+            old_path = os.environ.get("PATH", "")
+            os.environ["PATH"] = path_dir + os.pathsep + old_path
+            try:
+                got = RUN_MOD._find_ch_remote(ch)
+                assert got == rem, got
+            finally:
+                os.environ["PATH"] = old_path
+        finally:
+            shutil.rmtree(path_dir, ignore_errors=True)
+
+
+def test_unit_vm_api_unsupported_backend():
+    try:
+        RUN_MOD.vm_api("/tmp/x", object(), "ping")
+    except (ValueError, OSError):
+        return
+    raise AssertionError("expected error for unsupported backend")
+
+
+def test_unit_vm_api_qemu_qmp_roundtrip():
+    """Speak QMP over a local fake socket and verify request shape."""
+    import json
+    import socket as _socket
+    import threading
+
+    sock_path = tempfile.mktemp(suffix=".qmp")
+    captured = {}
+    ready = threading.Event()
+
+    def server():
+        srv = _socket.socket(_socket.AF_UNIX, _socket.SOCK_STREAM)
+        srv.bind(sock_path)
+        srv.listen(1)
+        ready.set()
+        c, _ = srv.accept()
+        try:
+            c.sendall(b'{"QMP":{"version":"x"}}\n')
+            buf = b""
+            while b"\n" not in buf:
+                chunk = c.recv(4096)
+                if not chunk:
+                    break
+                buf += chunk
+            captured["caps"] = buf.split(b"\n", 1)[0]
+            c.sendall(b'{"return":{}}\n')
+            buf = b""
+            while b"\n" not in buf:
+                chunk = c.recv(4096)
+                if not chunk:
+                    break
+                buf += chunk
+            captured["cmd"] = buf.split(b"\n", 1)[0]
+            c.sendall(b'{"return":{"status":"running"}}\n')
+        finally:
+            c.close()
+            srv.close()
+
+    t = threading.Thread(target=server, daemon=True)
+    t.start()
+    assert ready.wait(timeout=2.0), "server not ready"
+    try:
+        be = RUN_MOD.Qemu("/usr/bin/qemu-system-x86_64")
+        out = RUN_MOD.vm_api(sock_path, be, "query-status",
+                             timeout=2.0)
+        t.join(timeout=2)
+        assert out == {"return": {"status": "running"}}, out
+        assert json.loads(captured["caps"]) == {
+            "execute": "qmp_capabilities"}
+        assert json.loads(captured["cmd"]) == {
+            "execute": "query-status"}
+    finally:
+        try:
+            os.unlink(sock_path)
+        except FileNotFoundError:
+            pass
+
+
+def test_unit_vm_api_socket_missing_raises():
+    be = RUN_MOD.Qemu("/usr/bin/qemu-system-x86_64")
+    try:
+        RUN_MOD.vm_api("/tmp/does-not-exist-vv-selftest.api", be,
+                       "query-status", timeout=0.2)
+    except OSError:
+        return
+    raise AssertionError("expected OSError when api socket is absent")
+
+
+# ---------------------------------------------------------------------------
+# Result classification.
+
+def test_unit_parse_result_pass():
+    assert RUN_MOD._parse_result("[vv] hi\n[PASS] T1\n", 0) == "PASS"
+
+
+def test_unit_parse_result_fail_marker_wins_over_zero_rc():
+    assert RUN_MOD._parse_result("[vv] x\n[FAIL] T1\n", 0) == "FAIL"
+
+
+def test_unit_parse_result_fail_precedes_pass():
+    """Multiple markers: FAIL is checked before PASS."""
+    out = "[vv] x\n[FAIL] T1\n[PASS] T2\n"
+    assert RUN_MOD._parse_result(out, 0) == "FAIL"
+
+
+def test_unit_parse_result_skip():
+    assert RUN_MOD._parse_result("[vv] x\n[SKIP] T1\n", 0) == "SKIP"
+
+
+def test_unit_parse_result_reject():
+    assert RUN_MOD._parse_result("[vv] x\n[REJECT] T1\n", 0) == "REJECT"
+
+
+def test_unit_parse_result_wedged_marker():
+    assert RUN_MOD._parse_result("[vv] x\n[WEDGED] T1\n", 0) == "WEDGED"
+
+
+def test_unit_parse_result_xfail():
+    assert RUN_MOD._parse_result("[vv] x\n[XFAIL] T1\n", 0) == "XFAIL"
+
+
+def test_unit_parse_result_xpass():
+    assert RUN_MOD._parse_result("[vv] x\n[XPASS] T1\n", 0) == "XPASS"
+
+
+def test_unit_parse_result_signal_returncode_means_fail():
+    assert RUN_MOD._parse_result("[vv] x\n", -9) == "FAIL"
+
+
+def test_unit_parse_result_no_vv_means_fail():
+    """Output without the [vv] banner indicates the harness never ran."""
+    assert RUN_MOD._parse_result("kernel panic\n", 0) == "FAIL"
+
+
+def test_unit_parse_result_vv_no_marker_means_wedged():
+    assert RUN_MOD._parse_result("[vv] hi\n[vv] still alive\n", 0) == "WEDGED"
+
+
+# ---------------------------------------------------------------------------
+# Backend detection.
+
+def test_unit_detect_vmm_ch_by_name():
+    be = RUN_MOD.detect_vmm("/some/path/cloud-hypervisor")
+    assert isinstance(be, RUN_MOD.CloudHypervisor)
+    assert be.binary == "/some/path/cloud-hypervisor"
+
+
+def test_unit_detect_vmm_ch_short_name():
+    be = RUN_MOD.detect_vmm("/usr/local/bin/ch")
+    assert isinstance(be, RUN_MOD.CloudHypervisor)
+
+
+def test_unit_detect_vmm_qemu_system():
+    be = RUN_MOD.detect_vmm("/usr/bin/qemu-system-x86_64")
+    assert isinstance(be, RUN_MOD.Qemu)
+
+
+def test_unit_detect_vmm_unknown_aborts():
+    try:
+        RUN_MOD.detect_vmm("/usr/bin/nosuch-vmm-bin")
+    except SystemExit as e:
+        assert "Cannot detect" in str(e)
+        return
+    raise AssertionError("expected SystemExit for unknown VMM")
+
+
+# ---------------------------------------------------------------------------
+# QemuMicrovm build_cmd.
+
+def test_unit_qemu_microvm_build_cmd_uses_mmio_device():
+    be = RUN_MOD.QemuMicrovm("/usr/bin/qemu-system-x86_64")
+    opts = {"memory": "256M"}
+    cmd = be.build_cmd("/k", "/i", "/d.raw", "console=ttyS0", opts)
+    assert "virtio-blk-device,drive=vd0" in cmd
+    assert not any("virtio-blk-pci" in str(a) for a in cmd)
+
+
+# ---------------------------------------------------------------------------
+# End to end coverage of result tags via mock VMM.
+
+def test_skip_summary():
+    r = run_runner("SKIP")
+    assert r.returncode == 0, r.stdout
+    assert "[SKIP]" in r.stdout
+    assert "1 skipped" in r.stdout
+
+
+def test_reject_summary():
+    r = run_runner("REJECT")
+    assert r.returncode == 0, r.stdout
+    assert "[REJECT]" in r.stdout
+    assert "1 rejected" in r.stdout
+
+
+def test_wedged_marker_summary():
+    """A test that prints [WEDGED] is reported as wedged and fails the run."""
+    r = run_runner("WEDGED")
+    assert r.returncode == 1, r.stdout
+    assert "[WEDGED]" in r.stdout
+    assert "1 wedged" in r.stdout
+
+
+def test_no_marker_means_wedged():
+    """A VM that finishes without any result tag is classified WEDGED."""
+    r = run_runner("NOMARKER")
+    assert r.returncode == 1, r.stdout
+    assert "[WEDGED]" in r.stdout
+
+
+def test_mixed_states_in_summary():
+    r = run_runner("PASS", "FAIL", "SKIP", "REJECT", "WEDGED")
+    assert r.returncode == 1, r.stdout
+    assert "1/5 tests passed" in r.stdout
+    assert "1 failed" in r.stdout
+    assert "1 rejected" in r.stdout
+    assert "1 wedged" in r.stdout
+    assert "1 skipped" in r.stdout
+
+
+def test_xfail_summary():
+    """An XFAIL test passes the run and is listed in the XFAIL block."""
+    r = run_runner("XFAIL")
+    assert r.returncode == 0, r.stdout
+    assert "[XFAIL]" in r.stdout
+    assert "1 xfail" in r.stdout
+    assert "XFAIL (expected failure" in r.stdout
+
+
+def test_xpass_summary():
+    """An XPASS test fails the run so the stale xfail marker is noticed."""
+    r = run_runner("XPASS")
+    assert r.returncode == 1, r.stdout
+    assert "[XPASS]" in r.stdout
+    assert "1 xpass" in r.stdout
+    assert "XPASS (xfail marker is stale" in r.stdout
+
+
+def test_xfail_and_xpass_mixed():
+    """XFAIL counts as success, XPASS counts as failure; both appear."""
+    r = run_runner("PASS", "XFAIL", "XPASS")
+    assert r.returncode == 1, r.stdout
+    assert "1/3 tests passed" in r.stdout
+    assert "1 xfail" in r.stdout
+    assert "1 xpass" in r.stdout
+    assert "XFAIL (expected failure" in r.stdout
+    assert "XPASS (xfail marker is stale" in r.stdout
+
+
+# ---------------------------------------------------------------------------
+# --no-api-socket flag plumbing.
+
+def test_no_api_socket_flag_in_command():
+    """With --no-api-socket the printed command must not contain the flag."""
+    r = run_runner("-v", "--no-api-socket", "PASS")
+    assert r.returncode == 0, r.stdout
+    assert "--api-socket" not in r.stdout
+
+
+# ---------------------------------------------------------------------------
+# run-fuzz _parse_len tests
+
+RUN_FUZZ = os.path.join(ROOT_DIR, "run-fuzz")
+FUZZ_MOD = None
+
+
+def _load_fuzz_module():
+    loader = importlib.machinery.SourceFileLoader("vv_fuzz", RUN_FUZZ)
+    spec = importlib.util.spec_from_loader("vv_fuzz", loader)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_parse_len_decimal():
+    assert FUZZ_MOD._parse_len("42") == 42
+
+
+def test_parse_len_hex():
+    assert FUZZ_MOD._parse_len("0x100") == 256
+
+
+def test_parse_len_hex_suffix_u():
+    assert FUZZ_MOD._parse_len("0x40000000U") == 0x40000000
+
+
+def test_parse_len_hex_suffix_ul():
+    assert FUZZ_MOD._parse_len("0x1000UL") == 0x1000
+
+
+def test_parse_len_hex_suffix_ull():
+    assert FUZZ_MOD._parse_len("0x200ULL") == 0x200
+
+
+def test_parse_len_decimal_suffix_u():
+    assert FUZZ_MOD._parse_len("4096U") == 4096
+
+
+def test_parse_len_sizeof():
+    assert FUZZ_MOD._parse_len("sizeof(*hdr)") == 16
+
+
+def test_parse_len_sizeof_math():
+    assert FUZZ_MOD._parse_len("sizeof(*hdr) + 1") == 17
+
+
+def test_parse_len_whitespace():
+    assert FUZZ_MOD._parse_len("  64  ") == 64
+
+
+# ---------------------------------------------------------------------------
+
+def main():
+    setup()
+    global FUZZ_MOD
+    FUZZ_MOD = _load_fuzz_module()
+    use_color = sys.stdout.isatty() and not os.environ.get("NO_COLOR")
+    c_pass = "\033[32m" if use_color else ""
+    c_fail = "\033[31m" if use_color else ""
+    c_reset = "\033[0m" if use_color else ""
+    tests = [v for k, v in globals().items() if k.startswith("test_")]
+    passed = 0
+    failed = 0
+    for t in tests:
+        try:
+            t()
+            print(f"  {c_pass}[PASS]{c_reset} {t.__name__}")
+            passed += 1
+        except AssertionError as e:
+            print(f"  {c_fail}[FAIL]{c_reset} {t.__name__}: {e}")
+            failed += 1
+        except Exception as e:
+            print(f"  {c_fail}[FAIL]{c_reset} {t.__name__}: "
+                  f"{type(e).__name__}: {e}")
+            failed += 1
+    tag = c_pass if failed == 0 else c_fail
+    print(f"\n{tag}selftest/run: {passed}/{passed + failed} passed{c_reset}")
+    return 0 if failed == 0 else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

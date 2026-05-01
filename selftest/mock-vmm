@@ -1,0 +1,63 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+# Mock VMM for selftest - simulates a VM that runs virtio-villain tests.
+# Parses --cmdline to extract vv.test= and prints canned output.
+
+cmdline=""
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --cmdline) cmdline="$2"; shift 2 ;;
+        *) shift ;;
+    esac
+done
+
+test_name=$(echo "$cmdline" | grep -oP 'vv\.test=\K[^ ]+')
+
+case "$test_name" in
+    PASS)
+        echo "[vv] virtio-villain"
+        echo "[PASS] PASS"
+        ;;
+    FAIL)
+        echo "[vv] virtio-villain"
+        echo "[vv] something went wrong"
+        echo "[FAIL] FAIL"
+        ;;
+    HANG)
+        echo "[vv] virtio-villain"
+        sleep 60
+        ;;
+    CRASH)
+        echo "[vv] virtio-villain"
+        echo "[vv] about to crash"
+        kill -9 $$
+        ;;
+    SKIP)
+        echo "[vv] virtio-villain"
+        echo "[SKIP] SKIP"
+        ;;
+    REJECT)
+        echo "[vv] virtio-villain"
+        echo "[REJECT] REJECT"
+        ;;
+    WEDGED)
+        echo "[vv] virtio-villain"
+        echo "[WEDGED] WEDGED"
+        ;;
+    XFAIL)
+        echo "[vv] virtio-villain"
+        echo "[XFAIL] XFAIL"
+        ;;
+    XPASS)
+        echo "[vv] virtio-villain"
+        echo "[XPASS] XPASS"
+        ;;
+    NOMARKER)
+        echo "[vv] virtio-villain"
+        echo "[vv] no result tag at all"
+        ;;
+    *)
+        echo "[vv] virtio-villain"
+        echo "[PASS] $test_name"
+        ;;
+esac
