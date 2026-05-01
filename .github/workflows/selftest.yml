@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: Apache-2.0
+name: selftest
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - run: make deps-check CC=musl-gcc
+      - run: make -j$(nproc) CC=musl-gcc
+      - run: make initramfs CC=musl-gcc
+  selftest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - run: make selftest
+  fuzz-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - run: make fuzz CC=musl-gcc
+      - run: make fuzz-initramfs CC=musl-gcc
+      - run: test -f target/fuzz-initramfs.cpio.gz
+  flake8:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y flake8
+      - run: make flake8
+  gitlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: sudo apt-get update && sudo apt-get install -y python3-pip
+      - run: pip install gitlint
+      - name: Run gitlint on PR commits
+        if: github.event_name == 'pull_request'
+        run: gitlint --commits ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}
+      - name: Run gitlint on last commit
+        if: github.event_name == 'push'
+        run: gitlint --commits HEAD~1..HEAD
