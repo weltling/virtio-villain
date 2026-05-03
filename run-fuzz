@@ -1,0 +1,1678 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+"""
+Coverage-guided mutation fuzzer for virtio VMMs.
+
+Replays fuzz blobs through a minimal guest that sets up a virtio vring
+according to the blob contents, kicks the device, then shuts down.
+Coverage data from an instrumented VMM guides corpus expansion.
+"""
+
+import argparse
+import glob
+import hashlib
+import json
+import os
+import random
+import re
+import shutil
+import struct
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+# Reuse the banner helper from the test runner so the artwork is
+# defined in exactly one place (target/init --banner).
+import importlib.util as _ilu
+import importlib.machinery as _ilm
+_run_path = os.path.join(_SCRIPT_DIR, "run")
+_run_spec = _ilu.spec_from_loader(
+    "vv_run", _ilm.SourceFileLoader("vv_run", _run_path))
+_run_mod = _ilu.module_from_spec(_run_spec)
+_run_spec.loader.exec_module(_run_mod)
+print_banner = _run_mod.print_banner
+
+
+# --- Blob Format ---
+
+BLOB_SIZE = 4096
+HEADER_FMT = "<HHHH"  # queue_size, num_descs, avail_idx, avail_count
+HEADER_SIZE = struct.calcsize(HEADER_FMT)
+DESC_FMT = "<HHI"  # next, flags, len  -- wait, actual struct is: u32 len, u16 flags, u16 next
+DESC_FMT = "<IHH"  # len: u32, flags: u16, next: u16
+DESC_SIZE = struct.calcsize(DESC_FMT)
+
+
+def make_blob(queue_size, descs, avail_idx, avail_ring, payload):
+    """Create a fuzz blob from components."""
+    num_descs = len(descs)
+    avail_count = len(avail_ring)
+
+    hdr = struct.pack(HEADER_FMT, queue_size, num_descs, avail_idx, avail_count)
+    desc_data = b"".join(struct.pack(DESC_FMT, d[0], d[1], d[2]) for d in descs)
+    avail_data = struct.pack(f"<{avail_count}H", *avail_ring)
+    blob = hdr + desc_data + avail_data + payload
+
+    # Pad or truncate to BLOB_SIZE
+    if len(blob) > BLOB_SIZE:
+        blob = blob[:BLOB_SIZE]
+    else:
+        blob = blob + b"\x00" * (BLOB_SIZE - len(blob))
+    return blob
+
+
+def make_seed():
+    """Create a minimal seed blob: single read of sector 0."""
+    # blk header: type=0 (IN), ioprio=0, sector=0 → 16 bytes
+    # data: 512 bytes writable
+    # status: 1 byte writable
+    payload = struct.pack("<IIQ", 0, 0, 0)  # header (16 bytes)
+    payload += b"\x00" * 512  # data buffer
+    payload += b"\xff"  # status byte
+
+    descs = [
+        # (len, flags, next)
+        (16, 0x01, 1),    # header: NEXT, readable
+        (512, 0x03, 2),   # data: NEXT | WRITE
+        (1, 0x02, 0),     # status: WRITE
+    ]
+    avail_ring = [0]  # head at desc 0
+
+    return make_blob(16, descs, 1, avail_ring, payload)
+
+
+# --- Mutation Engine ---
+
+def mutate(blob):
+    """Apply a random mutation to a blob."""
+    data = bytearray(blob)
+    strategy = random.choice([
+        _bit_flip,
+        _byte_arith,
+        _interesting_16,
+        _desc_flags,
+        _avail_corrupt,
+        _payload_noise,
+        _chain_shuffle,
+        _splice_corpus,
+        _grow_desc,
+        _shrink_desc,
+        _header_corrupt,
+        _avail_ring_replay,
+        _desc_addr_mutate,
+        _queue_size_mutate,
+        _endian_swap,
+        _zero_fill_region,
+        _duplicate_desc,
+        _indirect_inject,
+        _multi_strategy,
+    ])
+    return bytes(strategy(data))
+
+
+def _bit_flip(data):
+    for _ in range(random.randint(1, 4)):
+        pos = random.randint(0, len(data) - 1)
+        bit = random.randint(0, 7)
+        data[pos] ^= (1 << bit)
+    return data
+
+
+def _byte_arith(data):
+    pos = random.randint(0, len(data) - 1)
+    delta = random.randint(-35, 35)
+    data[pos] = (data[pos] + delta) & 0xFF
+    return data
+
+
+INTERESTING_16 = [0, 1, 0x7F, 0x80, 0xFF, 0x100, 0x7FFF, 0x8000, 0xFFFF]
+
+
+def _interesting_16(data):
+    if len(data) < 2:
+        return data
+    pos = random.randint(0, len(data) - 2)
+    val = random.choice(INTERESTING_16)
+    struct.pack_into("<H", data, pos, val)
+    return data
+
+
+def _desc_flags(data):
+    """Randomize the flags field of a random descriptor."""
+    hdr = struct.unpack_from(HEADER_FMT, data, 0)
+    num_descs = min(hdr[1], 128)
+    if num_descs == 0:
+        return data
+    idx = random.randint(0, num_descs - 1)
+    offset = HEADER_SIZE + idx * DESC_SIZE + 4  # flags is at +4 in desc
+    if offset + 2 <= len(data):
+        val = random.randint(0, 0xFFFF)
+        struct.pack_into("<H", data, offset, val)
+    return data
+
+
+def _avail_corrupt(data):
+    """Corrupt avail_idx or an avail ring entry."""
+    # Overwrite avail_idx (bytes 4-5 in header)
+    val = random.randint(0, 0xFFFF)
+    struct.pack_into("<H", data, 4, val)
+    return data
+
+
+def _payload_noise(data):
+    """Write random bytes into the payload region."""
+    start = random.randint(HEADER_SIZE, len(data) - 1)
+    length = random.randint(1, min(32, len(data) - start))
+    for i in range(length):
+        data[start + i] = random.randint(0, 255)
+    return data
+
+
+def _chain_shuffle(data):
+    """Swap next pointers between two random descriptors."""
+    hdr = struct.unpack_from(HEADER_FMT, data, 0)
+    num_descs = min(hdr[1], 128)
+    if num_descs < 2:
+        return data
+    a, b = random.sample(range(num_descs), 2)
+    off_a = HEADER_SIZE + a * DESC_SIZE + 6  # next is at +6 in desc (len:4 + flags:2)
+    off_b = HEADER_SIZE + b * DESC_SIZE + 6
+    if off_a + 2 <= len(data) and off_b + 2 <= len(data):
+        va = struct.unpack_from("<H", data, off_a)[0]
+        vb = struct.unpack_from("<H", data, off_b)[0]
+        struct.pack_into("<H", data, off_a, vb)
+        struct.pack_into("<H", data, off_b, va)
+    return data
+
+
+# Module-level corpus reference for splice mutation
+_corpus_ref = []
+
+
+def _splice_corpus(data):
+    """Crossover with another corpus entry at a random boundary."""
+    if not _corpus_ref:
+        return _bit_flip(data)
+    other = bytearray(random.choice(_corpus_ref))
+    if len(other) != len(data):
+        other = (other + bytearray(len(data)))[:len(data)]
+    # Pick a crossover point
+    point = random.randint(1, len(data) - 1)
+    data[point:] = other[point:]
+    return data
+
+
+def _grow_desc(data):
+    """Add a descriptor by incrementing num_descs."""
+    qs, nd, ai, ac = struct.unpack_from(HEADER_FMT, data, 0)
+    # Don't grow beyond what fits
+    max_descs = (BLOB_SIZE - HEADER_SIZE - ac * 2) // DESC_SIZE
+    if nd >= max_descs or nd >= 128:
+        return data
+    # Increment num_descs
+    nd += 1
+    struct.pack_into(HEADER_FMT, data, 0, qs, nd, ai, ac)
+    # Write a random descriptor at the new slot
+    off = HEADER_SIZE + (nd - 1) * DESC_SIZE
+    if off + DESC_SIZE <= len(data):
+        length = random.choice([1, 16, 512, 4096])
+        flags = random.choice([0x00, 0x01, 0x02, 0x03])
+        next_idx = random.randint(0, nd - 1)
+        struct.pack_into(DESC_FMT, data, off, length, flags, next_idx)
+    return data
+
+
+def _shrink_desc(data):
+    """Remove the last descriptor by decrementing num_descs."""
+    qs, nd, ai, ac = struct.unpack_from(HEADER_FMT, data, 0)
+    if nd <= 1:
+        return data
+    nd -= 1
+    struct.pack_into(HEADER_FMT, data, 0, qs, nd, ai, ac)
+    return data
+
+
+def _header_corrupt(data):
+    """Corrupt the virtio_blk_req header fields (type, ioprio, sector).
+
+    Targets the first 16 bytes of the payload region which corresponds
+    to the device-level request header that gets mapped from descriptor 0.
+    """
+    hdr = struct.unpack_from(HEADER_FMT, data, 0)
+    num_descs = min(hdr[1], 128)
+    # Payload starts after header + descs + avail entries
+    payload_off = HEADER_SIZE + num_descs * DESC_SIZE + hdr[3] * 2
+    if payload_off + 16 > len(data):
+        return _bit_flip(data)
+    field = random.choice(["type", "ioprio", "sector"])
+    if field == "type":
+        val = random.choice([0, 1, 4, 5, 8, 11, 13, 0xFF, 0x7FFFFFFF, 0x80000000])
+        struct.pack_into("<I", data, payload_off, val)
+    elif field == "ioprio":
+        struct.pack_into("<I", data, payload_off + 4, random.randint(0, 0xFFFFFFFF))
+    else:
+        struct.pack_into("<Q", data, payload_off + 8, random.choice([
+            0, 1, 0x7FFFFFFF, 0x80000000, 0xFFFFFFFF, 0xFFFFFFFFFFFFFFFF,
+        ]))
+    return data
+
+
+def _avail_ring_replay(data):
+    """Duplicate an avail ring entry, causing the same head to be processed twice."""
+    qs, nd, ai, ac = struct.unpack_from(HEADER_FMT, data, 0)
+    if ac < 1 or nd < 1:
+        return data
+    avail_start = HEADER_SIZE + nd * DESC_SIZE
+    if avail_start + ac * 2 > len(data):
+        return data
+    # Read the first entry and duplicate it into a second slot
+    first_entry = struct.unpack_from("<H", data, avail_start)[0]
+    if ac < 2:
+        # Grow avail_count to make room
+        ac = 2
+        struct.pack_into(HEADER_FMT, data, 0, qs, nd, ai, ac)
+    slot = random.randint(1, ac - 1)
+    off = avail_start + slot * 2
+    if off + 2 <= len(data):
+        struct.pack_into("<H", data, off, first_entry)
+    return data
+
+
+INTERESTING_ADDRS = [0, 1, 0xFFF, 0x1000, 0xDEAD000, 0x7FFFFFFF, 0xFFFFFFFF]
+
+
+def _desc_addr_mutate(data):
+    """Replace a descriptor's implied address with an interesting value.
+
+    Since the blob format doesn't carry full 64-bit addrs (the guest binary
+    builds them), we corrupt the len field to trigger boundary conditions
+    in addr+len overflow checks.
+    """
+    hdr = struct.unpack_from(HEADER_FMT, data, 0)
+    num_descs = min(hdr[1], 128)
+    if num_descs == 0:
+        return data
+    idx = random.randint(0, num_descs - 1)
+    off = HEADER_SIZE + idx * DESC_SIZE
+    if off + 4 <= len(data):
+        val = random.choice(INTERESTING_ADDRS)
+        struct.pack_into("<I", data, off, val)
+    return data
+
+
+def _queue_size_mutate(data):
+    """Alter queue_size to invalid values."""
+    vals = [0, 1, 3, 7, 15, 127, 255, 256, 512, 1024, 32768, 65535]
+    struct.pack_into("<H", data, 0, random.choice(vals))
+    return data
+
+
+def _endian_swap(data):
+    """Swap byte order of a random 16 or 32-bit field."""
+    if len(data) < 4:
+        return data
+    width = random.choice([2, 4])
+    pos = random.randint(0, len(data) - width)
+    chunk = data[pos:pos + width]
+    data[pos:pos + width] = chunk[::-1]
+    return data
+
+
+def _zero_fill_region(data):
+    """Zero out a random contiguous region."""
+    start = random.randint(0, len(data) - 1)
+    length = random.randint(1, min(64, len(data) - start))
+    data[start:start + length] = b'\x00' * length
+    return data
+
+
+def _duplicate_desc(data):
+    """Copy one descriptor over another (aliased buffer)."""
+    hdr = struct.unpack_from(HEADER_FMT, data, 0)
+    num_descs = min(hdr[1], 128)
+    if num_descs < 2:
+        return data
+    src, dst = random.sample(range(num_descs), 2)
+    src_off = HEADER_SIZE + src * DESC_SIZE
+    dst_off = HEADER_SIZE + dst * DESC_SIZE
+    if src_off + DESC_SIZE <= len(data) and dst_off + DESC_SIZE <= len(data):
+        data[dst_off:dst_off + DESC_SIZE] = data[src_off:src_off + DESC_SIZE]
+    return data
+
+
+def _indirect_inject(data):
+    """Turn a normal descriptor into an indirect one by setting INDIRECT flag."""
+    hdr = struct.unpack_from(HEADER_FMT, data, 0)
+    num_descs = min(hdr[1], 128)
+    if num_descs == 0:
+        return data
+    idx = random.randint(0, num_descs - 1)
+    flags_off = HEADER_SIZE + idx * DESC_SIZE + 4  # flags at +4
+    if flags_off + 2 <= len(data):
+        flags = struct.unpack_from("<H", data, flags_off)[0]
+        flags |= 0x04  # VIRTQ_DESC_F_INDIRECT
+        struct.pack_into("<H", data, flags_off, flags)
+    return data
+
+
+def _multi_strategy(data):
+    """Apply 2-3 mutations in sequence for deeper exploration."""
+    strategies = [
+        _bit_flip, _byte_arith, _interesting_16, _desc_flags,
+        _avail_corrupt, _payload_noise, _chain_shuffle,
+        _desc_addr_mutate, _queue_size_mutate, _zero_fill_region,
+    ]
+    count = random.randint(2, 3)
+    for _ in range(count):
+        data = bytearray(random.choice(strategies)(data))
+    return data
+
+
+# --- Coverage ---
+
+def collect_coverage(vmm_binary, profdata_path, profraw_dir):
+    """Merge profraw files and return set of covered regions."""
+    profraw_files = [
+        os.path.join(profraw_dir, f)
+        for f in os.listdir(profraw_dir)
+        if f.endswith(".profraw")
+    ]
+    if not profraw_files:
+        return set()
+
+    merge_cmd = [
+        "llvm-profdata", "merge", "-sparse",
+        *profraw_files, "-o", profdata_path
+    ]
+    result = subprocess.run(merge_cmd, capture_output=True)
+    if result.returncode != 0:
+        return set()
+
+    export_cmd = [
+        "llvm-cov", "export", vmm_binary,
+        f"-instr-profile={profdata_path}",
+        "-format=text"
+    ]
+    result = subprocess.run(export_cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        return set()
+
+    try:
+        cov = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return set()
+
+    edges = set()
+    for datum in cov.get("data", []):
+        for func in datum.get("functions", []):
+            for region in func.get("regions", []):
+                if len(region) >= 7 and region[4] > 0:  # count > 0
+                    # (file_id, line_start, col_start, line_end, col_end)
+                    edge = (func.get("name", ""), region[0], region[1],
+                            region[2], region[3])
+                    edges.add(edge)
+    return edges
+
+
+# --- VMM Runner ---
+
+def find_fuzz_section_offset(elf_path):
+    """Find the file offset of .fuzz_input section in the ELF."""
+    result = subprocess.run(
+        ["readelf", "-S", elf_path],
+        capture_output=True, text=True
+    )
+    for line in result.stdout.splitlines():
+        if ".fuzz_input" in line:
+            parts = line.split()
+            # Section header: [Nr] Name Type Addr Off Size ...
+            # The offset is typically the 5th or 6th field
+            for i, p in enumerate(parts):
+                if p == ".fuzz_input":
+                    # Offset is 2 fields after the address
+                    # Format: [22] .fuzz_input PROGBITS addr offset size ...
+                    offset_str = parts[i + 3]  # skip Type, Addr → Offset
+                    return int(offset_str, 16)
+    return None
+
+
+def patch_blob(elf_path, blob, section_offset):
+    """Write blob bytes directly into the ELF at section offset."""
+    with open(elf_path, "r+b") as f:
+        f.seek(section_offset)
+        f.write(blob)
+
+
+def build_initramfs(fuzz_binary, output_path):
+    """Build a minimal initramfs containing just the fuzz binary as /init."""
+    tmpdir = tempfile.mkdtemp(prefix="vvfuzz_")
+    try:
+        for d in ["proc", "sys", "dev"]:
+            os.makedirs(os.path.join(tmpdir, d))
+        shutil.copy2(fuzz_binary, os.path.join(tmpdir, "init"))
+        # Strip
+        subprocess.run(["strip", os.path.join(tmpdir, "init")],
+                       capture_output=True)
+        # Build cpio
+        find = subprocess.Popen(
+            ["find", "."], cwd=tmpdir, stdout=subprocess.PIPE
+        )
+        cpio = subprocess.Popen(
+            ["cpio", "-o", "-H", "newc"],
+            cwd=tmpdir, stdin=find.stdout, stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL
+        )
+        find.stdout.close()
+        gzip = subprocess.Popen(
+            ["gzip"], stdin=cpio.stdout, stdout=open(output_path, "wb"),
+            stderr=subprocess.DEVNULL
+        )
+        cpio.stdout.close()
+        gzip.wait()
+        cpio.wait()
+        find.wait()
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+def _fetch_kernel():
+    """Return path to guest kernel, downloading if not cached."""
+    result = subprocess.run(
+        [os.path.join(_SCRIPT_DIR, "run"), "fetch-kernel"],
+        capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        sys.exit(f"Failed to fetch kernel: {result.stderr.strip()}")
+    return result.stdout.strip()
+
+
+def run_vmm(vmm_path, initramfs_path, profraw_dir, timeout=3,
+            kernel_path=None, disk_path=None, cpus=1, memory="128M"):
+    """Boot the VMM with the fuzz initramfs. Returns (exit_code, crashed)."""
+    if kernel_path:
+        kernel = kernel_path
+    else:
+        kernel = _fetch_kernel()
+
+    # Create a small disk image
+    if disk_path:
+        disk = disk_path
+    else:
+        disk = os.path.join(profraw_dir, "disk.raw")
+    if not os.path.exists(disk):
+        with open(disk, "wb") as f:
+            f.seek(64 * 1024 * 1024 - 1)
+            f.write(b"\x00")
+
+    env = os.environ.copy()
+    env["LLVM_PROFILE_FILE"] = os.path.join(profraw_dir, "%p.profraw")
+
+    cmd = [
+        vmm_path,
+        "--kernel", kernel,
+        "--initramfs", initramfs_path,
+        "--disk", f"path={disk}",
+        "--cpus", f"boot={cpus}",
+        "--memory", f"size={memory}",
+        "--serial", "off",
+        "--console", "off",
+        "--cmdline", "console=hvc0 initcall_blacklist=virtio_blk_init",
+        "--seccomp", "false",
+    ]
+
+    try:
+        result = subprocess.run(
+            cmd, timeout=timeout, capture_output=True, env=env
+        )
+        crashed = result.returncode not in (0, 3)  # 3 = isa-debug-exit
+        output = result.stderr.decode(errors="replace")
+        return result.returncode, crashed, output
+    except subprocess.TimeoutExpired:
+        return -1, True, ""
+
+
+# --- Main Loop ---
+
+def cmd_decode(args):
+    """Decode and print the contents of a fuzz blob."""
+    for path in args.blobs:
+        blob = open(path, "rb").read()
+        qs, nd, ai, ac = struct.unpack_from("<HHHH", blob)
+        print(f"{path}:")
+        print(f"  queue_size={qs} num_descs={nd} avail_idx={ai} avail_count={ac}")
+        off = 8
+        for i in range(nd):
+            if off + 8 > len(blob):
+                print(f"  desc[{i}]: <truncated>")
+                break
+            l, f, n = struct.unpack_from("<IHH", blob, off)
+            print(f"  desc[{i}]: len={l} flags=0x{f:04x} next={n}")
+            off += 8
+        avail_off = off
+        for i in range(ac):
+            if avail_off + 2 > len(blob):
+                break
+            v, = struct.unpack_from("<H", blob, avail_off)
+            print(f"  avail[{i}]: {v}")
+            avail_off += 2
+        payload_off = avail_off
+        payload_len = len(blob) - payload_off
+        nonzero = sum(1 for b in blob[payload_off:] if b != 0)
+        print(f"  payload: {payload_len} bytes ({nonzero} non-zero)")
+        # Annotations
+        notes = _annotate_blob(blob)
+        if notes:
+            for note in notes:
+                print(f"  ⚠ {note}")
+        print()
+
+
+# Mapping from short device name (used as test directory and CLI option)
+# to (test name prefix, VIRTIO_PCI_DEVICE_* macro). The prefix must match
+# the convention enforced by the run script's PREFIX_DIR table.
+_DEVICE_MAP = {
+    "blk":      ("B",   "VIRTIO_PCI_DEVICE_BLK"),
+    "net":      ("N",   "VIRTIO_PCI_DEVICE_NET"),
+    "console":  ("C",   "VIRTIO_PCI_DEVICE_CONSOLE"),
+    "rng":      ("RNG", "VIRTIO_PCI_DEVICE_RNG"),
+    "balloon":  ("L",   "VIRTIO_PCI_DEVICE_BALLOON"),
+    "vsock":    ("V",   "VIRTIO_PCI_DEVICE_VSOCK"),
+    "iommu":    ("I",   "VIRTIO_PCI_DEVICE_IOMMU"),
+    "mem":      ("R",   "VIRTIO_PCI_DEVICE_MEM"),
+    "pmem":     ("E",   "VIRTIO_PCI_DEVICE_PMEM"),
+    "watchdog": ("D",   "VIRTIO_PCI_DEVICE_WATCHDOG"),
+    "rtc":      ("RTC", "VIRTIO_PCI_DEVICE_RTC"),
+    "fs":       ("F",   "VIRTIO_PCI_DEVICE_FS"),
+}
+
+# Fuzz-generated tests continue the per-device numbering. They live in a
+# fuzz/ subdirectory but share the ID space with handwritten tests so the
+# sequence stays gap-free and meaningful at a glance.
+
+
+def _next_fuzz_id(device, prefix):
+    """Find the next free ID for a fuzz replay test for tests/<device>.
+
+    Scans every <prefix><nnnn>_*.c under tests/<device>/ (recursively,
+    so handwritten tests at the top level and existing fuzz replays in
+    fuzz/ both count) and returns the highest used number plus one.
+    """
+    dev_dir = os.path.join(_SCRIPT_DIR, "tests", device)
+    used = set()
+    pat = re.compile(r"^" + prefix.lower() + r"(\d+)_.*\.c$", re.IGNORECASE)
+    if os.path.isdir(dev_dir):
+        for root, _dirs, files in os.walk(dev_dir):
+            for name in files:
+                m = pat.match(name)
+                if m:
+                    used.add(int(m.group(1)))
+    n = (max(used) + 1) if used else 1
+    return f"{prefix}{n:04d}"
+
+
+def _format_payload_bytes(payload):
+    """Format payload as a C array body, 12 bytes per line."""
+    if not payload:
+        return ""
+    lines = []
+    for i in range(0, len(payload), 12):
+        chunk = payload[i:i + 12]
+        lines.append("    " + ", ".join(f"0x{b:02x}" for b in chunk) + ",")
+    return "\n".join(lines)
+
+
+def _resolve_fuzz_device():
+    """Return the short device name the fuzz harness currently targets.
+
+    Parses bin/fuzz.c for the virtio_pci_find(VIRTIO_PCI_DEVICE_*) call
+    and reverse-maps the macro through _DEVICE_MAP. Fails loudly if the
+    harness does not match a known device, so a future multi-device
+    fuzz harness gets a clear error instead of a silent wrong mapping.
+    """
+    fuzz_src = os.path.join(_SCRIPT_DIR, "bin", "fuzz.c")
+    try:
+        with open(fuzz_src) as fh:
+            text = fh.read()
+    except OSError as e:
+        sys.exit(f"cannot read {fuzz_src}: {e}")
+
+    m = re.search(r"virtio_pci_find\(\s*(VIRTIO_PCI_DEVICE_[A-Z_]+)", text)
+    if not m:
+        sys.exit(f"cannot determine target device from {fuzz_src}")
+    macro = m.group(1)
+    for name, (_prefix, dev_macro) in _DEVICE_MAP.items():
+        if dev_macro == macro:
+            return name
+    sys.exit(f"fuzz harness targets {macro}, not in _DEVICE_MAP")
+
+
+def cmd_gen_test(args):
+    """Generate a C test from a fuzz blob, mirroring fuzz.c semantics."""
+    device = args.device or _resolve_fuzz_device()
+    entry = _DEVICE_MAP.get(device)
+    if entry is None:
+        sys.exit(f"unknown device '{device}'. Known: "
+                 + ", ".join(sorted(_DEVICE_MAP)))
+    prefix, device_macro = entry
+
+    test_id = args.id or _next_fuzz_id(device, prefix)
+    if not test_id.upper().startswith(prefix):
+        sys.exit(f"test id '{test_id}' must start with prefix '{prefix}' "
+                 f"for device '{device}'")
+    test_id = test_id.upper()
+
+    blob = open(args.blob, "rb").read()
+    if len(blob) < HEADER_SIZE:
+        sys.exit(f"blob too short: {len(blob)} bytes")
+
+    qs, nd, ai, ac = struct.unpack_from(HEADER_FMT, blob, 0)
+    nd = min(nd, 128)
+    ac = min(ac, 256)
+
+    descs = []
+    off = HEADER_SIZE
+    for i in range(nd):
+        if off + DESC_SIZE > len(blob):
+            nd = i
+            break
+        descs.append(struct.unpack_from(DESC_FMT, blob, off))
+        off += DESC_SIZE
+
+    avail_off = HEADER_SIZE + nd * DESC_SIZE
+    avail = []
+    for i in range(ac):
+        if avail_off + 2 > len(blob):
+            ac = i
+            break
+        avail.append(struct.unpack_from("<H", blob, avail_off)[0])
+        avail_off += 2
+
+    payload_off = HEADER_SIZE + nd * DESC_SIZE + ac * 2
+    payload = blob[payload_off:]
+
+    # Mirror fuzz.c: payload is contiguous, descriptors reference it by
+    # cumulative offset, length is clamped so it never escapes the
+    # allocation, and the offset wraps to 0 on overflow.
+    payload_pages = max(1, (len(payload) + 4095) // 4096)
+    payload_bytes_total = payload_pages * 4096
+
+    desc_emit = []
+    offset = 0
+    for i, (l, f, n) in enumerate(descs):
+        clamped = l
+        if offset + clamped > payload_bytes_total:
+            clamped = payload_bytes_total - offset
+        desc_emit.append((i, offset, clamped, f, n))
+        offset += clamped
+        if offset >= payload_bytes_total:
+            offset = 0
+
+    # File path
+    test_dir = os.path.join(_SCRIPT_DIR, "tests", device, "fuzz")
+    os.makedirs(test_dir, exist_ok=True)
+    func_name = "test_" + test_id.lower() + "_replay"
+    out_path = os.path.join(test_dir, f"{test_id.lower()}_replay.c")
+    if os.path.exists(out_path) and not args.force:
+        sys.exit(f"refusing to overwrite {out_path} (use --force)")
+
+    payload_block = _format_payload_bytes(bytes(payload[:payload_bytes_total]))
+    desc_lines = []
+    for i, off, l, f, n in desc_emit:
+        desc_lines.append(
+            f"    vring_raw_set_desc(vr, {i}, payload_phys + {off}, "
+            f"{l}, 0x{f:04x}, {n});"
+        )
+    avail_lines = [
+        f"    vring_raw_set_avail(vr, {i}, {v});"
+        for i, v in enumerate(avail)
+    ]
+
+    description = f"fuzz replay {os.path.basename(args.blob)}"
+
+    content = f"""/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * {test_id}: {description}
+ *
+ * Generated by run-fuzz gen-test from {os.path.basename(args.blob)}.
+ * Mirrors the bin/fuzz.c replay path: a contiguous payload region is
+ * allocated and each descriptor points into it by cumulative offset.
+ */
+#include "tests/test.h"
+#include "lib/util.h"
+#include "lib/vring.h"
+#include "lib/virtio_pci.h"
+
+#include <string.h>
+#include <unistd.h>
+
+static const uint8_t fuzz_payload[{payload_bytes_total}] = {{
+{payload_block}
+}};
+
+static test_result_t {func_name}(struct virtio_dev *dev, struct vring *vr)
+{{
+    uint32_t pages = ({payload_bytes_total} + 4095) / 4096;
+    uint8_t *payload = vv_alloc_pages(pages);
+    memcpy(payload, fuzz_payload, sizeof(fuzz_payload));
+    uint64_t payload_phys = vv_virt_to_phys(payload);
+
+{chr(10).join(desc_lines)}
+
+{chr(10).join(avail_lines)}
+
+    vring_raw_set_avail_idx(vr, {ai});
+
+    return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
+}}
+
+REGISTER_TEST({test_id}, {device_macro}, {func_name},
+              "{description}",
+              VIRTIO_SPEC_V1_2, "");
+"""
+    with open(out_path, "w") as f:
+        f.write(content)
+    print(f"wrote {out_path}")
+
+
+# Valid descriptor flags: NEXT=0x01, WRITE=0x02, INDIRECT=0x04
+_VALID_FLAGS = 0x0007
+
+
+def _annotate_blob(blob):
+    """Return list of anomaly annotations for a blob."""
+    notes = []
+    if len(blob) < HEADER_SIZE:
+        notes.append("TRUNCATED: blob shorter than header")
+        return notes
+
+    qs, nd, ai, ac = struct.unpack_from(HEADER_FMT, blob, 0)
+
+    if nd > qs:
+        notes.append(f"num_descs={nd} > queue_size={qs}")
+    if ai > qs:
+        notes.append(f"avail_idx={ai} > queue_size={qs} (OVERFLOW)")
+
+    off = HEADER_SIZE
+    for i in range(nd):
+        if off + DESC_SIZE > len(blob):
+            break
+        l, f, n = struct.unpack_from(DESC_FMT, blob, off)
+        undefined = f & ~_VALID_FLAGS
+        if undefined:
+            notes.append(f"desc[{i}]: undefined flag bits 0x{undefined:04x}")
+        if (f & 0x01) and n == i:
+            notes.append(f"desc[{i}]: next={n} SELF-LOOP")
+        elif (f & 0x01) and n >= nd:
+            notes.append(f"desc[{i}]: next={n} OOB (num_descs={nd})")
+        if (f & 0x02) and (f & 0x04):
+            notes.append(f"desc[{i}]: WRITE+INDIRECT (invalid combo)")
+        if l == 0:
+            notes.append(f"desc[{i}]: len=0 (zero-length descriptor)")
+        off += DESC_SIZE
+
+    # Check avail ring entries
+    avail_off = HEADER_SIZE + nd * DESC_SIZE
+    for i in range(ac):
+        if avail_off + 2 > len(blob):
+            break
+        v, = struct.unpack_from("<H", blob, avail_off)
+        if v >= nd:
+            notes.append(f"avail[{i}]={v} OOB (num_descs={nd})")
+        avail_off += 2
+
+    # Detect chain cycles
+    for start in range(min(nd, ac)):
+        # Follow chain from avail ring head
+        avail_entry_off = HEADER_SIZE + nd * DESC_SIZE + start * 2
+        if avail_entry_off + 2 > len(blob):
+            break
+        head, = struct.unpack_from("<H", blob, avail_entry_off)
+        if head >= nd:
+            continue
+        seen = set()
+        idx = head
+        cycle = False
+        while idx < nd:
+            if idx in seen:
+                cycle = True
+                break
+            seen.add(idx)
+            d_off = HEADER_SIZE + idx * DESC_SIZE
+            if d_off + DESC_SIZE > len(blob):
+                break
+            _, flags, nxt = struct.unpack_from(DESC_FMT, blob, d_off)
+            if not (flags & 0x01):
+                break
+            idx = nxt
+        if cycle:
+            notes.append(f"chain from avail[{start}]={head}: CYCLE at desc[{idx}]")
+
+    return notes
+
+
+def _classify_vmm_output(output):
+    """Extract a short error class from VMM stderr output."""
+    if not output:
+        return "timeout"
+    for line in output.splitlines():
+        if "panicked" in line or "panic" in line:
+            return line.strip()
+        if "seccomp" in line.lower():
+            return "seccomp violation"
+        if "NEEDS_RESET" in line:
+            return "device NEEDS_RESET (wedged)"
+        if "ERROR" in line:
+            # Extract the error message
+            parts = line.split("ERROR:")
+            if len(parts) > 1:
+                return parts[-1].strip()[:120]
+    return "exit code non-zero"
+
+
+def _print_crash_detail(blob, vmm_output, crash_path):
+    """Print decoded crash with annotations and VMM error."""
+    notes = _annotate_blob(blob)
+    error_class = _classify_vmm_output(vmm_output)
+    print(f"    class: {error_class}")
+    if notes:
+        for note in notes:
+            print(f"    ⚠ {note}")
+    # Show relevant VMM output lines (skip boilerplate WARN lines)
+    interesting = [ln.strip() for ln in vmm_output.splitlines()
+                   if "ERROR" in ln or "panic" in ln or "seccomp" in ln.lower()]
+    for line in interesting[:3]:
+        print(f"    vmm: {line}")
+
+
+def cmd_replay(args):
+    """Replay a crash blob against the VMM."""
+    fuzz_binary = os.path.join(_SCRIPT_DIR, "target", "fuzz")
+    if not os.path.exists(fuzz_binary):
+        print("[*] Building fuzz guest...")
+        result = subprocess.run(["make", "fuzz"], capture_output=True, text=True)
+        if result.returncode != 0:
+            sys.exit(f"Build failed: {result.stderr}")
+
+    section_offset = find_fuzz_section_offset(fuzz_binary)
+    if section_offset is None:
+        sys.exit("Cannot find .fuzz_input section in fuzz binary")
+
+    profraw_dir = tempfile.mkdtemp(prefix="vvfuzz_replay_")
+    initramfs_path = os.path.join(profraw_dir, "initramfs.cpio.gz")
+
+    for path in args.blobs:
+        blob = open(path, "rb").read()
+        patch_blob(fuzz_binary, blob, section_offset)
+        build_initramfs(fuzz_binary, initramfs_path)
+
+        print(f"[*] Replaying {path}...")
+        exit_code, crashed, output = run_vmm(
+            args.vmm, initramfs_path, profraw_dir, args.timeout,
+            kernel_path=args.kernel, disk_path=args.disk
+        )
+        status = "CRASH" if crashed else "OK"
+        print(f"    exit={exit_code} {status}")
+        _print_crash_detail(blob, output, path)
+
+    shutil.rmtree(profraw_dir, ignore_errors=True)
+
+
+# --- Flag constants used in tests ---
+_FLAG_MAP = {
+    "VRING_DESC_F_NEXT": 0x01,
+    "VRING_DESC_F_WRITE": 0x02,
+    "VRING_DESC_F_INDIRECT": 0x04,
+    "VRING_DESC_F_AVAIL": 0x80,
+    "VRING_DESC_F_USED": 0x8000,
+}
+
+# Common sizeof expressions
+_SIZEOF_MAP = {
+    "sizeof(*hdr)": 16,
+    "sizeof(struct virtio_blk_req_hdr)": 16,
+    "sizeof(struct virtio_net_hdr)": 12,
+    "sizeof(struct virtio_net_hdr_v1)": 12,
+    "sizeof(struct virtio_vsock_hdr)": 44,
+}
+
+import re as _re
+
+
+def _parse_flags(expr):
+    """Parse a flags expression like 'VRING_DESC_F_NEXT | VRING_DESC_F_WRITE'."""
+    val = 0
+    for token in expr.split("|"):
+        token = token.strip()
+        if token in _FLAG_MAP:
+            val |= _FLAG_MAP[token]
+        elif token.startswith("0x"):
+            val |= int(token, 16)
+        elif token.isdigit():
+            val |= int(token)
+    return val
+
+
+def _parse_len(expr):
+    """Parse a length expression."""
+    expr = expr.strip()
+    if expr in _SIZEOF_MAP:
+        return _SIZEOF_MAP[expr]
+    cleaned = expr.rstrip("UuLl")
+    if cleaned.startswith("0x"):
+        return int(cleaned, 16)
+    try:
+        return int(cleaned)
+    except ValueError:
+        # Try evaluating simple math
+        for k, v in _SIZEOF_MAP.items():
+            expr = expr.replace(k, str(v))
+        try:
+            return int(eval(expr))  # noqa: S307
+        except Exception:
+            return 16  # fallback
+
+
+def _extract_seeds_from_file(path):
+    """Extract vring layout from a test .c file and return a blob or None."""
+    with open(path) as f:
+        src = f.read()
+
+    # Match vring_raw_set_desc(vr, idx, addr, len, flags, next)
+    # The call often spans two lines
+    src_flat = src.replace("\n", " ").replace("  ", " ")
+    desc_pat = _re.compile(
+        r"vring_raw_set_desc\s*\(\s*\w+\s*,\s*(\d+)\s*,\s*\w+\s*,"
+        r"\s*([^,]+),\s*([^,]+),\s*(\d+)\s*\)"
+    )
+    avail_pat = _re.compile(
+        r"vring_raw_set_avail\s*\(\s*\w+\s*,\s*(\d+)\s*,\s*(\d+)\s*\)"
+    )
+    avail_idx_pat = _re.compile(
+        r"vring_raw_set_avail_idx\s*\(\s*\w+\s*,\s*(\d+)\s*\)"
+    )
+
+    descs_raw = desc_pat.findall(src_flat)
+    if not descs_raw:
+        return None
+
+    # Build descriptor list indexed by position
+    max_idx = max(int(d[0]) for d in descs_raw)
+    descs = [(16, 0, 0)] * (max_idx + 1)  # (len, flags, next)
+    for idx_s, len_s, flags_s, next_s in descs_raw:
+        idx = int(idx_s)
+        length = _parse_len(len_s)
+        flags = _parse_flags(flags_s)
+        next_idx = int(next_s)
+        descs[idx] = (length, flags, next_idx)
+
+    # Avail ring
+    avail_entries = {}
+    for idx_s, val_s in avail_pat.findall(src_flat):
+        avail_entries[int(idx_s)] = int(val_s)
+    avail_ring = [avail_entries.get(i, 0) for i in range(max(avail_entries.keys()) + 1)] \
+        if avail_entries else [0]
+
+    # Avail idx
+    avail_idx_match = avail_idx_pat.findall(src_flat)
+    avail_idx = int(avail_idx_match[-1]) if avail_idx_match else len(avail_ring)
+
+    # Queue size (default 16 for blk)
+    qs = 16
+
+    # Build payload (just zeros, sized to cover descriptor lengths)
+    total_payload = sum(d[0] for d in descs)
+    cap = BLOB_SIZE - HEADER_SIZE - len(descs) * DESC_SIZE - len(avail_ring) * 2
+    payload = b"\x00" * min(total_payload, cap)
+
+    return make_blob(qs, descs, avail_idx, avail_ring, payload)
+
+
+def cmd_seed(args):
+    """Generate corpus seeds from existing test files."""
+    os.makedirs(args.corpus_dir, exist_ok=True)
+
+    test_files = sorted(glob.glob("tests/**/*.c", recursive=True))
+    count = 0
+    for path in test_files:
+        blob = _extract_seeds_from_file(path)
+        if blob is None:
+            continue
+        # Deduplicate by hash
+        blob_hash = hashlib.sha256(blob).hexdigest()[:16]
+        out_path = os.path.join(
+            args.corpus_dir,
+            f"test_{os.path.basename(path).replace('.c', '')}_{blob_hash}.bin")
+        if not os.path.exists(out_path):
+            with open(out_path, "wb") as fh:
+                fh.write(blob)
+            count += 1
+
+    print(f"[*] Extracted {count} seeds from {len(test_files)} test files into {args.corpus_dir}/")
+
+
+def cmd_triage(args):
+    """Replay all crashes, group by error class, print summary."""
+    fuzz_binary = os.path.join(_SCRIPT_DIR, "target", "fuzz")
+    if not os.path.exists(fuzz_binary):
+        print("[*] Building fuzz guest...")
+        result = subprocess.run(["make", "fuzz"], capture_output=True, text=True)
+        if result.returncode != 0:
+            sys.exit(f"Build failed: {result.stderr}")
+
+    section_offset = find_fuzz_section_offset(fuzz_binary)
+    if section_offset is None:
+        sys.exit("Cannot find .fuzz_input section in fuzz binary")
+
+    profraw_dir = tempfile.mkdtemp(prefix="vvfuzz_triage_")
+    initramfs_path = os.path.join(profraw_dir, "initramfs.cpio.gz")
+
+    crash_files = sorted(
+        os.path.join(args.crashes_dir, f)
+        for f in os.listdir(args.crashes_dir)
+        if f.endswith(".bin")
+    )
+    if not crash_files:
+        print("[*] No crash files found.")
+        return
+
+    print(f"[*] Triaging {len(crash_files)} crashes against {args.vmm}...")
+    print()
+
+    # Group: error_class -> [(path, annotations)]
+    groups = {}
+
+    for path in crash_files:
+        blob = open(path, "rb").read()
+        patch_blob(fuzz_binary, blob, section_offset)
+        build_initramfs(fuzz_binary, initramfs_path)
+
+        exit_code, crashed, output = run_vmm(
+            args.vmm, initramfs_path, profraw_dir, args.timeout,
+            kernel_path=args.kernel, disk_path=args.disk
+        )
+        error_class = _classify_vmm_output(output) if crashed else "NO CRASH (fixed?)"
+        notes = _annotate_blob(blob)
+        groups.setdefault(error_class, []).append((path, notes, crashed))
+
+    shutil.rmtree(profraw_dir, ignore_errors=True)
+
+    # Print grouped summary
+    print(f"{'='*60}")
+    print(f"TRIAGE SUMMARY: {len(crash_files)} blobs → {len(groups)} unique classes")
+    print(f"{'='*60}")
+    print()
+
+    for error_class, entries in sorted(groups.items(), key=lambda x: -len(x[1])):
+        crashes_in_group = sum(1 for _, _, c in entries if c)
+        status = "CRASH" if crashes_in_group else "OK"
+        print(f"[{status}] {len(entries)}x: {error_class}")
+        for path, notes, crashed in entries:
+            name = os.path.basename(path)
+            note_str = "; ".join(notes[:2]) if notes else "no anomaly detected"
+            print(f"       {name}: {note_str}")
+        print()
+
+
+def cmd_minimize(args):
+    """Remove corpus entries that don't contribute unique coverage."""
+    if not shutil.which("llvm-profdata") or not shutil.which("llvm-cov"):
+        sys.exit("llvm-profdata and llvm-cov are required for minimize")
+
+    corpus_files = sorted(glob.glob(os.path.join(args.corpus_dir, "*.bin")))
+    if not corpus_files:
+        sys.exit(f"No .bin files in {args.corpus_dir}")
+
+    print(f"[*] Minimizing {len(corpus_files)} corpus entries...")
+
+    fuzz_binary = os.path.join(_SCRIPT_DIR, "target", "fuzz")
+    if not os.path.exists(fuzz_binary):
+        result = subprocess.run(["make", "fuzz"], capture_output=True, text=True)
+        if result.returncode != 0:
+            sys.exit(f"Build failed: {result.stderr}")
+
+    section_offset = find_fuzz_section_offset(fuzz_binary)
+    if section_offset is None:
+        sys.exit("Cannot find .fuzz_input section")
+
+    kernel = args.kernel or _fetch_kernel()
+    tmpdir = tempfile.mkdtemp(prefix="vvmin_")
+    wb = os.path.join(tmpdir, "fuzz")
+    shutil.copy2(fuzz_binary, wb)
+    disk = os.path.join(tmpdir, "disk.raw")
+    with open(disk, "wb") as f:
+        f.seek(64 * 1024 * 1024 - 1)
+        f.write(b"\x00")
+    initramfs = os.path.join(tmpdir, "initramfs.cpio.gz")
+
+    # Collect edges per corpus entry
+    entry_edges = []
+    for i, path in enumerate(corpus_files):
+        with open(path, "rb") as fh:
+            blob = fh.read()
+        patch_blob(wb, blob, section_offset)
+        build_initramfs(wb, initramfs)
+        for fname in os.listdir(tmpdir):
+            if fname.endswith(".profraw"):
+                os.unlink(os.path.join(tmpdir, fname))
+        run_vmm(args.vmm, initramfs, tmpdir, args.timeout,
+                kernel_path=kernel, disk_path=disk)
+        profdata = os.path.join(tmpdir, "merged.profdata")
+        edges = collect_coverage(args.vmm, profdata, tmpdir)
+        entry_edges.append((path, edges))
+        if (i + 1) % 10 == 0:
+            print(f"  [{i+1}/{len(corpus_files)}] evaluated", end="\r")
+
+    # Greedy set-cover: keep entries that add unique edges
+    covered = set()
+    keep = []
+    # Sort by most unique edges first
+    entry_edges.sort(key=lambda x: len(x[1]), reverse=True)
+    for path, edges in entry_edges:
+        new = edges - covered
+        if new:
+            covered |= new
+            keep.append(path)
+
+    removed = len(corpus_files) - len(keep)
+    keep_set = set(keep)
+    if args.dry_run:
+        print(f"\n[*] Would remove {removed} entries, keeping {len(keep)}")
+        for path, _ in entry_edges:
+            if path not in keep_set:
+                print(f"  remove: {os.path.basename(path)}")
+    else:
+        for path, _ in entry_edges:
+            if path not in keep_set:
+                os.unlink(path)
+        print(f"\n[*] Removed {removed} entries, kept {len(keep)} "
+              f"(covering {len(covered)} edges)")
+
+    shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+def cmd_cov_report(args):
+    """Generate an HTML coverage report from the corpus."""
+    if not shutil.which("llvm-profdata") or not shutil.which("llvm-cov"):
+        sys.exit("llvm-profdata and llvm-cov are required for cov-report")
+
+    corpus_files = sorted(glob.glob(os.path.join(args.corpus_dir, "*.bin")))
+    profraw_dir = os.path.join(_SCRIPT_DIR, "target", "profraw")
+    has_profraw = (not args.no_profraw and os.path.isdir(profraw_dir)
+                   and glob.glob(os.path.join(profraw_dir, "*.profraw")))
+    if not corpus_files and not has_profraw:
+        sys.exit(f"No .bin files in {args.corpus_dir} and no profraw in target/profraw/")
+
+    fuzz_binary = os.path.join(_SCRIPT_DIR, "target", "fuzz")
+    if not os.path.exists(fuzz_binary):
+        result = subprocess.run(["make", "fuzz"], capture_output=True, text=True)
+        if result.returncode != 0:
+            sys.exit(f"Build failed: {result.stderr}")
+
+    section_offset = find_fuzz_section_offset(fuzz_binary)
+    if section_offset is None:
+        sys.exit("Cannot find .fuzz_input section")
+
+    kernel = args.kernel or _fetch_kernel()
+    tmpdir = tempfile.mkdtemp(prefix="vvcov_")
+    profraw_files = []
+
+    if corpus_files:
+        wb = os.path.join(tmpdir, "fuzz")
+        shutil.copy2(fuzz_binary, wb)
+        disk = os.path.join(tmpdir, "disk.raw")
+        with open(disk, "wb") as f:
+            f.seek(64 * 1024 * 1024 - 1)
+            f.write(b"\x00")
+        initramfs = os.path.join(tmpdir, "initramfs.cpio.gz")
+
+        print(f"[*] Replaying {len(corpus_files)} corpus entries for coverage...")
+        for i, path in enumerate(corpus_files):
+            with open(path, "rb") as fh:
+                blob = fh.read()
+            patch_blob(wb, blob, section_offset)
+            build_initramfs(wb, initramfs)
+            run_vmm(args.vmm, initramfs, tmpdir, args.timeout,
+                    kernel_path=kernel, disk_path=disk)
+            # Collect profraw files
+            for fname in os.listdir(tmpdir):
+                if fname.endswith(".profraw") and not fname.startswith("corpus_"):
+                    src = os.path.join(tmpdir, fname)
+                    dst = os.path.join(tmpdir, f"corpus_{i:04d}_{fname}")
+                    os.rename(src, dst)
+                    profraw_files.append(dst)
+            if (i + 1) % 10 == 0:
+                print(f"  [{i+1}/{len(corpus_files)}] replayed", end="\r")
+
+    # Merge in profraw files from test runs (target/profraw/)
+    if not args.no_profraw:
+        profraw_dir = os.path.join(_SCRIPT_DIR, "target", "profraw")
+        if os.path.isdir(profraw_dir):
+            extras = glob.glob(os.path.join(profraw_dir, "*.profraw"))
+            if extras:
+                print(f"\n[*] Including {len(extras)} profraw files from test runs")
+                profraw_files.extend(extras)
+
+    if not profraw_files:
+        sys.exit("\n[!] No profraw files collected")
+
+    # Merge all profraw into one profdata
+    merged = os.path.join(tmpdir, "all.profdata")
+    subprocess.run(
+        ["llvm-profdata", "merge", "--sparse", "-o", merged] + profraw_files,
+        capture_output=True)
+
+    # Generate HTML report
+    os.makedirs(args.output, exist_ok=True)
+    ignore_regex = r"(\.cargo/|\.rustup/|/rustc/)"
+    cov_cmd = ["llvm-cov", "show", args.vmm, f"--instr-profile={merged}",
+               "--format=html", f"--output-dir={args.output}",
+               "--show-line-counts-or-regions",
+               f"--ignore-filename-regex={ignore_regex}"]
+    report_cmd = ["llvm-cov", "report", args.vmm, f"--instr-profile={merged}",
+                  f"--ignore-filename-regex={ignore_regex}"]
+
+    result = subprocess.run(cov_cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"[!] llvm-cov failed: {result.stderr[:200]}")
+    else:
+        print(f"\n[*] Coverage report written to {args.output}/")
+        # Also print summary
+        summary = subprocess.run(report_cmd, capture_output=True, text=True)
+        if summary.returncode == 0:
+            # Print last 10 lines (the totals)
+            lines = summary.stdout.strip().split("\n")
+            for line in lines[-10:]:
+                print(f"  {line}")
+
+    shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+def cmd_fuzz(args):
+    """Main fuzzing loop."""
+    os.makedirs(args.corpus_dir, exist_ok=True)
+    os.makedirs(args.crashes_dir, exist_ok=True)
+
+    # Build the fuzz binary
+    print("[*] Building fuzz guest...")
+    result = subprocess.run(["make", "fuzz"], capture_output=True, text=True)
+    if result.returncode != 0:
+        sys.exit(f"Build failed: {result.stderr}")
+
+    fuzz_binary = os.path.join(_SCRIPT_DIR, "target", "fuzz")
+    section_offset = find_fuzz_section_offset(fuzz_binary)
+    if section_offset is None:
+        sys.exit("Cannot find .fuzz_input section in fuzz binary")
+
+    print(f"[*] .fuzz_input section at offset 0x{section_offset:x}")
+
+    # Check for coverage tools; fall back to dumb fuzzing if missing
+    if not args.no_coverage:
+        if not shutil.which("llvm-profdata") or not shutil.which("llvm-cov"):
+            print("[!] llvm-profdata/llvm-cov not found; "
+                  "disabling coverage feedback")
+            args.no_coverage = True
+
+    # Load or seed corpus
+    corpus = []
+    for f in os.listdir(args.corpus_dir):
+        path = os.path.join(args.corpus_dir, f)
+        with open(path, "rb") as fh:
+            corpus.append(fh.read())
+    if not corpus:
+        seed = make_seed()
+        corpus.append(seed)
+        with open(os.path.join(args.corpus_dir, "seed_000.bin"), "wb") as fh:
+            fh.write(seed)
+        print("[*] Seeded corpus with 1 entry")
+    else:
+        print(f"[*] Loaded {len(corpus)} corpus entries")
+
+    # Wire up corpus for splice mutation
+    global _corpus_ref
+    _corpus_ref = corpus
+
+    # Fetch kernel once
+    kernel = args.kernel or _fetch_kernel()
+
+    jobs = args.jobs
+    baseline_edges = set()
+    stats = {"iterations": 0, "crashes": 0, "new_edges": 0,
+             "corpus_size": len(corpus)}
+    lock = threading.Lock()
+
+    # Set up per-worker state
+    worker_dirs = []
+    for w in range(jobs):
+        wdir = tempfile.mkdtemp(prefix=f"vvfuzz_w{w}_")
+        wb = os.path.join(wdir, "fuzz")
+        shutil.copy2(fuzz_binary, wb)
+        initramfs = os.path.join(wdir, "initramfs.cpio.gz")
+        disk = os.path.join(wdir, "disk.raw")
+        with open(disk, "wb") as f:
+            f.seek(64 * 1024 * 1024 - 1)
+            f.write(b"\x00")
+        worker_dirs.append({
+            "dir": wdir,
+            "binary": wb,
+            "initramfs": initramfs,
+            "disk": disk,
+        })
+
+    print(f"[*] Starting fuzzing: {args.iterations} iterations, "
+          f"jobs={jobs}, timeout={args.timeout}s, "
+          f"cpus={args.cpus}, memory={args.memory}")
+    print(f"[*] VMM={args.vmm}")
+    print(f"[*] Corpus: {args.corpus_dir}/, Crashes: {args.crashes_dir}/")
+    print()
+
+    start_time = time.time()
+    stop = threading.Event()
+
+    def _worker(iteration, worker_id):
+        """Run one fuzz iteration. Returns (crashed, blob, vmm_output, edges)."""
+        if stop.is_set():
+            return None
+        w = worker_dirs[worker_id % jobs]
+
+        with lock:
+            parent = random.choice(corpus)
+        blob = mutate(parent)
+
+        # Patch into this worker's binary
+        patch_blob(w["binary"], blob, section_offset)
+
+        # Rebuild initramfs
+        build_initramfs(w["binary"], w["initramfs"])
+
+        # Clear old profraw
+        for fname in os.listdir(w["dir"]):
+            if fname.endswith(".profraw"):
+                os.unlink(os.path.join(w["dir"], fname))
+
+        # Run VMM
+        exit_code, crashed, vmm_output = run_vmm(
+            args.vmm, w["initramfs"], w["dir"], args.timeout,
+            kernel_path=kernel, disk_path=w["disk"],
+            cpus=args.cpus, memory=args.memory
+        )
+
+        # Collect coverage
+        edges = set()
+        if not args.no_coverage:
+            profdata_path = os.path.join(w["dir"], "merged.profdata")
+            edges = collect_coverage(args.vmm, profdata_path, w["dir"])
+
+        return iteration, crashed, blob, vmm_output, edges
+
+    try:
+        if jobs == 1:
+            # Sequential path (simpler, no threading overhead)
+            for i in range(args.iterations):
+                if stop.is_set():
+                    break
+                result = _worker(i, 0)
+                if result is None:
+                    break
+                _, crashed, blob, vmm_output, edges = result
+                stats["iterations"] += 1
+
+                if crashed:
+                    stats["crashes"] += 1
+                    blob_hash = hashlib.sha256(blob).hexdigest()[:16]
+                    crash_path = os.path.join(
+                        args.crashes_dir, f"crash_{blob_hash}.bin")
+                    if not os.path.exists(crash_path):
+                        with open(crash_path, "wb") as fh:
+                            fh.write(blob)
+                        print(f"\n[!] CRASH #{stats['crashes']} "
+                              f"saved: {crash_path}")
+                        _print_crash_detail(blob, vmm_output, crash_path)
+
+                if not args.no_coverage and edges:
+                    new_edges = edges - baseline_edges
+                    if new_edges:
+                        stats["new_edges"] += len(new_edges)
+                        baseline_edges |= new_edges
+                        corpus.append(blob)
+                        stats["corpus_size"] = len(corpus)
+                        blob_hash = hashlib.sha256(blob).hexdigest()[:16]
+                        corpus_path = os.path.join(
+                            args.corpus_dir,
+                            f"gen_{i:06d}_{blob_hash}.bin")
+                        with open(corpus_path, "wb") as fh:
+                            fh.write(blob)
+
+                if (i + 1) % 10 == 0:
+                    elapsed = time.time() - start_time
+                    rate = stats["iterations"] / elapsed if elapsed > 0 else 0
+                    print(f"[{i+1}/{args.iterations}] "
+                          f"{rate:.1f} exec/s | "
+                          f"corpus={stats['corpus_size']} | "
+                          f"crashes={stats['crashes']} | "
+                          f"edges={len(baseline_edges)}",
+                          end="\r")
+        else:
+            # Parallel path: each worker owns a dedicated slot
+            import queue
+            slot_queue = queue.Queue()
+            for s in range(jobs):
+                slot_queue.put(s)
+
+            def _parallel_worker(iteration):
+                if stop.is_set():
+                    return None
+                slot = slot_queue.get()
+                try:
+                    return _worker(iteration, slot)
+                finally:
+                    slot_queue.put(slot)
+
+            with ThreadPoolExecutor(max_workers=jobs) as pool:
+                futures = {}
+                for i in range(args.iterations):
+                    if stop.is_set():
+                        break
+                    f = pool.submit(_parallel_worker, i)
+                    futures[f] = i
+
+                for future in as_completed(futures):
+                    result = future.result()
+                    if result is None:
+                        continue
+                    iteration, crashed, blob, vmm_output, edges = result
+
+                    with lock:
+                        stats["iterations"] += 1
+
+                        if crashed:
+                            stats["crashes"] += 1
+                            blob_hash = hashlib.sha256(blob).hexdigest()[:16]
+                            crash_path = os.path.join(
+                                args.crashes_dir,
+                                f"crash_{blob_hash}.bin")
+                            if not os.path.exists(crash_path):
+                                with open(crash_path, "wb") as fh:
+                                    fh.write(blob)
+                                print(f"\n[!] CRASH #{stats['crashes']} "
+                                      f"saved: {crash_path}")
+                                _print_crash_detail(
+                                    blob, vmm_output, crash_path)
+
+                        if not args.no_coverage and edges:
+                            new_edges = edges - baseline_edges
+                            if new_edges:
+                                stats["new_edges"] += len(new_edges)
+                                baseline_edges |= new_edges
+                                corpus.append(blob)
+                                stats["corpus_size"] = len(corpus)
+                                blob_hash = \
+                                    hashlib.sha256(blob).hexdigest()[:16]
+                                corpus_path = os.path.join(
+                                    args.corpus_dir,
+                                    f"gen_{iteration:06d}_{blob_hash}.bin")
+                                with open(corpus_path, "wb") as fh:
+                                    fh.write(blob)
+
+                        done = stats["iterations"]
+                        if done % 10 == 0:
+                            elapsed = time.time() - start_time
+                            rate = done / elapsed if elapsed > 0 else 0
+                            print(
+                                f"[{done}/{args.iterations}] "
+                                f"{rate:.1f} exec/s | "
+                                f"corpus={stats['corpus_size']} | "
+                                f"crashes={stats['crashes']} | "
+                                f"edges={len(baseline_edges)}",
+                                end="\r")
+
+    except KeyboardInterrupt:
+        stop.set()
+        print("\n[*] Interrupted")
+
+    elapsed = time.time() - start_time
+    print(f"\n\n[*] Done: {stats['iterations']} iterations in {elapsed:.1f}s "
+          f"({stats['iterations']/elapsed:.1f} exec/s)")
+    print(f"    Corpus: {stats['corpus_size']} entries")
+    print(f"    Crashes: {stats['crashes']}")
+    print(f"    New edges: {stats['new_edges']}")
+
+    # Cleanup
+    for w in worker_dirs:
+        shutil.rmtree(w["dir"], ignore_errors=True)
+
+
+def main():
+    print_banner(sys.stderr)
+    parser = argparse.ArgumentParser(
+        description="virtio-villain coverage fuzzer",
+        usage="%(prog)s <command> [options]",
+    )
+    sub = parser.add_subparsers(dest="command")
+
+    # --- fuzz (default) ---
+    p_fuzz = sub.add_parser("fuzz", help="Run the fuzzing loop")
+    p_fuzz.add_argument("--vmm", required=True, help="Path to VMM binary")
+    p_fuzz.add_argument("--kernel", default=None,
+                        help="Path to guest kernel (auto-detected if omitted)")
+    p_fuzz.add_argument("--disk", default=None,
+                        help="Path to raw disk image (created in tmpdir if omitted)")
+    p_fuzz.add_argument("--iterations", "-n", type=int, default=10000,
+                        help="Number of fuzzing iterations")
+    p_fuzz.add_argument("--corpus-dir", default=os.path.join("target", "corpus"),
+                        help="Directory for interesting inputs")
+    p_fuzz.add_argument("--crashes-dir", default=os.path.join("target", "crashes"),
+                        help="Directory for crash-triggering inputs")
+    p_fuzz.add_argument("--timeout", type=int, default=3,
+                        help="VMM boot timeout in seconds")
+    p_fuzz.add_argument("--jobs", "-j", type=int, default=1,
+                        help="Number of parallel VMs (default: 1)")
+    p_fuzz.add_argument("--cpus", type=int, default=1,
+                        help="vCPUs per VM (default: 1)")
+    p_fuzz.add_argument("--memory", default="128M",
+                        help="RAM per VM (default: 128M)")
+    p_fuzz.add_argument("--no-coverage", action="store_true",
+                        help="Skip coverage feedback (dumb fuzzing)")
+
+    # --- decode ---
+    p_decode = sub.add_parser("decode", help="Decode and print crash blobs")
+    p_decode.add_argument("blobs", nargs="+", help="Blob files to decode")
+
+    # --- gen-test ---
+    p_gen = sub.add_parser("gen-test",
+                           help="Generate a C test from a fuzz blob")
+    p_gen.add_argument("blob", help="Fuzz blob to convert")
+    p_gen.add_argument("--device", default=None,
+                       choices=sorted(_DEVICE_MAP),
+                       help="Override target virtio device. "
+                            "Resolved from bin/fuzz.c if omitted")
+    p_gen.add_argument("--id", default=None,
+                       help="Test ID, e.g. B9000 or RNG9000. "
+                            "Auto-picked from the fuzz range if omitted")
+    p_gen.add_argument("--force", action="store_true",
+                       help="Overwrite existing test file")
+
+    # --- replay ---
+    p_replay = sub.add_parser("replay", help="Replay crash blobs against VMM")
+    p_replay.add_argument("--vmm", required=True, help="Path to VMM binary")
+    p_replay.add_argument("--kernel", default=None,
+                          help="Path to guest kernel (auto-detected if omitted)")
+    p_replay.add_argument("--disk", default=None,
+                          help="Path to raw disk image (created in tmpdir if omitted)")
+    p_replay.add_argument("--timeout", type=int, default=5,
+                          help="VMM boot timeout in seconds")
+    p_replay.add_argument("blobs", nargs="+", help="Blob files to replay")
+
+    # --- seed ---
+    p_seed = sub.add_parser("seed", help="Generate corpus from existing tests")
+    p_seed.add_argument("--corpus-dir", default=os.path.join("target", "corpus"),
+                        help="Directory to write seeds into")
+
+    # --- triage ---
+    p_triage = sub.add_parser("triage", help="Replay and group crashes by error class")
+    p_triage.add_argument("--vmm", required=True, help="Path to VMM binary")
+    p_triage.add_argument("--kernel", default=None,
+                          help="Path to guest kernel (auto-detected if omitted)")
+    p_triage.add_argument("--disk", default=None,
+                          help="Path to raw disk image (created in tmpdir if omitted)")
+    p_triage.add_argument("--timeout", type=int, default=5,
+                          help="VMM boot timeout in seconds")
+    p_triage.add_argument("--crashes-dir", default=os.path.join("target", "crashes"),
+                          help="Directory containing crash blobs")
+
+    # --- minimize ---
+    p_min = sub.add_parser("minimize", help="Remove corpus entries with redundant coverage")
+    p_min.add_argument("--vmm", required=True, help="Path to VMM binary")
+    p_min.add_argument("--kernel", default=None,
+                       help="Path to guest kernel (auto-detected if omitted)")
+    p_min.add_argument("--timeout", type=int, default=3,
+                       help="VMM boot timeout in seconds")
+    p_min.add_argument("--corpus-dir", default=os.path.join("target", "corpus"),
+                       help="Directory containing corpus blobs")
+    p_min.add_argument("--dry-run", action="store_true",
+                       help="Show what would be removed without deleting")
+
+    # --- cov-report ---
+    p_cov = sub.add_parser("cov-report", help="Generate HTML coverage report from corpus")
+    p_cov.add_argument("--vmm", required=True, help="Path to VMM binary")
+    p_cov.add_argument("--kernel", default=None,
+                       help="Path to guest kernel (auto-detected if omitted)")
+    p_cov.add_argument("--timeout", type=int, default=3,
+                       help="VMM boot timeout in seconds")
+    p_cov.add_argument("--corpus-dir", default=os.path.join("target", "corpus"),
+                       help="Directory containing corpus blobs")
+    p_cov.add_argument("--output", "-o", default=os.path.join("target", "cov-report"),
+                       help="Output directory for HTML report")
+    p_cov.add_argument("--no-profraw", action="store_true",
+                       help="Skip merging target/profraw/ from test runs")
+
+    args = parser.parse_args()
+
+    if args.command == "decode":
+        cmd_decode(args)
+    elif args.command == "gen-test":
+        cmd_gen_test(args)
+    elif args.command == "replay":
+        cmd_replay(args)
+    elif args.command == "seed":
+        cmd_seed(args)
+    elif args.command == "triage":
+        cmd_triage(args)
+    elif args.command == "minimize":
+        cmd_minimize(args)
+    elif args.command == "cov-report":
+        cmd_cov_report(args)
+    elif args.command == "fuzz":
+        cmd_fuzz(args)
+    else:
+        parser.print_help()
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()
