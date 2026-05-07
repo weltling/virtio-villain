@@ -1,0 +1,39 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * L0009: Balloon inflate with duplicate PFNs.
+ *
+ * Submit a list where the same PFN appears multiple times. The
+ * device must not double-account the page or crash.
+ *
+ * Spec 5.5.6.1.
+ */
+#include "tests/test.h"
+#include "lib/util.h"
+#include "lib/vring.h"
+#include "lib/virtio_pci.h"
+
+#include <string.h>
+#include <unistd.h>
+
+#define VIRTIO_BALLOON_PFN_SHIFT 12
+
+static test_result_t test_balloon_dup_pfn(struct virtio_dev *dev,
+                                          struct vring *vr)
+{
+    uint32_t *pfns = vv_alloc_pages(1);
+    uint64_t base = vv_virt_to_phys(vv_alloc_pages(1));
+    uint32_t pfn = (uint32_t)(base >> VIRTIO_BALLOON_PFN_SHIFT);
+    for (int i = 0; i < 8; i++)
+        pfns[i] = pfn;
+    uint64_t pfns_phys = vv_virt_to_phys(pfns);
+
+    vring_raw_set_desc(vr, 0, pfns_phys, 8 * sizeof(uint32_t), 0, 0);
+    vring_raw_set_avail(vr, 0, 0);
+    vring_raw_set_avail_idx(vr, 1);
+
+    return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
+}
+
+REGISTER_TEST(L0009, VIRTIO_PCI_DEVICE_BALLOON, test_balloon_dup_pfn,
+              "Inflate duplicate PFNs",
+              VIRTIO_SPEC_V1_2, "5.5.6.1");
