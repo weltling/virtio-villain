@@ -1,0 +1,16 @@
+[general]
+ignore-merge-commits=true
+ignore-fixup-commits=true
+ignore-squash-commits=true
+
+[title-max-length]
+line-length=72
+
+[body-max-line-length]
+line-length=72
+
+[title-must-not-contain-word]
+words=wip
+
+[body-is-missing]
+ignore-merge-commits=true
