@@ -1,0 +1,6 @@
+[flake8]
+max-line-length = 100
+exclude = target,.git,selftest/cloud-hypervisor
+extend-ignore = E203,W503
+per-file-ignores =
+    run-fuzz:E402
