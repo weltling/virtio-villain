@@ -30,5 +30,9 @@ test IDs (for example `T0042`, `N0017`) in the bug description.
 For issues in the harness, build system, or test logic that does not
 involve a VMM bug, open a regular issue or pull request.
 
-For sensitive issues in the harness itself, contact the maintainer
-listed in the repository metadata.
+For sensitive issues in the harness itself, use GitHub Private
+Vulnerability Reporting (Security tab in this repository) or email
+the maintainer (personal capacity) at anbelski@linux.microsoft.com.
+
+If you are unsure whether a finding is security sensitive, treat it
+as such and use the project's private reporting channel first.

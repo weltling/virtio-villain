@@ -550,6 +550,14 @@ generating spec driven fault injection cases, scaffolding new device
 categories, and maintaining coverage across the virtio specification
 surface.
 
+## Maintainer
+
+Anatol Belski <anbelski@linux.microsoft.com>
+
+This is a personal open source project. It is not affiliated with,
+endorsed by, or sponsored by any employer, and contributions and
+releases are not made on behalf of any organization.
+
 ## License
 
 Apache-2.0
