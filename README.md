@@ -543,6 +543,29 @@ inputs that hit the same root cause into one bucket.
 After fixing a VMM bug, replay all crashes to confirm which ones no
 longer reproduce, many blobs often trigger the same underlying issue.
 
+## Found Bugs
+
+A subset of upstream Cloud Hypervisor fixes surfaced by this harness:
+
+- [#8295](https://github.com/cloud-hypervisor/cloud-hypervisor/pull/8295) virtio-devices: Signal NEEDS_RESET
+- [#8272](https://github.com/cloud-hypervisor/cloud-hypervisor/pull/8272) virtio-devices: Respect PCI CFG cap.length for BAR access
+- [#8238](https://github.com/cloud-hypervisor/cloud-hypervisor/pull/8238) virtio-devices: Fix cap_len for VIRTIO_PCI_CAP_PCI_CFG
+- [#8232](https://github.com/cloud-hypervisor/cloud-hypervisor/pull/8232) vm-virtio: Add centralized descriptor range validation
+- [#8190](https://github.com/cloud-hypervisor/cloud-hypervisor/pull/8190) virtio-devices: Require at least one ready queue for activation
+- [#8185](https://github.com/cloud-hypervisor/cloud-hypervisor/pull/8185) virtio-devices: Bump config_generation on device specific config reads
+- [#8177](https://github.com/cloud-hypervisor/cloud-hypervisor/pull/8177) virtio-devices: balloon: Cap inflate and deflate descriptor length
+- [#8166](https://github.com/cloud-hypervisor/cloud-hypervisor/pull/8166) virtio-devices: net, block: Drop per handler NEEDS_RESET bookkeeping
+- [#8142](https://github.com/cloud-hypervisor/cloud-hypervisor/pull/8142) net: Prevent worker thread death on malformed guest descriptors
+- [#8138](https://github.com/cloud-hypervisor/cloud-hypervisor/pull/8138) virtio-devices: Check MSI-X vector bounds before table access
+- [#8131](https://github.com/cloud-hypervisor/cloud-hypervisor/pull/8131) pci: msix: Replace panic with graceful error on invalid table write
+- [#7949](https://github.com/cloud-hypervisor/cloud-hypervisor/pull/7949) virtio-devices: block: Fix writeback mode update flow
+- [#7921](https://github.com/cloud-hypervisor/cloud-hypervisor/pull/7921) virtio-devices: block: Use error specific status in sync fallback path
+- [#7858](https://github.com/cloud-hypervisor/cloud-hypervisor/pull/7858) virtio-devices: block: Derive discard alignment from topology
+- [#7852](https://github.com/cloud-hypervisor/cloud-hypervisor/pull/7852) virtio-devices: block: Populate discard and write zeroes config
+- [#7805](https://github.com/cloud-hypervisor/cloud-hypervisor/pull/7805) virtio: Spec compliance fixes
+
+All in cloud-hypervisor/cloud-hypervisor, all merged.
+
 ## Acknowledgments
 
 Test development is accelerated with GitHub Copilot, which assists in
