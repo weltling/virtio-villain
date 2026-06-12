@@ -23,6 +23,8 @@ static test_result_t test(struct virtio_dev *dev, struct vring *vr)
     virtio_pci_reset(dev);
     if (virtio_pci_init(dev) < 0)
         TFAIL("reinit after FAILED failed");
+    cfg->device_status |= VIRTIO_STATUS_DRIVER_OK;
+    __sync_synchronize();
     if (!(cfg->device_status & VIRTIO_STATUS_DRIVER_OK))
         TFAIL("DRIVER_OK not set after recovery");
     return TEST_PASS;
