@@ -16,16 +16,9 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
-
-#define VIRTIO_BLK_T_ZONE_APPEND 28
-
-struct virtio_blk_req {
-    uint32_t type;
-    uint32_t reserved;
-    uint64_t sector;
-} __attribute__((packed));
 
 static test_result_t test_zone_append_misaligned(struct virtio_dev *dev,
                                                  struct vring *vr)

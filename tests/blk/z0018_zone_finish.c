@@ -10,17 +10,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-#define VIRTIO_BLK_T_ZONE_FINISH 29
-
-struct virtio_blk_req {
-    uint32_t type;
-    uint32_t reserved;
-    uint64_t sector;
-} __attribute__((packed));
 
 static test_result_t test_blk_zone_finish(struct virtio_dev *dev,
                                           struct vring *vr)

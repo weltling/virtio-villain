@@ -5,29 +5,18 @@
  * Spec 5.2.6.1: "A driver MUST NOT submit a request which would
  * cause a read or write beyond capacity."
  *
- * Submit a DISCARD with sector=0xFFFFFFFF00000000 and
- * num_sectors=0xFFFFFFFF so the sum wraps around u64.
+ * Submit a DISCARD (opcode 11) with sector=0xFFFFFFFF00000000 and
+ * num_sectors=0xFFFFFFFF so the sum wraps around u64. This exercises
+ * the discard handler; the write zeroes path (opcode 13) is covered
+ * by B0018.
  */
 #include "tests/test.h"
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
-
-struct virtio_blk_outhdr {
-    uint32_t type;
-    uint32_t ioprio;
-    uint64_t sector;
-} __attribute__((packed));
-
-struct virtio_blk_discard_write_zeroes {
-    uint64_t sector;
-    uint32_t num_sectors;
-    uint32_t flags;
-} __attribute__((packed));
-
-#define VIRTIO_BLK_T_DISCARD 13
 
 static test_result_t test_blk_discard_sector_wrap(struct virtio_dev *dev,
                                                   struct vring *vr)

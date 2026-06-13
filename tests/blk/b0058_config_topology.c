@@ -10,6 +10,7 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
@@ -21,8 +22,6 @@
 #define CFG_GEOMETRY_OFF      16   /* cylinders(16) + heads(8) + sectors(8) */
 #define CFG_BLK_SIZE_OFF      20   /* uint32 */
 #define CFG_TOPOLOGY_OFF      24   /* physical_block_exp(8) + align_offset(8) + min_io(16) + opt_io(32) */
-
-#define VIRTIO_BLK_F_TOPOLOGY  10
 
 static test_result_t test_blk_config_topology(struct virtio_dev *dev,
                                               struct vring *vr)

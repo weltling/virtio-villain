@@ -13,10 +13,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <unistd.h>
 
-#define VIRTIO_MSI_NO_VECTOR 0xFFFF
 
 static test_result_t test_blk_per_q_msix_vec(struct virtio_dev *dev,
                                              struct vring *vr)

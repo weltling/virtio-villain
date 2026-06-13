@@ -11,18 +11,12 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
 
 /* Zoned block request types (v1.3) */
-#define VIRTIO_BLK_T_ZONE_REPORT 26
-
-struct virtio_blk_req {
-    uint32_t type;
-    uint32_t reserved;
-    uint64_t sector;
-} __attribute__((packed));
 
 static test_result_t test_blk_zoned_no_feature(struct virtio_dev *dev,
                                                struct vring *vr)

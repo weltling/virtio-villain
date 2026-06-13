@@ -2,7 +2,7 @@
 /*
  * Z0016: zone_reset_all_with_inflight
  *
- * Queue a ZONE_APPEND chain in slot 0 and a ZONE_MGMT RESET ALL
+ * Queue a ZONE_APPEND chain in slot 0 and a ZONE_RESET_ALL
  * chain in slot 1, place both in the avail ring before the kick.
  * Spec v1.3 5.2.6 requires the device to consume both entries
  * deterministically rather than dropping one or wedging.
@@ -11,19 +11,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_blk_outhdr {
-    uint32_t type;
-    uint32_t ioprio;
-    uint64_t sector;
-} __attribute__((packed));
-
-#define VIRTIO_BLK_T_ZONE_APPEND 15
-#define VIRTIO_BLK_T_ZONE_MGMT   16
-#define ZONE_MGMT_RESET_ALL      0x05
 
 static test_result_t test_zone_reset_all_inflight(struct virtio_dev *dev,
                                                   struct vring *vr)
@@ -39,8 +30,8 @@ static test_result_t test_zone_reset_all_inflight(struct virtio_dev *dev,
     h1->sector = 0;
     *st1 = 0xFF;
 
-    h2->type = VIRTIO_BLK_T_ZONE_MGMT;
-    h2->ioprio = ZONE_MGMT_RESET_ALL;
+    h2->type = VIRTIO_BLK_T_ZONE_RESET_ALL;
+    h2->ioprio = 0;
     h2->sector = 0;
     *st2 = 0xFF;
 

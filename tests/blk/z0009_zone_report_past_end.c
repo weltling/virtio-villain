@@ -9,22 +9,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_blk_outhdr {
-    uint32_t type;
-    uint32_t ioprio;
-    uint64_t sector;
-} __attribute__((packed));
-
-struct virtio_blk_zone_report_hdr {
-    uint64_t nr_zones;
-} __attribute__((packed));
-
-#define VIRTIO_BLK_T_ZONE_REPORT 10
-#define VIRTIO_BLK_F_ZONED       12
 
 static test_result_t test_zone_report_past_end(struct virtio_dev *dev,
                                                struct vring *vr)
@@ -44,7 +32,7 @@ static test_result_t test_zone_report_past_end(struct virtio_dev *dev,
     uint64_t capacity = *cap;
 
     struct virtio_blk_outhdr *hdr = vv_alloc_pages(1);
-    struct virtio_blk_zone_report_hdr *report = vv_alloc_pages(1);
+    struct virtio_blk_zone_report_hdr_wide *report = vv_alloc_pages(1);
     uint8_t *status = vv_alloc_pages(1);
 
     /* Request zone report starting past the end of the device */

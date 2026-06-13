@@ -10,20 +10,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_blk_outhdr {
-    uint32_t type;
-    uint32_t ioprio;
-    uint64_t sector;
-} __attribute__((packed));
-
-#define VIRTIO_BLK_T_ZONE_APPEND  15
-#define VIRTIO_BLK_T_ZONE_MGMT   16
-#define VIRTIO_BLK_F_ZONED        12
-#define ZONE_RESET                0x04
 
 static test_result_t test_zone_reset_during_append(struct virtio_dev *dev,
                                                    struct vring *vr)
@@ -67,8 +57,8 @@ static test_result_t test_zone_reset_during_append(struct virtio_dev *dev,
     struct virtio_blk_outhdr *hdr1 = vv_alloc_pages(1);
     uint8_t *st1 = vv_alloc_pages(1);
 
-    hdr1->type = VIRTIO_BLK_T_ZONE_MGMT;
-    hdr1->ioprio = ZONE_RESET;
+    hdr1->type = VIRTIO_BLK_T_ZONE_RESET;
+    hdr1->ioprio = 0;
     hdr1->sector = 0; /* same zone */
     *st1 = 0xFF;
 

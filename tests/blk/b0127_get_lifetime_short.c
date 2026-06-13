@@ -9,16 +9,9 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
-
-struct virtio_blk_outhdr {
-    uint32_t type;
-    uint32_t ioprio;
-    uint64_t sector;
-} __attribute__((packed));
-
-#define VIRTIO_BLK_T_GET_LIFETIME 10
 
 static test_result_t test_blk_get_lifetime_short(struct virtio_dev *dev,
                                                  struct vring *vr)

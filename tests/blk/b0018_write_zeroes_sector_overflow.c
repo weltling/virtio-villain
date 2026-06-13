@@ -1,40 +1,31 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * B0018: blk_discard_sector_overflow
+ * B0018: blk_write_zeroes_sector_overflow
  *
- * Submit a DISCARD segment where sector + num_sectors wraps around
- * 64-bit arithmetic. The device must detect the overflow.
+ * Submit a WRITE_ZEROES segment where sector + num_sectors wraps
+ * around 64-bit arithmetic. The device must detect the overflow.
+ *
+ * Opcode 13 is VIRTIO_BLK_T_WRITE_ZEROES; DISCARD is opcode 11. The
+ * discard handler already guards with a checked add, the write
+ * zeroes path was the one missing the overflow check.
  */
 #include "tests/test.h"
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
 
-struct virtio_blk_outhdr {
-    uint32_t type;
-    uint32_t ioprio;
-    uint64_t sector;
-} __attribute__((packed));
-
-struct virtio_blk_discard_write_zeroes {
-    uint64_t sector;
-    uint32_t num_sectors;
-    uint32_t flags;
-} __attribute__((packed));
-
-#define VIRTIO_BLK_T_DISCARD 13
-
-static test_result_t test_blk_discard_overflow(struct virtio_dev *dev,
-                                               struct vring *vr)
+static test_result_t test_blk_write_zeroes_overflow(struct virtio_dev *dev,
+                                                    struct vring *vr)
 {
     struct virtio_blk_outhdr *hdr = vv_alloc_pages(1);
     struct virtio_blk_discard_write_zeroes *seg = vv_alloc_pages(1);
     uint8_t *status = vv_alloc_pages(1);
 
-    hdr->type = VIRTIO_BLK_T_DISCARD;
+    hdr->type = VIRTIO_BLK_T_WRITE_ZEROES;
     hdr->ioprio = 0;
     hdr->sector = 0;
     *status = 0xFF;
@@ -61,6 +52,6 @@ static test_result_t test_blk_discard_overflow(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(B0018, VIRTIO_PCI_DEVICE_BLK, test_blk_discard_overflow,
-              "DISCARD segment with sector + num_sectors overflow",
+REGISTER_TEST(B0018, VIRTIO_PCI_DEVICE_BLK, test_blk_write_zeroes_overflow,
+              "WRITE_ZEROES segment with sector + num_sectors overflow",
               VIRTIO_SPEC_V1_2, "5.2.6");

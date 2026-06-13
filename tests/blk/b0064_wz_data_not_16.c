@@ -11,16 +11,9 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
-
-struct virtio_blk_outhdr {
-    uint32_t type;
-    uint32_t ioprio;
-    uint64_t sector;
-} __attribute__((packed));
-
-#define VIRTIO_BLK_T_WRITE_ZEROES 13 + 1 /* type 14 */
 
 static test_result_t test_blk_wz_data_not_16(struct virtio_dev *dev,
                                              struct vring *vr)
@@ -29,7 +22,7 @@ static test_result_t test_blk_wz_data_not_16(struct virtio_dev *dev,
     uint8_t *data = vv_alloc_pages(1);
     uint8_t *status = vv_alloc_pages(1);
 
-    hdr->type = 14; /* VIRTIO_BLK_T_WRITE_ZEROES */
+    hdr->type = VIRTIO_BLK_T_WRITE_ZEROES;
     hdr->ioprio = 0;
     hdr->sector = 0;
     memset(data, 0, 8);
