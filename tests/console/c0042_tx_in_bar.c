@@ -15,6 +15,7 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 static test_result_t test_console_tx_in_bar(struct virtio_dev *dev,
                                             struct vring *vr)

@@ -7,18 +7,10 @@
  * must consume it.
  */
 #include "tests/test.h"
+#include "lib/virtio_spec.h"
 #include "lib/util.h"
 
 #include <string.h>
-
-#define VIRTIO_CONSOLE_F_MULTIPORT 1
-#define VIRTIO_CONSOLE_CONSOLE_PORT 4
-
-struct virtio_console_control {
-    uint32_t id;
-    uint16_t event;
-    uint16_t value;
-} __attribute__((packed));
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

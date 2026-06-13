@@ -9,6 +9,7 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>

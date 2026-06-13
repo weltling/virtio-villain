@@ -12,16 +12,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_console_config {
-    uint16_t cols;
-    uint16_t rows;
-    uint32_t max_nr_ports;
-    uint32_t emerg_wr;
-} __attribute__((packed));
 
 static test_result_t test_console_config_no_size(struct virtio_dev *dev,
                                                  struct vring *vr)

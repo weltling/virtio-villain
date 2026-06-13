@@ -8,11 +8,10 @@
  * (idx 3) so the device can deliver a PORT_ADD message.
  */
 #include "tests/test.h"
+#include "lib/virtio_spec.h"
 #include "lib/util.h"
 
 #include <string.h>
-
-#define VIRTIO_CONSOLE_F_MULTIPORT 1
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

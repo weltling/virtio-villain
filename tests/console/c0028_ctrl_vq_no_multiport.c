@@ -13,10 +13,9 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <unistd.h>
-
-#define VIRTIO_CONSOLE_F_MULTIPORT 1
 
 static test_result_t test_console_ctrl_vq_no_multiport(struct virtio_dev *dev,
                                                        struct vring *vr)

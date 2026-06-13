@@ -11,18 +11,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-#define VIRTIO_CONSOLE_F_MULTIPORT 1
-#define VIRTIO_CONSOLE_PORT_NAME   7
-
-struct virtio_console_control {
-    uint32_t id;
-    uint16_t event;
-    uint16_t value;
-} __attribute__((packed));
 
 static test_result_t test_console_driver_sends_port_name(struct virtio_dev *dev,
                                                          struct vring *vr)
