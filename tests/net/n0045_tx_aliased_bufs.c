@@ -11,20 +11,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_net_hdr {
-    uint8_t  flags;
-    uint8_t  gso_type;
-    uint16_t hdr_len;
-    uint16_t gso_size;
-    uint16_t csum_start;
-    uint16_t csum_offset;
-} __attribute__((packed));
-
-#define VIRTIO_NET_HDR_GSO_NONE 0
 
 static test_result_t test_net_tx_aliased_bufs(struct virtio_dev *dev,
                                               struct vring *vr)

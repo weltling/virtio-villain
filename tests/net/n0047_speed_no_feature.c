@@ -10,18 +10,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_net_config {
-    uint8_t  mac[6];
-    uint16_t status;
-    uint16_t max_virtqueue_pairs;
-    uint16_t mtu;
-    uint32_t speed;
-    uint8_t  duplex;
-} __attribute__((packed));
 
 static test_result_t test_net_speed_no_feature(struct virtio_dev *dev,
                                                struct vring *vr)
@@ -59,7 +51,7 @@ static test_result_t test_net_speed_no_feature(struct virtio_dev *dev,
 
     uint8_t *frame = vv_alloc_pages(1);
     hdr->flags = 0;
-    hdr->gso_type = 0;
+    hdr->gso_type = VIRTIO_NET_HDR_GSO_NONE;
     hdr->hdr_len = 0;
     hdr->gso_size = 0;
     hdr->csum_start = 0;

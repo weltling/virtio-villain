@@ -13,12 +13,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <unistd.h>
 
-#define VIRTIO_NET_F_STATUS 16
-/* virtio_net_config: mac[6] then status u16 at offset 6 */
-#define VIRTIO_NET_CFG_STATUS_OFFSET 6
 
 static test_result_t test_net_link_status_stable(struct virtio_dev *dev,
                                                  struct vring *vr)

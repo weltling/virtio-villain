@@ -13,17 +13,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-#define VIRTIO_NET_CTRL_MAC          1
-#define VIRTIO_NET_CTRL_MAC_ADDR_SET 1
-
-struct virtio_net_ctrl_hdr {
-    uint8_t class_;
-    uint8_t cmd;
-} __attribute__((packed));
 
 static test_result_t test_net_mac_set_broadcast(struct virtio_dev *dev,
                                                 struct vring *vr)
@@ -38,8 +31,8 @@ static test_result_t test_net_mac_set_broadcast(struct virtio_dev *dev,
     uint8_t *mac = vv_alloc_pages(1);
     uint8_t *ack = vv_alloc_pages(1);
 
-    hdr->class_ = VIRTIO_NET_CTRL_MAC;
-    hdr->cmd    = VIRTIO_NET_CTRL_MAC_ADDR_SET;
+    hdr->class = VIRTIO_NET_CTRL_MAC;
+    hdr->command = VIRTIO_NET_CTRL_MAC_ADDR_SET;
     memset(mac, 0xFF, 6);
     *ack = 0xFF;
 

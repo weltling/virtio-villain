@@ -12,27 +12,9 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
-
-#define VIRTIO_NET_CTRL_MQ              4
-#define VIRTIO_NET_CTRL_MQ_RSS_CONFIG   1
-
-struct ctrl_hdr {
-    uint8_t class;
-    uint8_t command;
-} __attribute__((packed));
-
-/* Minimal RSS config structure (just enough to trigger validation) */
-struct virtio_net_rss_config {
-    uint32_t hash_types;
-    uint16_t indirection_table_mask;
-    uint16_t unclassified_queue;
-    uint16_t indirection_table[1];
-    uint16_t max_tx_vq;
-    uint8_t  hash_key_length;
-    uint8_t  hash_key_data[40];
-} __attribute__((packed));
 
 static test_result_t test_rss_config_no_feature(struct virtio_dev *dev,
                                                 struct vring *vr)
@@ -49,7 +31,7 @@ static test_result_t test_rss_config_no_feature(struct virtio_dev *dev,
     vring_alloc(&cvr, 16);
     vring_attach(dev, &cvr, ctrl_q);
 
-    struct ctrl_hdr *ctrl = vv_alloc_pages(1);
+    struct virtio_net_ctrl_hdr *ctrl = vv_alloc_pages(1);
     struct virtio_net_rss_config *rss = vv_alloc_pages(1);
     uint8_t *ack = vv_alloc_pages(1);
 

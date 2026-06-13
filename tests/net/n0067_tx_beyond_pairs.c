@@ -13,19 +13,9 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
-
-#define VIRTIO_NET_F_MQ 22
-
-struct virtio_net_hdr {
-    uint8_t  flags;
-    uint8_t  gso_type;
-    uint16_t hdr_len;
-    uint16_t gso_size;
-    uint16_t csum_start;
-    uint16_t csum_offset;
-} __attribute__((packed));
 
 static test_result_t test_tx_beyond_pairs(struct virtio_dev *dev,
                                           struct vring *vr)

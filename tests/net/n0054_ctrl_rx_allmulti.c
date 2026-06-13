@@ -10,19 +10,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-#define VIRTIO_NET_CTRL_RX            0
-#define VIRTIO_NET_CTRL_RX_ALLMULTI    2
-#define VIRTIO_NET_F_CTRL_VQ         17
-#define VIRTIO_NET_F_CTRL_RX         18
-
-struct virtio_net_ctrl_hdr {
-    uint8_t class;
-    uint8_t command;
-} __attribute__((packed));
 
 static test_result_t test_net_ctrl_rx_allmulti(struct virtio_dev *dev,
                                               struct vring *vr)

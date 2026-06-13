@@ -9,27 +9,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_net_ctrl_hdr {
-    uint8_t class;
-    uint8_t command;
-} __attribute__((packed));
-
-#define VIRTIO_NET_CTRL_NOTF_COAL        6
-#define VIRTIO_NET_CTRL_NOTF_COAL_VQ_GET 3
-
-struct virtio_net_ctrl_coal_vq_get_req {
-    uint16_t vq_index;
-    uint16_t reserved;
-} __attribute__((packed));
-
-struct virtio_net_ctrl_coal_vq_get_resp {
-    uint32_t max_packets;
-    uint32_t max_usecs;
-} __attribute__((packed));
 
 static test_result_t test_net_notf_coal_vq_get(struct virtio_dev *dev,
                                                struct vring *vr)

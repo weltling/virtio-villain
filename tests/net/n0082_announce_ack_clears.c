@@ -14,21 +14,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <unistd.h>
 
-#define VIRTIO_NET_F_STATUS 16
-#define VIRTIO_NET_F_GUEST_ANNOUNCE 21
-#define VIRTIO_NET_CFG_STATUS_OFFSET 6
-#define VIRTIO_NET_S_ANNOUNCE 2
-
-#define VIRTIO_NET_CTRL_ANNOUNCE 3
-#define VIRTIO_NET_CTRL_ANNOUNCE_ACK 0
-
-struct virtio_net_ctrl_hdr {
-    uint8_t class;
-    uint8_t command;
-} __attribute__((packed));
 
 static test_result_t test_net_announce_ack_clears(struct virtio_dev *dev,
                                                   struct vring *vr)

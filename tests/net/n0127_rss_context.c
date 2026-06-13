@@ -8,18 +8,10 @@
  * the device rejects.
  */
 #include "tests/test.h"
+#include "lib/virtio_spec.h"
 #include "lib/util.h"
 
 #include <string.h>
-
-#define VIRTIO_NET_F_RSS 60
-#define VIRTIO_NET_CTRL_MQ 4
-#define VIRTIO_NET_CTRL_MQ_RSS_CONFIG 1
-
-struct ctrl_hdr {
-    uint8_t class_;
-    uint8_t command;
-} __attribute__((packed));
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {
@@ -30,10 +22,10 @@ static test_result_t test(struct virtio_dev *dev, struct vring *vr)
     if (cfg->device_feature & (1U << (VIRTIO_NET_F_RSS - 32)))
         return TEST_SKIP;
 
-    struct ctrl_hdr *h = vv_alloc_pages(1);
+    struct virtio_net_ctrl_hdr *h = vv_alloc_pages(1);
     uint8_t *payload = vv_alloc_pages(1);
     uint8_t *ack = vv_alloc_pages(1);
-    h->class_ = VIRTIO_NET_CTRL_MQ;
+    h->class = VIRTIO_NET_CTRL_MQ;
     h->command = VIRTIO_NET_CTRL_MQ_RSS_CONFIG;
     memset(payload, 0, 256);
     *ack = 0xFF;

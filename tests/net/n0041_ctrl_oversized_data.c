@@ -10,17 +10,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-#define VIRTIO_NET_CTRL_RX       0
-#define VIRTIO_NET_CTRL_RX_PROMISC 0
-
-struct ctrl_hdr {
-    uint8_t class;
-    uint8_t command;
-} __attribute__((packed));
 
 static test_result_t test_net_ctrl_oversized_data(struct virtio_dev *dev,
                                                   struct vring *vr)
@@ -38,7 +31,7 @@ static test_result_t test_net_ctrl_oversized_data(struct virtio_dev *dev,
     vring_alloc(&cvr, 16);
     vring_attach(dev, &cvr, ctrl_q);
 
-    struct ctrl_hdr *ctrl = vv_alloc_pages(1);
+    struct virtio_net_ctrl_hdr *ctrl = vv_alloc_pages(1);
     uint8_t *data = vv_alloc_pages(1); /* 4096 bytes - way oversized */
     uint8_t *ack = vv_alloc_pages(1);
 

@@ -9,25 +9,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_net_ctrl_hdr {
-    uint8_t class;
-    uint8_t command;
-} __attribute__((packed));
-
-#define VIRTIO_NET_CTRL_MQ             4
-#define VIRTIO_NET_CTRL_MQ_HASH_CONFIG 4
-
-struct virtio_net_hash_config_short {
-    uint32_t hash_types;
-    uint16_t indirection_table_mask;
-    uint16_t unclassified_queue;
-    uint8_t  hash_key_length;
-    /* No key bytes since length is 0 */
-} __attribute__((packed));
 
 static test_result_t test_net_hash_bad_key(struct virtio_dev *dev,
                                            struct vring *vr)

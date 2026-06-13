@@ -7,9 +7,7 @@
  * if offered, comes with CSUM (bit 0).
  */
 #include "tests/test.h"
-
-#define VIRTIO_NET_F_CSUM     0
-#define VIRTIO_NET_F_HOST_UFO 14
+#include "lib/virtio_spec.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

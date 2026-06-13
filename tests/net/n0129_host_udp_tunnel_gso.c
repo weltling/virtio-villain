@@ -8,9 +8,7 @@
  * without CSUM is a spec violation.
  */
 #include "tests/test.h"
-
-#define VIRTIO_NET_F_CSUM      0
-#define VIRTIO_NET_F_HOST_USO 56
+#include "lib/virtio_spec.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

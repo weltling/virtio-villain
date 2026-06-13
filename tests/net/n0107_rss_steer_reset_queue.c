@@ -10,28 +10,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_net_ctrl_hdr {
-    uint8_t class;
-    uint8_t command;
-} __attribute__((packed));
-
-#define VIRTIO_NET_CTRL_MQ                  4
-#define VIRTIO_NET_CTRL_MQ_RSS_CONFIG       5
-
-/* Minimal RSS config structure */
-struct virtio_net_rss_config {
-    uint32_t hash_types;
-    uint16_t indirection_table_mask;
-    uint16_t unclassified_queue;
-    uint16_t indirection_table[16];
-    uint16_t max_tx_vq;
-    uint8_t  hash_key_length;
-    uint8_t  hash_key[40];
-} __attribute__((packed));
 
 static test_result_t test_net_rss_reset_queue(struct virtio_dev *dev,
                                               struct vring *vr)
@@ -46,8 +28,8 @@ static test_result_t test_net_rss_reset_queue(struct virtio_dev *dev,
 
     /* Now configure RSS to steer to queue 0 via ctrl VQ */
     struct virtio_net_ctrl_hdr *ctrl = vv_alloc_pages(1);
-    struct virtio_net_rss_config *rss =
-        (struct virtio_net_rss_config *)((uint8_t *)ctrl + sizeof(*ctrl));
+    struct virtio_net_rss_config_full *rss =
+        (struct virtio_net_rss_config_full *)((uint8_t *)ctrl + sizeof(*ctrl));
     uint8_t *status = vv_alloc_pages(1);
 
     ctrl->class = VIRTIO_NET_CTRL_MQ;

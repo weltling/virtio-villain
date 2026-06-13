@@ -10,28 +10,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_net_hdr {
-    uint8_t  flags;
-    uint8_t  gso_type;
-    uint16_t hdr_len;
-    uint16_t gso_size;
-    uint16_t csum_start;
-    uint16_t csum_offset;
-} __attribute__((packed));
-
-struct virtio_net_ctrl_hdr {
-    uint8_t class;
-    uint8_t command;
-} __attribute__((packed));
-
-#define VIRTIO_NET_CTRL_RX       0
-#define VIRTIO_NET_CTRL_RX_PROMISC 0
-#define VIRTIO_NET_F_CTRL_VQ     17
-#define VIRTIO_NET_F_CTRL_RX     18
 
 static test_result_t test_net_ctrl_promisc_during_tx(struct virtio_dev *dev,
                                                      struct vring *vr)

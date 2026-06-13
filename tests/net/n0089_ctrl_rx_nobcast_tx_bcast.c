@@ -11,35 +11,18 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_net_ctrl_hdr {
-    uint8_t class;
-    uint8_t command;
-} __attribute__((packed));
-
-struct virtio_net_hdr {
-    uint8_t  flags;
-    uint8_t  gso_type;
-    uint16_t hdr_len;
-    uint16_t gso_size;
-    uint16_t csum_start;
-    uint16_t csum_offset;
-    uint16_t num_buffers;
-} __attribute__((packed));
-
-#define VIRTIO_NET_CTRL_RX        0
-#define VIRTIO_NET_CTRL_RX_NOBCAST 5
 
 static test_result_t test_net_nobcast_then_bcast(struct virtio_dev *dev,
                                                  struct vring *vr)
 {
     uint8_t *pkt = vv_alloc_pages(1);
-    struct virtio_net_hdr *h = (void *)pkt;
+    struct virtio_net_hdr_mrg *h = (void *)pkt;
     h->flags = 0;
-    h->gso_type = 0;
+    h->gso_type = VIRTIO_NET_HDR_GSO_NONE;
     h->hdr_len = 0;
     h->gso_size = 0;
     h->csum_start = 0;

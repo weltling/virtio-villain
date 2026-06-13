@@ -8,31 +8,23 @@
  * skip.
  */
 #include "tests/test.h"
+#include "lib/virtio_spec.h"
 #include "lib/util.h"
 
 #include <string.h>
-
-#define VIRTIO_NET_F_DEVICE_STATS 65
-#define VIRTIO_NET_CTRL_STATS     8
-#define VIRTIO_NET_CTRL_STATS_GET 0
-
-struct ctrl_hdr {
-    uint8_t  class_;
-    uint8_t  command;
-} __attribute__((packed));
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {
     volatile struct virtio_pci_common_cfg *cfg = dev->common;
 
-    cfg->device_feature_select = 2;
+    cfg->device_feature_select = 1;
     __sync_synchronize();
-    if (!(cfg->device_feature & (1U << (VIRTIO_NET_F_DEVICE_STATS - 64))))
+    if (!(cfg->device_feature & (1U << (VIRTIO_NET_F_DEVICE_STATS - 32))))
         return TEST_SKIP;
 
-    struct ctrl_hdr *h = vv_alloc_pages(1);
+    struct virtio_net_ctrl_hdr *h = vv_alloc_pages(1);
     uint8_t *ack = vv_alloc_pages(1);
-    h->class_  = VIRTIO_NET_CTRL_STATS;
+    h->class  = VIRTIO_NET_CTRL_STATS;
     h->command = VIRTIO_NET_CTRL_STATS_GET;
     *ack = 0xFF;
 

@@ -12,19 +12,11 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
 
-#define VIRTIO_NET_F_CTRL_MAC_ADDR 23
-#define VIRTIO_NET_CFG_MAC_OFFSET 0
-#define VIRTIO_NET_CTRL_MAC 1
-#define VIRTIO_NET_CTRL_MAC_ADDR_SET 1
-
-struct virtio_net_ctrl_hdr {
-    uint8_t class;
-    uint8_t command;
-} __attribute__((packed));
 
 static test_result_t test_net_mac_set_readback(struct virtio_dev *dev,
                                                struct vring *vr)

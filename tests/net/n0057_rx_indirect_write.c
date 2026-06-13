@@ -10,6 +10,7 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
@@ -23,7 +24,7 @@ static test_result_t test_net_rx_indirect_write(struct virtio_dev *dev,
     cfg->device_feature_select = 0;
     __sync_synchronize();
     uint32_t offered = cfg->device_feature;
-    if (!(offered & (1U << 28))) /* VIRTIO_F_INDIRECT_DESC */
+    if (!(offered & (1U << VIRTIO_F_INDIRECT_DESC)))
         return TEST_SKIP;
 
     if (cfg->num_queues < 1)

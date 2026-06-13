@@ -7,6 +7,7 @@
  * nothing new, and return to waiting without crashing.
  */
 #include "tests/test.h"
+#include "lib/virtio_spec.h"
 
 static test_result_t test_net_spurious_tx_kick(struct virtio_dev *dev,
                                                struct vring *vr)

@@ -13,28 +13,16 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_net_hdr {
-    uint8_t  flags;
-    uint8_t  gso_type;
-    uint16_t hdr_len;
-    uint16_t gso_size;
-    uint16_t csum_start;
-    uint16_t csum_offset;
-    uint16_t num_buffers;
-} __attribute__((packed));
-
-#define VIRTIO_NET_HDR_GSO_TCPV4    1
-#define VIRTIO_NET_HDR_F_NEEDS_CSUM 1
 
 static test_result_t test_net_tx_tcpv4_gso_zero(struct virtio_dev *dev,
                                                 struct vring *vr)
 {
     uint8_t *pkt = vv_alloc_pages(1);
-    struct virtio_net_hdr *h = (struct virtio_net_hdr *)pkt;
+    struct virtio_net_hdr_mrg *h = (struct virtio_net_hdr_mrg *)pkt;
 
     memset(pkt, 0, 4096);
     h->flags    = VIRTIO_NET_HDR_F_NEEDS_CSUM;

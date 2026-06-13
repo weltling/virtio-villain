@@ -9,11 +9,7 @@
  * comes with HOST_TSO4.
  */
 #include "tests/test.h"
-
-#define VIRTIO_NET_F_GUEST_TSO4   7
-#define VIRTIO_NET_F_GUEST_TSO6   8
-#define VIRTIO_NET_F_HOST_TSO4   11
-#define VIRTIO_NET_F_HOST_TSO6   12
+#include "lib/virtio_spec.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

@@ -10,24 +10,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_net_ctrl_hdr {
-    uint8_t class;
-    uint8_t command;
-} __attribute__((packed));
-
-#define VIRTIO_NET_CTRL_GUEST_OFFLOADS     5
-#define VIRTIO_NET_CTRL_GUEST_OFFLOADS_SET 0
-
-/* Offload flags */
-#define VIRTIO_NET_F_GUEST_CSUM  (1ULL << 0)
-#define VIRTIO_NET_F_GUEST_TSO4  (1ULL << 1)
-#define VIRTIO_NET_F_GUEST_TSO6  (1ULL << 2)
-#define VIRTIO_NET_F_GUEST_ECN   (1ULL << 3)
-#define VIRTIO_NET_F_GUEST_UFO   (1ULL << 4)
 
 static test_result_t test_net_offload_no_feature(struct virtio_dev *dev,
                                                  struct vring *vr)
@@ -39,9 +25,11 @@ static test_result_t test_net_offload_no_feature(struct virtio_dev *dev,
     ctrl->class = VIRTIO_NET_CTRL_GUEST_OFFLOADS;
     ctrl->command = VIRTIO_NET_CTRL_GUEST_OFFLOADS_SET;
     /* Enable all offloads without negotiating any of them */
-    *offloads = VIRTIO_NET_F_GUEST_CSUM | VIRTIO_NET_F_GUEST_TSO4 |
-                VIRTIO_NET_F_GUEST_TSO6 | VIRTIO_NET_F_GUEST_ECN |
-                VIRTIO_NET_F_GUEST_UFO;
+    *offloads = (1ULL << VIRTIO_NET_F_GUEST_CSUM) |
+                (1ULL << VIRTIO_NET_F_GUEST_TSO4) |
+                (1ULL << VIRTIO_NET_F_GUEST_TSO6) |
+                (1ULL << VIRTIO_NET_F_GUEST_ECN) |
+                (1ULL << VIRTIO_NET_F_GUEST_UFO);
 
     uint64_t ctrl_phys = vv_virt_to_phys(ctrl);
     uint64_t status_phys = vv_virt_to_phys(status);

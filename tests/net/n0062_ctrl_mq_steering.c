@@ -9,21 +9,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-#define VIRTIO_NET_CTRL_MQ             4
-#define VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET 0
-
-struct ctrl_hdr {
-    uint8_t class;
-    uint8_t command;
-} __attribute__((packed));
-
-struct virtio_net_ctrl_mq {
-    uint16_t virtqueue_pairs;
-} __attribute__((packed));
 
 static test_result_t test_ctrl_mq_steering(struct virtio_dev *dev,
                                            struct vring *vr)
@@ -40,7 +29,7 @@ static test_result_t test_ctrl_mq_steering(struct virtio_dev *dev,
     vring_alloc(&cvr, 16);
     vring_attach(dev, &cvr, ctrl_q);
 
-    struct ctrl_hdr *ctrl = vv_alloc_pages(1);
+    struct virtio_net_ctrl_hdr *ctrl = vv_alloc_pages(1);
     struct virtio_net_ctrl_mq *mq_data = vv_alloc_pages(1);
     uint8_t *ack = vv_alloc_pages(1);
 

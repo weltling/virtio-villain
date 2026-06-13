@@ -7,15 +7,10 @@
  * never added must complete (ack OK) or fail gracefully.
  */
 #include "tests/test.h"
+#include "lib/virtio_spec.h"
 #include "lib/util.h"
 
 #include <string.h>
-
-#define VIRTIO_NET_F_CTRL_VLAN 19
-#define VIRTIO_NET_CTRL_VLAN   2
-#define VIRTIO_NET_CTRL_VLAN_DEL 1
-
-struct ctrl_hdr { uint8_t class_; uint8_t command; } __attribute__((packed));
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {
@@ -25,10 +20,10 @@ static test_result_t test(struct virtio_dev *dev, struct vring *vr)
     if (!(cfg->device_feature & (1U << VIRTIO_NET_F_CTRL_VLAN)))
         return TEST_SKIP;
 
-    struct ctrl_hdr *h = vv_alloc_pages(1);
+    struct virtio_net_ctrl_hdr *h = vv_alloc_pages(1);
     uint16_t *vid = vv_alloc_pages(1);
     uint8_t *ack = vv_alloc_pages(1);
-    h->class_ = VIRTIO_NET_CTRL_VLAN;
+    h->class = VIRTIO_NET_CTRL_VLAN;
     h->command = VIRTIO_NET_CTRL_VLAN_DEL;
     *vid = 0x0FFE;
     *ack = 0xFF;

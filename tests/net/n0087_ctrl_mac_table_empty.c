@@ -10,17 +10,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_net_ctrl_hdr {
-    uint8_t class;
-    uint8_t command;
-} __attribute__((packed));
-
-#define VIRTIO_NET_CTRL_MAC          1
-#define VIRTIO_NET_CTRL_MAC_TABLE_SET 0
 
 static test_result_t test_net_ctrl_mac_table_empty(struct virtio_dev *dev,
                                                    struct vring *vr)
