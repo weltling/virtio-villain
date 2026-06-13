@@ -14,21 +14,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_pmem_req  { uint32_t type; } __attribute__((packed));
-struct virtio_pmem_resp { uint32_t ret;  } __attribute__((packed));
-
-#define VIRTIO_PMEM_REQ_TYPE_FLUSH 0
-
-struct ind_desc {
-    uint64_t addr;
-    uint32_t len;
-    uint16_t flags;
-    uint16_t next;
-} __attribute__((packed));
 
 static test_result_t test_pmem_flush_indirect(struct virtio_dev *dev,
                                               struct vring *vr)

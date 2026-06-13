@@ -8,11 +8,7 @@
  * (some implementations also surface the start/size there).
  */
 #include "tests/test.h"
-
-struct pmem_config {
-    uint64_t start;
-    uint64_t size;
-} __attribute__((packed));
+#include "lib/virtio_spec.h"
 
 static test_result_t test_pmem_shmem(struct virtio_dev *dev, struct vring *vr)
 {

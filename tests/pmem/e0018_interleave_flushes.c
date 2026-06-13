@@ -12,24 +12,15 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
-
-#define VIRTIO_PMEM_REQ_TYPE_FLUSH 0
-
-struct pmem_req {
-    uint32_t type;
-} __attribute__((packed));
-
-struct pmem_resp {
-    uint32_t ret;
-} __attribute__((packed));
 
 static int do_flush(struct virtio_dev *dev, struct vring *vr,
                     uint16_t base, uint16_t avail_slot)
 {
-    struct pmem_req *req = vv_alloc_pages(1);
-    struct pmem_resp *resp = vv_alloc_pages(1);
+    struct virtio_pmem_req *req = vv_alloc_pages(1);
+    struct virtio_pmem_resp *resp = vv_alloc_pages(1);
     req->type = VIRTIO_PMEM_REQ_TYPE_FLUSH;
     resp->ret = 0xDEADBEEF;
 

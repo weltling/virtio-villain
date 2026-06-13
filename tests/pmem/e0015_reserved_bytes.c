@@ -12,17 +12,16 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
-
-struct virtio_pmem_resp { uint32_t ret; } __attribute__((packed));
 
 static test_result_t test_pmem_reserved_bytes(struct virtio_dev *dev,
                                               struct vring *vr)
 {
     uint8_t *buf = vv_alloc_pages(1);
     memset(buf, 0xAA, 256);
-    *(uint32_t *)buf = 0;  /* type = FLUSH */
+    *(uint32_t *)buf = VIRTIO_PMEM_REQ_TYPE_FLUSH;
     struct virtio_pmem_resp *resp = vv_alloc_pages(1);
 
     vring_raw_set_desc(vr, 0, vv_virt_to_phys(buf), 32,

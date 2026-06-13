@@ -11,16 +11,15 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
-
-struct virtio_pmem_req { uint32_t type; } __attribute__((packed));
 
 static test_result_t test_pmem_short_resp(struct virtio_dev *dev,
                                           struct vring *vr)
 {
     struct virtio_pmem_req *req = vv_alloc_pages(1);
-    req->type = 0;
+    req->type = VIRTIO_PMEM_REQ_TYPE_FLUSH;
     void *r = vv_alloc_pages(1);
 
     vring_raw_set_desc(vr, 0, vv_virt_to_phys(req), sizeof(*req),

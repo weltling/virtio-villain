@@ -11,8 +11,7 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
-
-struct virtio_pmem_resp { uint32_t ret; } __attribute__((packed));
+#include "lib/virtio_spec.h"
 
 static test_result_t test_pmem_bad_addr(struct virtio_dev *dev,
                                         struct vring *vr)

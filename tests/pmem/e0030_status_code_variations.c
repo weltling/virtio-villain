@@ -8,20 +8,17 @@
  * when the driver pre fills resp->ret with various sentinels.
  */
 #include "tests/test.h"
+#include "lib/virtio_spec.h"
 #include "lib/util.h"
 
 #include <string.h>
 
-struct pmem_req  { uint32_t type; } __attribute__((packed));
-struct pmem_resp { uint32_t ret;  } __attribute__((packed));
-
-#define VIRTIO_PMEM_REQ_TYPE_FLUSH 0
 
 static test_result_t test_pmem_status_variations(struct virtio_dev *dev,
                                                  struct vring *vr)
 {
-    struct pmem_req  *req  = vv_alloc_pages(1);
-    struct pmem_resp *resp = vv_alloc_pages(1);
+    struct virtio_pmem_req  *req  = vv_alloc_pages(1);
+    struct virtio_pmem_resp *resp = vv_alloc_pages(1);
 
     static const uint32_t sentinels[] = {0, 0xFF, 0xFFFFFFFFu};
     for (unsigned i = 0; i < 3; i++) {

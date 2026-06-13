@@ -11,15 +11,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_pmem_req {
-    uint32_t type;
-} __attribute__((packed));
-
-#define VIRTIO_PMEM_REQ_TYPE_FLUSH 0
 
 static test_result_t test_pmem_no_resp(struct virtio_dev *dev,
                                        struct vring *vr)

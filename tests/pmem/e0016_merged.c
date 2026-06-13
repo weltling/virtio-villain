@@ -11,12 +11,13 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 static test_result_t test_pmem_merged(struct virtio_dev *dev,
                                       struct vring *vr)
 {
     uint32_t *buf = vv_alloc_pages(1);
-    buf[0] = 0;  /* FLUSH */
+    buf[0] = VIRTIO_PMEM_REQ_TYPE_FLUSH;
     vring_raw_set_desc(vr, 0, vv_virt_to_phys(buf), 8,
                        VRING_DESC_F_WRITE, 0);
     vring_raw_set_avail(vr, 0, 0);

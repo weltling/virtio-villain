@@ -12,19 +12,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-#define VIRTIO_PMEM_REQ_TYPE_FLUSH 0
-
-struct virtio_pmem_req {
-    uint32_t type;
-} __attribute__((packed));
-
-struct virtio_pmem_resp {
-    uint32_t ret;
-} __attribute__((packed));
 
 #define FLUSH_COUNT 64
 
