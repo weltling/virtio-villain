@@ -2,7 +2,7 @@
 /*
  * L0023: Submit a valid page report on the reporting virtqueue.
  *
- * Spec 5.5.6.4: When VIRTIO_BALLOON_F_PAGE_REPORTING is negotiated
+ * Spec 5.5.6.4: When VIRTIO_BALLOON_F_REPORTING is negotiated
  * queue 3 is the reporting VQ. The driver submits device readable
  * descriptors whose addr/len describe free page ranges. The device
  * consumes them and returns the buffers via the used ring.
@@ -11,11 +11,11 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
 
-#define VIRTIO_BALLOON_F_PAGE_REPORTING 5
 
 static test_result_t test_balloon_page_report(struct virtio_dev *dev,
                                               struct vring *vr)
@@ -27,7 +27,7 @@ static test_result_t test_balloon_page_report(struct virtio_dev *dev,
     cfg->device_feature_select = 0;
     __sync_synchronize();
     uint32_t feat = cfg->device_feature;
-    if (!(feat & (1U << VIRTIO_BALLOON_F_PAGE_REPORTING)))
+    if (!(feat & (1U << VIRTIO_BALLOON_F_REPORTING)))
         return TEST_SKIP;
 
     /* Queue 3 is the reporting VQ */

@@ -12,11 +12,11 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
 
-#define VIRTIO_BALLOON_F_PAGE_REPORTING 5
 
 static test_result_t test_balloon_page_report_misaligned(struct virtio_dev *dev,
                                                          struct vring *vr)
@@ -27,7 +27,7 @@ static test_result_t test_balloon_page_report_misaligned(struct virtio_dev *dev,
 
     cfg->device_feature_select = 0;
     __sync_synchronize();
-    if (!(cfg->device_feature & (1U << VIRTIO_BALLOON_F_PAGE_REPORTING)))
+    if (!(cfg->device_feature & (1U << VIRTIO_BALLOON_F_REPORTING)))
         return TEST_SKIP;
 
     cfg->queue_select = 3;

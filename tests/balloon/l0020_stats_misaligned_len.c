@@ -11,11 +11,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-#define VIRTIO_BALLOON_F_STATS_VQ 1
 
 static test_result_t test_balloon_stats_misaligned(struct virtio_dev *dev,
                                                    struct vring *vr)

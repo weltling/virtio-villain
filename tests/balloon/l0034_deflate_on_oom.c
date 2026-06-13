@@ -12,11 +12,9 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
-
-#define VIRTIO_BALLOON_F_DEFLATE_ON_OOM 2
-#define VIRTIO_BALLOON_PFN_SHIFT        12
 
 static test_result_t test_balloon_deflate_on_oom(struct virtio_dev *dev,
                                                  struct vring *vr)

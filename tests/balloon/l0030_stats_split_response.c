@@ -11,16 +11,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-#define VIRTIO_BALLOON_F_STATS_VQ 1
-
-struct virtio_balloon_stat {
-    uint16_t tag;
-    uint64_t val;
-} __attribute__((packed));
 
 static test_result_t test_balloon_stats_split(struct virtio_dev *dev,
                                               struct vring *vr)

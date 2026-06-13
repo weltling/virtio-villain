@@ -13,13 +13,9 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <unistd.h>
-
-struct virtio_balloon_config_head {
-    uint32_t num_pages;
-    uint32_t actual;
-} __attribute__((packed));
 
 static test_result_t test_balloon_resize(struct virtio_dev *dev,
                                          struct vring *vr)

@@ -3,7 +3,7 @@
  * L0022: balloon_reporting_vq_no_feature
  *
  * Probe whether the device exposes a fourth queue without
- * advertising VIRTIO_BALLOON_F_PAGE_REPORTING. Spec 5.5.5 ties
+ * advertising VIRTIO_BALLOON_F_REPORTING. Spec 5.5.5 ties
  * the page reporting queue to the feature. If the queue is
  * absent the test passes trivially; if present the device must
  * accept a kick on it without crashing.
@@ -12,11 +12,11 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
 
-#define VIRTIO_BALLOON_F_PAGE_REPORTING 5
 
 static test_result_t test_balloon_reporting_no_feature(struct virtio_dev *dev,
                                                       struct vring *vr)
@@ -28,7 +28,7 @@ static test_result_t test_balloon_reporting_no_feature(struct virtio_dev *dev,
     cfg->device_feature_select = 0;
     __sync_synchronize();
     uint32_t feat = cfg->device_feature;
-    if (feat & (1U << VIRTIO_BALLOON_F_PAGE_REPORTING))
+    if (feat & (1U << VIRTIO_BALLOON_F_REPORTING))
         return TEST_SKIP;
 
     /*
