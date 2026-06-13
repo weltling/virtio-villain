@@ -10,22 +10,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_vsock_hdr {
-    uint64_t src_cid;
-    uint64_t dst_cid;
-    uint32_t src_port;
-    uint32_t dst_port;
-    uint32_t len;
-    uint16_t type;
-    uint16_t op;
-    uint32_t flags;
-    uint32_t buf_alloc;
-    uint32_t fwd_cnt;
-} __attribute__((packed));
 
 static test_result_t test_vsock_tx_invalid_type(struct virtio_dev *dev,
                                                 struct vring *vr)
@@ -43,7 +31,7 @@ static test_result_t test_vsock_tx_invalid_type(struct virtio_dev *dev,
     pkt->dst_port = 5678;
     pkt->len = 0;
     pkt->type = 0xFFFF; /* invalid */
-    pkt->op = 1; /* VIRTIO_VSOCK_OP_REQUEST */
+    pkt->op = VIRTIO_VSOCK_OP_REQUEST;
 
     vring_raw_set_desc(vr, 0, vv_virt_to_phys(pkt), sizeof(*pkt),
                        0, 0);

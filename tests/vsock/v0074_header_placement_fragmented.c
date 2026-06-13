@@ -9,19 +9,10 @@
  * fields.
  */
 #include "tests/test.h"
+#include "lib/virtio_spec.h"
 #include "lib/util.h"
 
 #include <string.h>
-
-#define VIRTIO_VSOCK_TYPE_STREAM 1
-#define VIRTIO_VSOCK_OP_REQUEST  1
-
-struct virtio_vsock_hdr {
-    uint64_t src_cid; uint64_t dst_cid;
-    uint32_t src_port; uint32_t dst_port;
-    uint32_t len; uint16_t type; uint16_t op;
-    uint32_t flags; uint32_t buf_alloc; uint32_t fwd_cnt;
-} __attribute__((packed));
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

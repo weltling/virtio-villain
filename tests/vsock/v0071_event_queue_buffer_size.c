@@ -8,6 +8,7 @@
  * Submit a buffer and check the device does not wedge.
  */
 #include "tests/test.h"
+#include "lib/virtio_spec.h"
 #include "lib/util.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)

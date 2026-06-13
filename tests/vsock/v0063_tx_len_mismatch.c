@@ -10,24 +10,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_vsock_hdr {
-    uint64_t src_cid;
-    uint64_t dst_cid;
-    uint32_t src_port;
-    uint32_t dst_port;
-    uint32_t len;
-    uint16_t type;
-    uint16_t op;
-    uint32_t flags;
-    uint32_t buf_alloc;
-    uint32_t fwd_cnt;
-} __attribute__((packed));
-
-#define VIRTIO_VSOCK_TYPE_STREAM 1
 
 static test_result_t test_vsock_tx_len_mismatch(struct virtio_dev *dev,
                                                 struct vring *vr)
@@ -47,7 +33,7 @@ static test_result_t test_vsock_tx_len_mismatch(struct virtio_dev *dev,
     pkt->dst_port = 5678;
     pkt->len = 4096; /* claims 4096 bytes of payload */
     pkt->type = VIRTIO_VSOCK_TYPE_STREAM;
-    pkt->op = 1; /* REQUEST */
+    pkt->op = VIRTIO_VSOCK_OP_REQUEST;
 
     memset(data, 0xAA, 64);
 
