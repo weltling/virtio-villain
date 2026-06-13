@@ -10,26 +10,10 @@
  * fault; we do not attempt to read it.
  */
 #include "tests/test.h"
+#include "lib/virtio_spec.h"
 #include "lib/util.h"
 
 #include <string.h>
-
-#define VIRTIO_MEM_F_UNPLUGGED_INACCESSIBLE 1
-#define VIRTIO_MEM_REQ_STATE  2
-
-struct virtio_mem_req {
-    uint16_t type;
-    uint16_t padding[3];
-    uint64_t addr;
-    uint16_t nb_blocks;
-    uint16_t p1[3];
-} __attribute__((packed));
-
-struct virtio_mem_resp {
-    uint16_t type;
-    uint16_t padding[3];
-    uint16_t state;
-} __attribute__((packed));
 
 static test_result_t test_mem_unplugged_inacc(struct virtio_dev *dev,
                                               struct vring *vr)

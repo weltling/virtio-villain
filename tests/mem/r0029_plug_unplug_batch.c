@@ -10,25 +10,9 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
-
-struct virtio_mem_req {
-    uint16_t type;
-    uint16_t padding[3];
-    uint64_t addr;
-    uint16_t nb_blocks;
-    uint16_t padding1[3];
-} __attribute__((packed));
-
-struct virtio_mem_resp {
-    uint16_t type;
-    uint16_t padding[3];
-    uint16_t state;
-} __attribute__((packed));
-
-#define VIRTIO_MEM_REQ_PLUG   1
-#define VIRTIO_MEM_REQ_UNPLUG 2
 
 static test_result_t test_mem_plug_unplug_batch(struct virtio_dev *dev,
                                                 struct vring *vr)

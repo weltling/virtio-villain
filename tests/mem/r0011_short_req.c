@@ -11,11 +11,9 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
-
-struct virtio_mem_resp { uint16_t type; uint16_t p[3]; uint16_t state; }
-    __attribute__((packed));
 
 static test_result_t test_mem_short_req(struct virtio_dev *dev,
                                         struct vring *vr)

@@ -12,26 +12,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-#define VIRTIO_MEM_REQ_PLUG   0
-#define VIRTIO_MEM_REQ_UNPLUG 1
-
-struct virtio_mem_req {
-    uint16_t type;
-    uint16_t padding[3];
-    uint64_t addr;
-    uint16_t nb_blocks;
-    uint16_t padding2[3];
-} __attribute__((packed));
-
-struct virtio_mem_resp {
-    uint16_t type;
-    uint16_t padding[3];
-    uint64_t state;
-} __attribute__((packed));
 
 static test_result_t test_mem_plug_unplug_same_range(struct virtio_dev *dev,
                                                      struct vring *vr)
@@ -40,9 +24,9 @@ static test_result_t test_mem_plug_unplug_same_range(struct virtio_dev *dev,
     memset(p, 0, 8192);
 
     struct virtio_mem_req  *r1 = (void *)p;
-    struct virtio_mem_resp *s1 = (void *)(p + 64);
+    struct virtio_mem_resp_wide *s1 = (void *)(p + 64);
     struct virtio_mem_req  *r2 = (void *)(p + 128);
-    struct virtio_mem_resp *s2 = (void *)(p + 192);
+    struct virtio_mem_resp_wide *s2 = (void *)(p + 192);
 
     r1->type = VIRTIO_MEM_REQ_PLUG;
     r1->addr = 0;

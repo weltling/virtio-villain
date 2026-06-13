@@ -9,19 +9,7 @@
  * feature is offered.
  */
 #include "tests/test.h"
-
-#define VIRTIO_MEM_F_ACPI_PXM 0
-
-struct virtio_mem_config {
-    uint64_t block_size;
-    uint16_t node_id;
-    uint8_t  padding[6];
-    uint64_t addr;
-    uint64_t region_size;
-    uint64_t usable_region_size;
-    uint64_t plugged_size;
-    uint64_t requested_size;
-} __attribute__((packed));
+#include "lib/virtio_spec.h"
 
 static test_result_t test_mem_acpi_pxm(struct virtio_dev *dev,
                                        struct vring *vr)

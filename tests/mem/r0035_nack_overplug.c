@@ -9,30 +9,16 @@
  * ERROR rather than silently grow plugged_size.
  */
 #include "tests/test.h"
+#include "lib/virtio_spec.h"
 #include "lib/util.h"
 
 #include <string.h>
-
-struct virtio_mem_req {
-    uint16_t type;
-    uint16_t padding[3];
-    uint64_t addr;
-    uint16_t nb_blocks;
-    uint16_t p1[3];
-} __attribute__((packed));
-
-struct virtio_mem_resp {
-    uint16_t type;
-    uint16_t padding[3];
-} __attribute__((packed));
-
-#define VIRTIO_MEM_REQ_PLUG 0
 
 static test_result_t test_mem_nack_overplug(struct virtio_dev *dev,
                                             struct vring *vr)
 {
     struct virtio_mem_req  *req  = vv_alloc_pages(1);
-    struct virtio_mem_resp *resp = vv_alloc_pages(1);
+    struct virtio_mem_resp_short *resp = vv_alloc_pages(1);
     memset(req, 0, sizeof(*req));
 
     req->type      = VIRTIO_MEM_REQ_PLUG;
