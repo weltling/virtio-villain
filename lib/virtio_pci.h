@@ -13,11 +13,15 @@
 #define VIRTIO_PCI_CAP_SHARED_MEM    8
 #define VIRTIO_PCI_CAP_VENDOR_CFG    9
 
+/* Used in the MSI-X vector config fields to mean "no vector" (spec 4.1.5.1.2) */
+#define VIRTIO_MSI_NO_VECTOR  0xFFFF
+
 /* Virtio device status bits (spec 2.1) */
 #define VIRTIO_STATUS_ACKNOWLEDGE  1
 #define VIRTIO_STATUS_DRIVER       2
 #define VIRTIO_STATUS_DRIVER_OK    4
 #define VIRTIO_STATUS_FEATURES_OK  8
+#define VIRTIO_STATUS_SUSPEND      16  /* proposal, not in a released spec */
 #define VIRTIO_STATUS_NEEDS_RESET  64
 #define VIRTIO_STATUS_FAILED       128
 
