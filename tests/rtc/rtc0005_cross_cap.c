@@ -9,21 +9,13 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <stdint.h>
 
 #define VIRTIO_RTC_REQ_CROSS_CAP 0x1002
 #define VIRTIO_RTC_COUNTER_X86_TSC 1
-
-struct rtc_req_cross_cap {
-    uint16_t msg_type; uint8_t r0[6];
-    uint16_t clock_id; uint8_t hw_counter; uint8_t r1[5];
-};
-struct rtc_resp_cross_cap {
-    uint8_t status; uint8_t r0[7];
-    uint8_t flags; uint8_t r1[7];
-};
 
 static test_result_t test_rtc_cross_cap(struct virtio_dev *dev,
                                         struct vring *vr)

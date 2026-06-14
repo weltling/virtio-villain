@@ -12,20 +12,11 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 
 #define VIRTIO_RTC_REQ_READ 0x0001
-
-struct rtc_req_read {
-    uint16_t msg_type; uint8_t r0[6];
-    uint16_t clock_id; uint8_t r1[6];
-};
-
-struct rtc_resp_read {
-    uint8_t status; uint8_t r0[7];
-    uint64_t clock_reading;
-};
 
 static int do_one(struct virtio_dev *dev, struct vring *vr,
                   uint16_t base, uint16_t avail_slot, uint64_t *out)
@@ -50,7 +41,7 @@ static int do_one(struct virtio_dev *dev, struct vring *vr,
     struct rtc_resp_read *resp = (void *)(buf + 64);
     if (resp->status != 0)
         return -1;
-    *out = resp->clock_reading;
+    *out = resp->time_ns;
     return 0;
 }
 

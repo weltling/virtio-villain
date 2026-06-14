@@ -19,6 +19,7 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <stdint.h>
@@ -30,24 +31,6 @@
 #define VIRTIO_RTC_FLAG_ALARM_ENABLED 0x1
 #define VIRTIO_RTC_S_OK               0
 #define VIRTIO_RTC_S_ENODEV           3
-
-struct rtc_req_head { uint16_t msg_type; uint8_t reserved[6]; };
-struct rtc_resp_head { uint8_t status; uint8_t reserved[7]; };
-
-struct rtc_req_set_alarm {
-    struct rtc_req_head head;
-    uint64_t alarm_time;
-    uint16_t clock_id;
-    uint8_t flags;
-    uint8_t reserved[5];
-} __attribute__((packed));
-
-struct rtc_notif_alarm {
-    uint16_t msg_type;
-    uint8_t reserved0[6];
-    uint16_t clock_id;
-    uint8_t reserved1[6];
-} __attribute__((packed));
 
 static test_result_t test_rtc_alarm_fire(struct virtio_dev *dev,
                                          struct vring *vr)
@@ -98,7 +81,7 @@ static test_result_t test_rtc_alarm_fire(struct virtio_dev *dev,
     virtio_pci_kick(dev, 1);
 
     /* Build SET_ALARM on requestq */
-    struct rtc_req_set_alarm *req = vv_alloc_pages(1);
+    struct rtc_req_set_alarm_nested *req = vv_alloc_pages(1);
     struct rtc_resp_head *resp = vv_alloc_pages(1);
     memset(req, 0, sizeof(*req));
     memset(resp, 0xFF, sizeof(*resp));

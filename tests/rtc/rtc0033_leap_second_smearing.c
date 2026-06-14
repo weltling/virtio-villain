@@ -12,23 +12,12 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 
 #define VIRTIO_RTC_F_LEAP_SECOND_SMEARING 5
 #define VIRTIO_RTC_REQ_READ               0x0001
-
-struct rtc_req_read {
-    uint16_t msg_type;
-    uint16_t clock_id;
-    uint32_t reserved;
-} __attribute__((packed));
-
-struct rtc_resp_read {
-    uint8_t  status;
-    uint8_t  pad[7];
-    uint64_t time_ns;
-} __attribute__((packed));
 
 static test_result_t test_rtc_leap_second_smearing(struct virtio_dev *dev,
                                                    struct vring *vr)
@@ -40,8 +29,8 @@ static test_result_t test_rtc_leap_second_smearing(struct virtio_dev *dev,
     if (!(cfg->device_feature & (1U << VIRTIO_RTC_F_LEAP_SECOND_SMEARING)))
         return TEST_SKIP;
 
-    struct rtc_req_read  *req  = vv_alloc_pages(1);
-    struct rtc_resp_read *resp = vv_alloc_pages(1);
+    struct rtc_req_read_packed  *req  = vv_alloc_pages(1);
+    struct rtc_resp_read_packed *resp = vv_alloc_pages(1);
 
     memset(req, 0, sizeof(*req));
     memset(resp, 0, sizeof(*resp));

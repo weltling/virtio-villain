@@ -9,11 +9,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <stdint.h>
-
-struct rtc_req_head { uint16_t msg_type; uint8_t reserved[6]; };
 
 static test_result_t test_rtc_unknown_msg(struct virtio_dev *dev,
                                           struct vring *vr)

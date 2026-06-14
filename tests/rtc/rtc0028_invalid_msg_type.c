@@ -10,22 +10,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct rtc_req_read {
-    uint16_t msg_type;
-    uint8_t  reserved[6];
-    uint16_t clock_id;
-    uint8_t  reserved2[6];
-};
-
-struct rtc_resp_read {
-    uint8_t  status;
-    uint8_t  reserved[7];
-    uint64_t time_ns;
-};
 
 static test_result_t test_rtc_invalid_msg_type(struct virtio_dev *dev,
                                                struct vring *vr)

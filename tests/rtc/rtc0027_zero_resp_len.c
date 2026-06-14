@@ -10,18 +10,12 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
 
 #define VIRTIO_RTC_REQ_READ_TIME 0x0001
-
-struct rtc_req_read {
-    uint16_t msg_type;
-    uint8_t  reserved[6];
-    uint16_t clock_id;
-    uint8_t  reserved2[6];
-};
 
 static test_result_t test_rtc_zero_resp_len(struct virtio_dev *dev,
                                             struct vring *vr)

@@ -12,24 +12,12 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 
 #define VIRTIO_RTC_F_CLOCK_CAP_MSYNC 3
 #define VIRTIO_RTC_REQ_CLOCK_CAP     0x1001
-
-struct rtc_req_clock_cap {
-    uint16_t msg_type;
-    uint16_t clock_id;
-    uint32_t reserved;
-} __attribute__((packed));
-
-struct rtc_resp_clock_cap {
-    uint8_t  status;
-    uint8_t  reserved[7];
-    uint64_t resolution;
-    uint64_t flags;
-} __attribute__((packed));
 
 static test_result_t test_rtc_clock_cap_msync(struct virtio_dev *dev,
                                               struct vring *vr)

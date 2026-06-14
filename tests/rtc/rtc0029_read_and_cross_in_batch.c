@@ -12,27 +12,13 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
 
 #define VIRTIO_RTC_REQ_READ_TIME  0x0001
 #define VIRTIO_RTC_REQ_READ_CROSS 0x0002
-
-struct rtc_req_read {
-    uint16_t msg_type; uint8_t r0[6];
-    uint16_t clock_id; uint8_t r1[6];
-};
-
-struct rtc_resp_read {
-    uint8_t status; uint8_t r[7];
-    uint64_t time_ns;
-};
-
-struct rtc_req_read_cross {
-    uint16_t msg_type; uint8_t r0[6];
-    uint16_t clock_id; uint8_t hw_counter; uint8_t r1[5];
-};
 
 static test_result_t test_rtc_read_and_cross(struct virtio_dev *dev,
                                              struct vring *vr)

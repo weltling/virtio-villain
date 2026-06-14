@@ -14,14 +14,11 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 
 #define VIRTIO_RTC_REQ_CFG 0x1000
-
-struct rtc_req_head { uint16_t msg_type; uint8_t reserved[6]; };
-struct rtc_resp_cfg { uint8_t status; uint8_t r0[7];
-                      uint16_t num_clocks; uint8_t r1[6]; };
 
 static test_result_t test_rtc_resp_in_bar(struct virtio_dev *dev,
                                           struct vring *vr)

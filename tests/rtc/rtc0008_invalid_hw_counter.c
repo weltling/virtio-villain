@@ -11,16 +11,12 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <stdint.h>
 
 #define VIRTIO_RTC_REQ_READ_CROSS 0x0002
-
-struct rtc_req_read_cross {
-    uint16_t msg_type; uint8_t r0[6];
-    uint16_t clock_id; uint8_t hw_counter; uint8_t r1[5];
-};
 
 static test_result_t test_rtc_invalid_hw(struct virtio_dev *dev,
                                          struct vring *vr)

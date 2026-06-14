@@ -11,24 +11,12 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
 
 #define VIRTIO_RTC_REQ_SET_ALARM 0x2002
-
-struct rtc_req_set_alarm {
-    uint16_t msg_type;
-    uint8_t  reserved[6];
-    uint16_t alarm_id;
-    uint8_t  reserved2[6];
-    uint64_t time_ns;
-};
-
-struct rtc_resp {
-    uint8_t  status;
-    uint8_t  reserved[7];
-};
 
 static test_result_t test_rtc_alarm_zero(struct virtio_dev *dev,
                                          struct vring *vr)
@@ -46,7 +34,7 @@ static test_result_t test_rtc_alarm_zero(struct virtio_dev *dev,
 
     uint8_t *buf = vv_alloc_pages(1);
     memset(buf, 0, 256);
-    struct rtc_req_set_alarm *req = (void *)buf;
+    struct rtc_req_set_alarm_flat *req = (void *)buf;
     req->msg_type = VIRTIO_RTC_REQ_SET_ALARM;
     req->alarm_id = 0;
     req->time_ns = 0;
