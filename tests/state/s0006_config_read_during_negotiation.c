@@ -15,6 +15,7 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 #include "lib/pci.h"
 
 #include <string.h>
@@ -120,7 +121,7 @@ static test_result_t test_config_read_during_negotiation(struct virtio_dev *dev,
         uint64_t sector;
     } __attribute__((packed)) *hdr = vv_alloc_pages(1);
 
-    hdr->type = 0; /* VIRTIO_BLK_T_IN */
+    hdr->type = VIRTIO_BLK_T_IN;
     hdr->sector = 0;
     *status = 0xFF;
 

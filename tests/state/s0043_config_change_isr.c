@@ -12,11 +12,9 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <unistd.h>
-
-#define VIRTIO_BLK_F_CONFIG_WCE 11
-#define VIRTIO_BLK_CFG_WCE_OFFSET 32
 
 static test_result_t test_config_change_isr(struct virtio_dev *dev,
                                             struct vring *vr)

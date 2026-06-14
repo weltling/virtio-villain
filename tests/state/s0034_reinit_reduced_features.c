@@ -13,18 +13,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_blk_outhdr {
-    uint32_t type;
-    uint32_t ioprio;
-    uint64_t sector;
-} __attribute__((packed));
-
-#define VIRTIO_BLK_T_IN 0
-#define VIRTIO_F_VERSION_1_BIT 32
 
 static test_result_t test_reinit_reduced_features(struct virtio_dev *dev,
                                                   struct vring *vr)
@@ -50,14 +42,14 @@ static test_result_t test_reinit_reduced_features(struct virtio_dev *dev,
     cfg->device_feature_select = 1;
     __sync_synchronize();
     uint32_t high = cfg->device_feature;
-    if (!(high & (1u << (VIRTIO_F_VERSION_1_BIT - 32))))
+    if (!(high & (1u << (VIRTIO_F_VERSION_1 - 32))))
         return TEST_SKIP;
 
     /* Accept only VIRTIO_F_VERSION_1 */
     cfg->driver_feature_select = 0;
     cfg->driver_feature = 0;
     cfg->driver_feature_select = 1;
-    cfg->driver_feature = 1u << (VIRTIO_F_VERSION_1_BIT - 32);
+    cfg->driver_feature = 1u << (VIRTIO_F_VERSION_1 - 32);
     __sync_synchronize();
 
     cfg->device_status |= VIRTIO_STATUS_FEATURES_OK;

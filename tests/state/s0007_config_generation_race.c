@@ -15,6 +15,7 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 #include "lib/pci.h"
 
 #include <string.h>
@@ -125,7 +126,7 @@ static test_result_t test_config_generation_race(struct virtio_dev *dev,
     uint8_t *data = vv_alloc_pages(1);
     uint8_t *status = vv_alloc_pages(1);
 
-    hdr->type = 0;
+    hdr->type = VIRTIO_BLK_T_IN;
     hdr->sector = 0;
     *status = 0xFF;
 

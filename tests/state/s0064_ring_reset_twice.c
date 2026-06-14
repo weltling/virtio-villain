@@ -10,10 +10,9 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <unistd.h>
-
-#define VIRTIO_F_RING_RESET 40
 
 static test_result_t test_ring_reset_twice(struct virtio_dev *dev,
                                            struct vring *vr)

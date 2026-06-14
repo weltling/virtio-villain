@@ -13,8 +13,6 @@
 
 #include <unistd.h>
 
-#define VIRTIO_STATUS_SUSPEND 16
-
 static test_result_t test_suspend_no_feature(struct virtio_dev *dev,
                                              struct vring *vr)
 {

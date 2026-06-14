@@ -15,19 +15,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-#define VIRTIO_F_RING_EVENT_IDX_BIT 29
-
-struct virtio_blk_outhdr {
-    uint32_t type;
-    uint32_t ioprio;
-    uint64_t sector;
-} __attribute__((packed));
-
-#define VIRTIO_BLK_T_IN 0
 
 static int submit_one(struct virtio_dev *dev, struct vring *vr,
                       uint16_t base, uint16_t avail_slot)
@@ -68,7 +59,7 @@ static test_result_t test_event_idx_suppress(struct virtio_dev *dev,
     cfg->device_feature_select = 0;
     __sync_synchronize();
     uint32_t f0 = cfg->device_feature;
-    if (!(f0 & (1u << VIRTIO_F_RING_EVENT_IDX_BIT)))
+    if (!(f0 & (1u << VIRTIO_F_EVENT_IDX)))
         return TEST_SKIP;
 
     virtio_pci_reset(dev);
@@ -78,7 +69,7 @@ static test_result_t test_event_idx_suppress(struct virtio_dev *dev,
     __sync_synchronize();
 
     cfg->driver_feature_select = 0;
-    cfg->driver_feature = (1u << VIRTIO_F_RING_EVENT_IDX_BIT);
+    cfg->driver_feature = (1u << VIRTIO_F_EVENT_IDX);
     cfg->driver_feature_select = 1;
     cfg->driver_feature = 0;
     __sync_synchronize();
