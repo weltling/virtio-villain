@@ -12,18 +12,9 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
-
-#define VRING_USED_F_NO_NOTIFY 1
-
-struct virtio_blk_outhdr {
-    uint32_t type;
-    uint32_t ioprio;
-    uint64_t sector;
-} __attribute__((packed));
-
-#define VIRTIO_BLK_T_IN 0
 
 static test_result_t test_used_no_notify_hint(struct virtio_dev *dev,
                                               struct vring *vr)

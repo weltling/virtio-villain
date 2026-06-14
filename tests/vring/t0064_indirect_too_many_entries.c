@@ -10,24 +10,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_blk_outhdr {
-    uint32_t type;
-    uint32_t ioprio;
-    uint64_t sector;
-} __attribute__((packed));
-
-struct vring_desc_raw {
-    uint64_t addr;
-    uint32_t len;
-    uint16_t flags;
-    uint16_t next;
-} __attribute__((packed));
-
-#define VIRTIO_BLK_T_IN 0
 
 static test_result_t test_indirect_too_many(struct virtio_dev *dev,
                                             struct vring *vr)
@@ -49,7 +35,7 @@ static test_result_t test_indirect_too_many(struct virtio_dev *dev,
      * Build indirect table with 128 entries (queue_size is 64).
      * Only the first 3 are meaningful, rest are padding.
      */
-    struct vring_desc_raw *indirect = vv_alloc_pages(4);
+    struct vring_desc *indirect = vv_alloc_pages(4);
     uint16_t num_entries = 128; /* > queue_size */
 
     indirect[0].addr = hdr_phys;
@@ -68,13 +54,13 @@ static test_result_t test_indirect_too_many(struct virtio_dev *dev,
     indirect[2].next = 0;
 
     /* Fill remaining with zeros */
-    memset(&indirect[3], 0, (num_entries - 3) * sizeof(struct vring_desc_raw));
+    memset(&indirect[3], 0, (num_entries - 3) * sizeof(struct vring_desc));
 
     uint64_t indirect_phys = vv_virt_to_phys(indirect);
 
     /* Point ring descriptor at indirect table with oversized len */
     vring_raw_set_desc(vr, 0, indirect_phys,
-                       num_entries * sizeof(struct vring_desc_raw),
+                       num_entries * sizeof(struct vring_desc),
                        VRING_DESC_F_INDIRECT, 0);
 
     vring_raw_set_avail(vr, 0, 0);

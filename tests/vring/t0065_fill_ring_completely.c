@@ -11,24 +11,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_blk_outhdr {
-    uint32_t type;
-    uint32_t ioprio;
-    uint64_t sector;
-} __attribute__((packed));
-
-struct vring_desc_raw {
-    uint64_t addr;
-    uint32_t len;
-    uint16_t flags;
-    uint16_t next;
-} __attribute__((packed));
-
-#define VIRTIO_BLK_T_IN 0
 
 static test_result_t test_fill_ring_completely(struct virtio_dev *dev,
                                               struct vring *vr)
@@ -39,7 +25,7 @@ static test_result_t test_fill_ring_completely(struct virtio_dev *dev,
      * Use indirect descriptors so each avail ring entry only
      * consumes 1 descriptor slot. This lets us fill all qsz slots.
      */
-    struct vring_desc_raw *tables = vv_alloc_pages(16);
+    struct vring_desc *tables = vv_alloc_pages(16);
     struct virtio_blk_outhdr *hdrs = vv_alloc_pages(4);
     uint8_t *datas = vv_alloc_pages(qsz);
     uint8_t *statuses = vv_alloc_pages(1);
@@ -55,7 +41,7 @@ static test_result_t test_fill_ring_completely(struct virtio_dev *dev,
         *s = 0xFF;
 
         /* Each request gets its own 3-entry indirect table */
-        struct vring_desc_raw *tbl = &tables[i * 3];
+        struct vring_desc *tbl = &tables[i * 3];
         tbl[0].addr = vv_virt_to_phys(h);
         tbl[0].len = sizeof(*h);
         tbl[0].flags = VRING_DESC_F_NEXT;
@@ -73,7 +59,7 @@ static test_result_t test_fill_ring_completely(struct virtio_dev *dev,
 
         /* Ring descriptor points at indirect table */
         vring_raw_set_desc(vr, i, vv_virt_to_phys(tbl),
-                           3 * sizeof(struct vring_desc_raw),
+                           3 * sizeof(struct vring_desc),
                            VRING_DESC_F_INDIRECT, 0);
 
         vring_raw_set_avail(vr, i, i);
