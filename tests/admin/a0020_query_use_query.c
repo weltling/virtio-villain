@@ -13,20 +13,9 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
-
-struct admin_hdr {
-    uint16_t opcode;
-    uint8_t  group_type;
-    uint8_t  reserved;
-    uint64_t group_member_id;
-} __attribute__((packed));
-
-struct admin_resp {
-    uint16_t status;
-    uint16_t status_qualifier;
-} __attribute__((packed));
 
 #define ADMIN_OPCODE_LIST_QUERY 0x0001
 #define ADMIN_OPCODE_LIST_USE   0x0000

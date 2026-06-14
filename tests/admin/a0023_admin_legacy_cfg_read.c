@@ -10,6 +10,7 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
@@ -17,22 +18,6 @@
 #define VIRTIO_ADMIN_CMD_LIST_QUERY                0x0000
 #define VIRTIO_ADMIN_CMD_LIST_USE                  0x0001
 #define VIRTIO_ADMIN_CMD_LEGACY_COMMON_CFG_READ    0x0004
-
-struct virtio_admin_cmd {
-    uint16_t opcode;
-    uint16_t group_type;
-    uint64_t group_member_id;
-} __attribute__((packed));
-
-struct virtio_admin_cmd_legacy_cfg {
-    uint8_t offset;
-    uint8_t reserved[3];
-} __attribute__((packed));
-
-struct virtio_admin_cmd_status {
-    uint16_t status;
-    uint16_t status_qualifier;
-} __attribute__((packed));
 
 static test_result_t test_admin_legacy_cfg_read(struct virtio_dev *dev,
                                                 struct vring *vr)

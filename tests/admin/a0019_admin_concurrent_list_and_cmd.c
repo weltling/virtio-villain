@@ -10,16 +10,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_admin_cmd_hdr {
-    uint16_t opcode;
-    uint16_t group_type;
-    uint16_t group;
-    uint16_t command_specific_data_len;
-} __attribute__((packed));
 
 #define ADMIN_OPCODE_LIST_USE 0x0000
 #define ADMIN_OPCODE_LIST_QUERY 0x0001
@@ -34,7 +28,7 @@ static test_result_t test_admin_concurrent(struct virtio_dev *dev,
     vring_attach(dev, &avr, 0);
 
     /* Chain 1: LIST_USE command */
-    struct virtio_admin_cmd_hdr *cmd1 = vv_alloc_pages(1);
+    struct virtio_admin_cmd_hdr_short *cmd1 = vv_alloc_pages(1);
     uint8_t *result1 = vv_alloc_pages(1);
     memset(cmd1, 0, PAGE_SIZE);
     memset(result1, 0xFF, 64);
@@ -45,7 +39,7 @@ static test_result_t test_admin_concurrent(struct virtio_dev *dev,
     cmd1->command_specific_data_len = 0;
 
     /* Chain 2: LIST_QUERY command */
-    struct virtio_admin_cmd_hdr *cmd2 = vv_alloc_pages(1);
+    struct virtio_admin_cmd_hdr_short *cmd2 = vv_alloc_pages(1);
     uint8_t *result2 = vv_alloc_pages(1);
     memset(cmd2, 0, PAGE_SIZE);
     memset(result2, 0xFF, 64);

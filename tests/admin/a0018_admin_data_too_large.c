@@ -11,19 +11,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-/*
- * Minimal admin command header (spec 9.4).
- */
-struct virtio_admin_cmd_hdr {
-    uint16_t opcode;
-    uint16_t group_type;
-    uint16_t group;
-    uint16_t command_specific_data_len;
-} __attribute__((packed));
 
 static test_result_t test_admin_data_too_large(struct virtio_dev *dev,
                                                struct vring *vr)
@@ -34,7 +25,7 @@ static test_result_t test_admin_data_too_large(struct virtio_dev *dev,
     vring_alloc(&avr, 16);
     vring_attach(dev, &avr, 0);
 
-    struct virtio_admin_cmd_hdr *cmd = vv_alloc_pages(1);
+    struct virtio_admin_cmd_hdr_short *cmd = vv_alloc_pages(1);
     uint8_t *result = vv_alloc_pages(1);
 
     memset(cmd, 0, PAGE_SIZE);

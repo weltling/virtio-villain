@@ -11,19 +11,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_admin_cmd {
-    uint16_t opcode;
-    uint16_t group_type;
-    uint16_t group_member_id;
-    uint16_t reserved1;
-    uint64_t group_member_size;
-    uint64_t data_length;
-    uint8_t  reserved2[16];
-} __attribute__((packed));
 
 #define VIRTIO_ADMIN_CMD_LIST_QUERY 0x0001
 
@@ -45,7 +36,7 @@ static test_result_t test_admin_max_data(struct virtio_dev *dev,
     vring_alloc(&aq_vr, 16);
     vring_attach(dev, &aq_vr, aq);
 
-    struct virtio_admin_cmd *cmd = vv_alloc_pages(1);
+    struct virtio_admin_cmd_full *cmd = vv_alloc_pages(1);
     memset(cmd, 0, sizeof(*cmd));
     cmd->opcode = VIRTIO_ADMIN_CMD_LIST_QUERY;
     cmd->data_length = 0xFFFFFFFFFFFFFFFFULL;

@@ -10,15 +10,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_admin_cmd {
-    uint16_t opcode;
-    uint16_t group_type;
-    uint64_t group_member_id;
-} __attribute__((packed));
 
 /* Completely invalid opcode in the reserved range */
 #define VIRTIO_ADMIN_CMD_RESERVED 0xFFFF
