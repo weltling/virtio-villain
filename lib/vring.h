@@ -10,6 +10,12 @@
 #define VRING_DESC_F_WRITE    2
 #define VRING_DESC_F_INDIRECT 4
 
+/* Vring avail flags */
+#define VRING_AVAIL_F_NO_INTERRUPT 1
+
+/* Vring used flags */
+#define VRING_USED_F_NO_NOTIFY     1
+
 struct vring_desc {
     uint64_t addr;
     uint32_t len;
