@@ -11,26 +11,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/fuse.h"
 
 #include <string.h>
 #include <unistd.h>
-
-#define FUSE_INTERRUPT 36
-
-struct fuse_in_header_min {
-    uint32_t len;
-    uint32_t opcode;
-    uint64_t unique;
-    uint64_t nodeid;
-    uint32_t uid;
-    uint32_t gid;
-    uint32_t pid;
-    uint32_t padding;
-} __attribute__((packed));
-
-struct fuse_interrupt_in {
-    uint64_t unique;
-} __attribute__((packed));
 
 static test_result_t test_fs_hiprio_interrupt(struct virtio_dev *dev,
                                               struct vring *vr)

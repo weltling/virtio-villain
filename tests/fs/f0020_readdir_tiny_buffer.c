@@ -13,40 +13,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/fuse.h"
 
 #include <string.h>
 #include <unistd.h>
-
-#define FUSE_INIT    26
-#define FUSE_READDIR 28
-
-struct fuse_in_header {
-    uint32_t len;
-    uint32_t opcode;
-    uint64_t unique;
-    uint64_t nodeid;
-    uint32_t uid;
-    uint32_t gid;
-    uint32_t pid;
-    uint32_t padding;
-} __attribute__((packed));
-
-struct fuse_init_in {
-    uint32_t major;
-    uint32_t minor;
-    uint32_t max_readahead;
-    uint32_t flags;
-} __attribute__((packed));
-
-struct fuse_read_in {
-    uint64_t fh;
-    uint64_t offset;
-    uint32_t size;
-    uint32_t read_flags;
-    uint64_t lock_owner;
-    uint32_t flags;
-    uint32_t padding;
-} __attribute__((packed));
 
 static test_result_t test_fs_readdir_tiny_buffer(struct virtio_dev *dev,
                                                  struct vring *vr)
