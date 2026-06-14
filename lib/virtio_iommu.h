@@ -40,6 +40,9 @@
 #define VIRTIO_IOMMU_MAP_F_WRITE      (1 << 1)
 #define VIRTIO_IOMMU_MAP_F_MMIO       (1 << 2)
 
+/* ATTACH flags */
+#define VIRTIO_IOMMU_ATTACH_F_BYPASS  (1 << 0)
+
 struct virtio_iommu_req_head {
     uint8_t  type;
     uint8_t  reserved[3];
@@ -92,6 +95,29 @@ struct virtio_iommu_req_probe {
     uint8_t  reserved[64];
     uint8_t  properties[64];
     struct virtio_iommu_req_tail tail;
+} __attribute__((packed));
+
+/* Truncated device config view used by capability boundary tests. */
+struct iommu_config {
+    uint32_t page_size_mask;
+    struct { uint64_t start, end; } input_range;
+    struct { uint32_t start, end; } domain_range;
+} __attribute__((packed));
+
+/* Full device configuration layout (spec 5.13.4). */
+struct virtio_iommu_config {
+    uint32_t page_size_mask;
+    struct {
+        uint64_t start;
+        uint64_t end;
+    } input_range;
+    struct {
+        uint32_t start;
+        uint32_t end;
+    } domain_range;
+    uint32_t probe_size;
+    uint8_t  bypass;
+    uint8_t  reserved[3];
 } __attribute__((packed));
 
 #endif

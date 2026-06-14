@@ -11,8 +11,6 @@
 
 #include <string.h>
 
-#define VIRTIO_IOMMU_ATTACH_F_BYPASS (1 << 0)
-
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {
     volatile struct virtio_pci_common_cfg *cfg = dev->common;

@@ -18,21 +18,6 @@
 #include <string.h>
 #include <unistd.h>
 
-struct virtio_iommu_config {
-    uint32_t page_size_mask;
-    struct {
-        uint64_t start;
-        uint64_t end;
-    } input_range;
-    struct {
-        uint32_t start;
-        uint32_t end;
-    } domain_range;
-    uint32_t probe_size;
-    uint8_t  bypass;
-    uint8_t  reserved[3];
-} __attribute__((packed));
-
 static test_result_t test_iommu_config_layout(struct virtio_dev *dev,
                                               struct vring *vr)
 {

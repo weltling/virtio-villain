@@ -18,8 +18,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define VIRTIO_IOMMU_ATTACH_F_BYPASS  (1u << 0)
-
 static test_result_t test_iommu_attach_bypass_no_feature(struct virtio_dev *dev,
                                                         struct vring *vr)
 {

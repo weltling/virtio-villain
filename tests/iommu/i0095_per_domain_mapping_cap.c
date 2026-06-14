@@ -12,12 +12,6 @@
 
 #include <string.h>
 
-struct iommu_config {
-    uint32_t page_size_mask;
-    struct { uint64_t start, end; } input_range;
-    struct { uint32_t start, end; } domain_range;
-} __attribute__((packed));
-
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {
     volatile struct virtio_pci_common_cfg *cfg = dev->common;
