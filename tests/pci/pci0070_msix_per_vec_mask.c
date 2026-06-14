@@ -14,32 +14,12 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 #include "lib/pci.h"
 
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
-
-#define PCI_CAP_LIST_ID   0
-#define PCI_CAP_LIST_NEXT 1
-#define PCI_CAP_PTR       0x34
-#define PCI_STATUS        0x06
-#define PCI_CAP_ID_MSIX   0x11
-
-struct msix_table_entry {
-    uint32_t msg_addr_lo;
-    uint32_t msg_addr_hi;
-    uint32_t msg_data;
-    uint32_t vector_ctrl;
-} __attribute__((packed));
-
-struct virtio_blk_outhdr {
-    uint32_t type;
-    uint32_t ioprio;
-    uint64_t sector;
-} __attribute__((packed));
-
-#define VIRTIO_BLK_T_IN 0
 
 static volatile struct msix_table_entry *find_msix_table(struct virtio_dev *dev)
 {

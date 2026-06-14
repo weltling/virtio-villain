@@ -16,11 +16,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#define PCI_CAP_LIST_ID   0
-#define PCI_CAP_LIST_NEXT 1
-#define PCI_CAP_PTR       0x34
-#define PCI_STATUS        0x06
-#define PCI_CAP_ID_MSIX   0x11
 #define MSIX_MSGCTRL_FMASK 0x4000  /* Function Mask bit (bit 14) */
 
 static test_result_t test_pci_msix_global_mask(struct virtio_dev *dev,

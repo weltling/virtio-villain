@@ -16,10 +16,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#define PCI_CAP_PTR        0x34
-#define PCI_STATUS         0x06
-#define PCI_CAP_LIST_NEXT  1
-
 static test_result_t test_pci_cap_walk_bounded(struct virtio_dev *dev,
                                                struct vring *vr)
 {

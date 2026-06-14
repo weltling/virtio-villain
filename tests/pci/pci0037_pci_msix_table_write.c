@@ -16,20 +16,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#define PCI_CAP_LIST_ID   0
-#define PCI_CAP_LIST_NEXT 1
-#define PCI_CAP_PTR       0x34
-#define PCI_STATUS        0x06
-#define PCI_CAP_ID_MSIX   0x11
-
 /* MSI-X table entry layout */
-struct msix_table_entry {
-    uint32_t msg_addr_lo;
-    uint32_t msg_addr_hi;
-    uint32_t msg_data;
-    uint32_t vector_ctrl;   /* bit 0 = mask */
-} __attribute__((packed));
-
 static test_result_t test_pci_msix_table_write(struct virtio_dev *dev,
                                                struct vring *vr)
 {

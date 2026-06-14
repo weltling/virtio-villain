@@ -17,7 +17,6 @@
 
 #include <unistd.h>
 
-#define VIRTIO_MSI_NO_VECTOR 0xFFFF
 
 static test_result_t test_pci_snapshot_masked_msix(struct virtio_dev *dev,
                                                    struct vring *vr)

@@ -17,8 +17,6 @@
 
 #include <unistd.h>
 
-#define VIRTIO_PCI_CAP_PCI_CFG 5
-
 static test_result_t test_pci_cfg_data_no_cap(struct virtio_dev *dev,
                                               struct vring *vr)
 {

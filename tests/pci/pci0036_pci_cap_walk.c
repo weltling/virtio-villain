@@ -16,13 +16,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-/* PCI capability header offsets */
-#define PCI_CAP_LIST_ID   0
-#define PCI_CAP_LIST_NEXT 1
-#define PCI_STATUS        0x06
-#define PCI_CAP_PTR       0x34
-#define PCI_CAP_ID_VNDR   0x09
-
 static test_result_t test_pci_cap_walk(struct virtio_dev *dev,
                                        struct vring *vr)
 {

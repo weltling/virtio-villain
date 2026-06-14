@@ -11,17 +11,12 @@
 #include "lib/vring.h"
 #include "lib/vring_packed.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
 
 #define VIRTIO_ADMIN_CMD_LIST_QUERY 0x0000
-
-struct virtio_admin_cmd {
-    uint16_t opcode;
-    uint16_t group_type;
-    uint64_t group_member_id;
-} __attribute__((packed));
 
 static test_result_t test_pci_admin_packed(struct virtio_dev *dev,
                                            struct vring *vr)

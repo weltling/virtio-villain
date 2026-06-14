@@ -16,16 +16,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#define PCI_CAP_LIST_ID   0
-#define PCI_CAP_LIST_NEXT 1
-#define PCI_CAP_PTR       0x34
-#define PCI_STATUS        0x06
-#define PCI_CAP_ID_MSI    0x05
-
-#define MSI_CTRL_MMC_MASK 0x000E  /* Bits 1-3: Multiple Message Capable */
-#define MSI_CTRL_MME_MASK 0x0070  /* Bits 4-6: Multiple Message Enable */
-#define MSI_CTRL_MME_SHIFT 4
-
 static test_result_t test_pci_msi_multi_msg(struct virtio_dev *dev,
                                             struct vring *vr)
 {

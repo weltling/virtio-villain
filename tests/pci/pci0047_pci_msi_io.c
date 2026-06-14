@@ -10,28 +10,12 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 #include "lib/pci.h"
 
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
-
-#define PCI_CAP_LIST_ID   0
-#define PCI_CAP_LIST_NEXT 1
-#define PCI_CAP_PTR       0x34
-#define PCI_STATUS        0x06
-#define PCI_CAP_ID_MSI    0x05
-
-#define MSI_CTRL_ENABLE   0x0001
-#define MSI_CTRL_64BIT    0x0080
-
-struct virtio_blk_outhdr {
-    uint32_t type;
-    uint32_t ioprio;
-    uint64_t sector;
-} __attribute__((packed));
-
-#define VIRTIO_BLK_T_IN 0
 
 static test_result_t test_pci_msi_io(struct virtio_dev *dev,
                                      struct vring *vr)

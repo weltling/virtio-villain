@@ -16,14 +16,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#define PCI_CAP_LIST_ID   0
-#define PCI_CAP_LIST_NEXT 1
-#define PCI_CAP_PTR       0x34
-#define PCI_STATUS        0x06
-#define PCI_CAP_ID_MSI    0x05
-#define PCI_CAP_ID_MSIX   0x11
-
-#define MSI_CTRL_ENABLE   0x0001
 #define MSIX_CTRL_ENABLE  0x8000  /* Bit 15 of MSI-X Message Control */
 
 static test_result_t test_pci_msi_msix_conflict(struct virtio_dev *dev,

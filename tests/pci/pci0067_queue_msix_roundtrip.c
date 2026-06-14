@@ -15,7 +15,6 @@
 
 #include <unistd.h>
 
-#define VIRTIO_MSI_NO_VECTOR 0xFFFF
 
 static test_result_t test_pci_queue_msix_roundtrip(struct virtio_dev *dev,
                                                    struct vring *vr)

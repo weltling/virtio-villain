@@ -16,15 +16,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-#define PCI_CAP_LIST_ID   0
-#define PCI_CAP_LIST_NEXT 1
-#define PCI_CAP_PTR       0x34
-#define PCI_STATUS        0x06
-#define PCI_CAP_ID_MSI    0x05
-
-#define MSI_CTRL_ENABLE   0x0001  /* Bit 0: MSI Enable */
-#define MSI_CTRL_64BIT    0x0080  /* Bit 7: 64-bit capable */
-
 static test_result_t test_pci_msi_enable(struct virtio_dev *dev,
                                          struct vring *vr)
 {
