@@ -12,11 +12,10 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-#define VIRTIO_F_RING_RESET 40
 
 static test_result_t test_watchdog_ping_after_ring_reset(struct virtio_dev *dev,
                                                          struct vring *vr)
