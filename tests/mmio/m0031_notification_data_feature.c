@@ -12,8 +12,7 @@
  * word and verify the device still consumes the descriptor.
  */
 #include "tests/test.h"
-
-#define VIRTIO_F_NOTIFICATION_DATA 38
+#include "lib/virtio_spec.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {
