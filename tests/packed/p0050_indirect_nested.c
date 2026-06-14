@@ -18,17 +18,10 @@
 #include <string.h>
 #include <unistd.h>
 
-struct packed_desc {
-    uint64_t addr;
-    uint32_t len;
-    uint16_t id;
-    uint16_t flags;
-} __attribute__((packed));
-
 static test_result_t test_packed_indirect_nested(
         struct virtio_dev *dev, struct vring_packed *vr)
 {
-    struct packed_desc *itab = vv_alloc_pages(1);
+    struct vring_packed_desc *itab = vv_alloc_pages(1);
     memset(itab, 0, sizeof(*itab));
     uint64_t itab_phys = vv_virt_to_phys(itab);
 

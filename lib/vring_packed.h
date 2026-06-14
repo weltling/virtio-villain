@@ -12,6 +12,13 @@
 #define VRING_PACKED_DESC_F_AVAIL    (1 << 7)
 #define VRING_PACKED_DESC_F_USED     (1 << 15)
 
+/* Event suppression flags, the low two bits of the event flags field
+ * (spec 2.8.10). RESERVED is the invalid encoding. */
+#define VRING_PACKED_EVENT_FLAG_ENABLE   0
+#define VRING_PACKED_EVENT_FLAG_DISABLE  1
+#define VRING_PACKED_EVENT_FLAG_DESC     2
+#define VRING_PACKED_EVENT_FLAG_RESERVED 3
+
 /* VIRTIO_F_RING_PACKED feature bit */
 #define VIRTIO_F_RING_PACKED 34
 

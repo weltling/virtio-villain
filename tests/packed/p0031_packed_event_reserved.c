@@ -13,18 +13,10 @@
 #include "lib/vring.h"
 #include "lib/vring_packed.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_blk_outhdr {
-    uint32_t type;
-    uint32_t ioprio;
-    uint64_t sector;
-} __attribute__((packed));
-
-#define VIRTIO_BLK_T_IN 0
-#define RING_EVENT_FLAGS_RESERVED 3
 
 static test_result_t test_packed_event_reserved(struct virtio_dev *dev,
                                                 struct vring_packed *vr)
@@ -43,7 +35,7 @@ static test_result_t test_packed_event_reserved(struct virtio_dev *dev,
     uint64_t status_phys = vv_virt_to_phys(status);
 
     /* Set driver event flags to reserved value 3 */
-    vr->driver_event->flags = RING_EVENT_FLAGS_RESERVED;
+    vr->driver_event->flags = VRING_PACKED_EVENT_FLAG_RESERVED;
     vr->driver_event->off_wrap = 0;
     __sync_synchronize();
 

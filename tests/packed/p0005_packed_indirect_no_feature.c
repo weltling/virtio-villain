@@ -11,25 +11,10 @@
 #include "lib/util.h"
 #include "lib/vring_packed.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_blk_outhdr {
-    uint32_t type;
-    uint32_t ioprio;
-    uint64_t sector;
-} __attribute__((packed));
-
-/* Reuse the packed desc layout for indirect table */
-struct indirect_packed_desc {
-    uint64_t addr;
-    uint32_t len;
-    uint16_t id;
-    uint16_t flags;
-} __attribute__((packed));
-
-#define VIRTIO_BLK_T_IN 0
 
 static test_result_t test_packed_indirect_no_feature(struct virtio_dev *dev,
                                                      struct vring_packed *vr)
@@ -48,7 +33,7 @@ static test_result_t test_packed_indirect_no_feature(struct virtio_dev *dev,
     uint64_t status_phys = vv_virt_to_phys(status);
 
     /* Build an indirect table */
-    struct indirect_packed_desc *ind = vv_alloc_pages(1);
+    struct vring_packed_desc *ind = vv_alloc_pages(1);
     ind[0].addr = hdr_phys;
     ind[0].len = sizeof(*hdr);
     ind[0].id = 0;
@@ -66,7 +51,7 @@ static test_result_t test_packed_indirect_no_feature(struct virtio_dev *dev,
 
     /* Set desc with INDIRECT flag - feature was NOT negotiated */
     vring_packed_set_desc(vr, 0, ind_phys,
-                          3 * sizeof(struct indirect_packed_desc), 0,
+                          3 * sizeof(struct vring_packed_desc), 0,
                           VRING_PACKED_DESC_F_INDIRECT);
     vring_packed_advance(vr);
 

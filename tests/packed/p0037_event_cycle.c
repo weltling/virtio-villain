@@ -14,20 +14,10 @@
 #include "lib/vring.h"
 #include "lib/vring_packed.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-#define RING_EVENT_FLAGS_ENABLE  0
-#define RING_EVENT_FLAGS_DISABLE 1
-
-struct virtio_blk_outhdr {
-    uint32_t type;
-    uint32_t ioprio;
-    uint64_t sector;
-} __attribute__((packed));
-
-#define VIRTIO_BLK_T_IN 0
 
 static int submit_one(struct virtio_dev *dev, struct vring_packed *vr,
                       uint64_t sector)
@@ -77,9 +67,9 @@ static test_result_t test_packed_event_cycle(struct virtio_dev *dev,
         return TEST_SKIP;
 
     uint16_t modes[3] = {
-        RING_EVENT_FLAGS_ENABLE,
-        RING_EVENT_FLAGS_DISABLE,
-        RING_EVENT_FLAGS_ENABLE,
+        VRING_PACKED_EVENT_FLAG_ENABLE,
+        VRING_PACKED_EVENT_FLAG_DISABLE,
+        VRING_PACKED_EVENT_FLAG_ENABLE,
     };
 
     for (int i = 0; i < 3; i++) {

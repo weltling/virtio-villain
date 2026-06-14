@@ -2,7 +2,7 @@
 /*
  * P0023: packed_event_suppression_desc_mode
  *
- * Set driver event suppression to RING_EVENT_FLAGS_DESC mode, meaning
+ * Set driver event suppression to VRING_PACKED_EVENT_FLAG_DESC mode, meaning
  * the device should only notify when a specific descriptor index is
  * used. Submit multiple requests and verify the device respects the
  * event suppression threshold.
@@ -12,22 +12,10 @@
 #include "lib/vring.h"
 #include "lib/vring_packed.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
-
-struct virtio_blk_outhdr {
-    uint32_t type;
-    uint32_t ioprio;
-    uint64_t sector;
-} __attribute__((packed));
-
-#define VIRTIO_BLK_T_IN 0
-
-/* Event suppression flag values (spec 2.8.10) */
-#define RING_EVENT_FLAGS_ENABLE  0
-#define RING_EVENT_FLAGS_DISABLE 1
-#define RING_EVENT_FLAGS_DESC    2
 
 static test_result_t test_packed_event_suppress_desc(struct virtio_dev *dev,
                                                      struct vring_packed *vr)
@@ -50,7 +38,7 @@ static test_result_t test_packed_event_suppress_desc(struct virtio_dev *dev,
      * descriptor at index 1 (with current wrap) is used.
      * off_wrap = (idx << 1) | wrap_counter
      */
-    vr->driver_event->flags = RING_EVENT_FLAGS_DESC;
+    vr->driver_event->flags = VRING_PACKED_EVENT_FLAG_DESC;
     vr->driver_event->off_wrap = (1 << 1) | vr->wrap_counter;
     __sync_synchronize();
 

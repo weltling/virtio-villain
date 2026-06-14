@@ -8,13 +8,11 @@
  */
 #include "tests/test.h"
 
-#define RING_EVENT_FLAGS_ENABLE 0
-
 static test_result_t test(struct virtio_dev *dev, struct vring_packed *vr)
 {
     (void)dev;
     if (!vr->driver_event || !vr->device_event) return TEST_SKIP;
-    vr->driver_event->flags = RING_EVENT_FLAGS_ENABLE;
+    vr->driver_event->flags = VRING_PACKED_EVENT_FLAG_ENABLE;
     __sync_synchronize();
     uint16_t dflags = vr->device_event->flags;
     (void)dflags;
