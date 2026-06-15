@@ -19,8 +19,6 @@
 
 #include <string.h>
 
-#define VIRTIO_ADMIN_CMD_LIST_USE 0x0001
-
 static test_result_t test_admin_status_before_data(struct virtio_dev *dev,
                                                    struct vring *vr)
 {

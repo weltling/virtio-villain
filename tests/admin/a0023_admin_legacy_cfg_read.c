@@ -15,10 +15,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define VIRTIO_ADMIN_CMD_LIST_QUERY                0x0000
-#define VIRTIO_ADMIN_CMD_LIST_USE                  0x0001
-#define VIRTIO_ADMIN_CMD_LEGACY_COMMON_CFG_READ    0x0004
-
 static test_result_t test_admin_legacy_cfg_read(struct virtio_dev *dev,
                                                 struct vring *vr)
 {

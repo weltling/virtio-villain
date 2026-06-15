@@ -16,7 +16,7 @@
 #include <unistd.h>
 
 /* Completely invalid opcode in the reserved range */
-#define VIRTIO_ADMIN_CMD_RESERVED 0xFFFF
+#define ADMIN_CMD_RESERVED 0xFFFF
 
 static test_result_t test_admin_cmd_reserved_status(struct virtio_dev *dev,
                                                     struct vring *vr)
@@ -25,7 +25,7 @@ static test_result_t test_admin_cmd_reserved_status(struct virtio_dev *dev,
     uint8_t *result = vv_alloc_pages(1);
 
     /* Send command with reserved/invalid opcode */
-    cmd->opcode = VIRTIO_ADMIN_CMD_RESERVED;
+    cmd->opcode = ADMIN_CMD_RESERVED;
     cmd->group_type = 0;
     cmd->group_member_id = 0;
 

@@ -16,7 +16,7 @@
 #include <unistd.h>
 
 /* Use an arbitrary group-scoped opcode without prior LIST_USE */
-#define VIRTIO_ADMIN_CMD_ARBITRARY 0x0010
+#define ADMIN_CMD_ARBITRARY 0x0010
 
 static test_result_t test_admin_group_before_list_use(struct virtio_dev *dev,
                                                       struct vring *vr)
@@ -25,7 +25,7 @@ static test_result_t test_admin_group_before_list_use(struct virtio_dev *dev,
     uint8_t *result = vv_alloc_pages(1);
 
     /* Group type 2 command without LIST_USE for group 2 */
-    cmd->opcode = VIRTIO_ADMIN_CMD_ARBITRARY;
+    cmd->opcode = ADMIN_CMD_ARBITRARY;
     cmd->group_type = 2;
     cmd->group_member_id = 0;
 

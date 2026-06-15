@@ -15,8 +15,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define VIRTIO_ADMIN_CMD_LIST_QUERY 0x0000
-
 static test_result_t test_admin_list_empty_group(struct virtio_dev *dev,
                                                  struct vring *vr)
 {

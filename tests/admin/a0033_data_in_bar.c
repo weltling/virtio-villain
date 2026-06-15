@@ -19,8 +19,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define VIRTIO_ADMIN_CMD_LIST_USE 0x0001
-
 static test_result_t test_admin_data_in_bar(struct virtio_dev *dev,
                                             struct vring *vr)
 {

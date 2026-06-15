@@ -16,9 +16,6 @@
 #include <string.h>
 #include <unistd.h>
 
-/* LIST_USE opcode - a simple admin command */
-#define VIRTIO_ADMIN_CMD_LIST_USE 0x0001
-
 static test_result_t test_admin_status_tiny(struct virtio_dev *dev,
                                             struct vring *vr)
 {

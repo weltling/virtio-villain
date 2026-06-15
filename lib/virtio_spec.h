@@ -626,6 +626,17 @@ struct ind_desc {
 
 /* Admin command family (virtio spec 1.3 section 2.12). */
 
+/* Group administration command opcodes (spec 2.12.1). Verified
+ * against OASIS virtio v1.4. The legacy interface opcodes are a
+ * contiguous block: write before read, common before device. */
+#define VIRTIO_ADMIN_CMD_LIST_QUERY              0x0000
+#define VIRTIO_ADMIN_CMD_LIST_USE                0x0001
+#define VIRTIO_ADMIN_CMD_LEGACY_COMMON_CFG_WRITE 0x0002
+#define VIRTIO_ADMIN_CMD_LEGACY_COMMON_CFG_READ  0x0003
+#define VIRTIO_ADMIN_CMD_LEGACY_DEV_CFG_WRITE    0x0004
+#define VIRTIO_ADMIN_CMD_LEGACY_DEV_CFG_READ     0x0005
+#define VIRTIO_ADMIN_CMD_LEGACY_NOTIFY_INFO      0x0006
+
 /* Simplified admin command header used by the list management tests
  * (opcode, group selector, member id only). */
 struct virtio_admin_cmd {

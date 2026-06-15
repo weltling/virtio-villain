@@ -15,8 +15,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define VIRTIO_ADMIN_CMD_LEGACY_DEV_CFG_READ    0x0006
-
 static test_result_t test_admin_legacy_dev_read(struct virtio_dev *dev,
                                                 struct vring *vr)
 {

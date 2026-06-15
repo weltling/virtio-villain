@@ -19,10 +19,6 @@
 #include <string.h>
 #include <unistd.h>
 
-/* Admin command opcodes (v1.3 section 2.9) */
-#define VIRTIO_ADMIN_CMD_LIST_QUERY 0x0000
-#define VIRTIO_ADMIN_CMD_LIST_USE   0x0001
-
 /* A fabricated admin command header per v1.3 spec */
 static test_result_t test_admin_cmd_without_list_use(struct virtio_dev *dev,
                                                      struct vring *vr)
