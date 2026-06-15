@@ -1087,7 +1087,9 @@ def cmd_triage(args):
     # Group: error_class -> [(path, annotations)]
     groups = {}
 
-    for path in crash_files:
+    total = len(crash_files)
+    for i, path in enumerate(crash_files):
+        print(f"  [{i+1}/{total}] {os.path.basename(path)}", end="\r", flush=True)
         blob = open(path, "rb").read()
         patch_blob(fuzz_binary, blob, section_offset)
         build_initramfs(fuzz_binary, initramfs_path)
@@ -1100,6 +1102,7 @@ def cmd_triage(args):
         notes = _annotate_blob(blob)
         groups.setdefault(error_class, []).append((path, notes, crashed))
 
+    print(" " * 60, end="\r")
     shutil.rmtree(profraw_dir, ignore_errors=True)
 
     # Print grouped summary
