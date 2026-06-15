@@ -770,6 +770,100 @@ def test_parse_len_whitespace():
 
 
 # ---------------------------------------------------------------------------
+# run-fuzz minimize set-cover and the empty-coverage guard.
+#
+# Regression: minimize used to delete the entire corpus when the VMM was
+# not built with coverage instrumentation, because every entry reported
+# zero edges and so looked redundant. _select_minimal_corpus must refuse
+# to return a selection when total coverage is empty.
+
+def test_minimize_keeps_minimal_cover():
+    """A single entry covering every edge makes the others redundant."""
+    entry_edges = [
+        ("a.bin", {1, 2, 3}),
+        ("b.bin", {1}),
+        ("c.bin", {2, 3}),
+    ]
+    keep, covered = FUZZ_MOD._select_minimal_corpus(entry_edges)
+    assert keep == ["a.bin"]
+    assert covered == {1, 2, 3}
+
+
+def test_minimize_keeps_complementary_entries():
+    """Entries with disjoint edges are all kept."""
+    entry_edges = [
+        ("a.bin", {1, 2}),
+        ("b.bin", {3, 4}),
+    ]
+    keep, covered = FUZZ_MOD._select_minimal_corpus(entry_edges)
+    assert sorted(keep) == ["a.bin", "b.bin"]
+    assert covered == {1, 2, 3, 4}
+
+
+def test_minimize_drops_pure_duplicates():
+    """Two entries with identical edges keep only one."""
+    entry_edges = [
+        ("a.bin", {7, 8, 9}),
+        ("b.bin", {7, 8, 9}),
+    ]
+    keep, covered = FUZZ_MOD._select_minimal_corpus(entry_edges)
+    assert len(keep) == 1
+    assert covered == {7, 8, 9}
+
+
+def test_minimize_prefers_larger_cover_first():
+    """The entry with the most edges is selected before smaller ones."""
+    entry_edges = [
+        ("small.bin", {1}),
+        ("big.bin", {1, 2, 3, 4}),
+        ("mid.bin", {2, 3}),
+    ]
+    keep, covered = FUZZ_MOD._select_minimal_corpus(entry_edges)
+    assert keep == ["big.bin"]
+    assert covered == {1, 2, 3, 4}
+
+
+def test_minimize_empty_coverage_raises():
+    """Zero total coverage must raise rather than report an empty keep.
+
+    This is the guard against wiping the corpus when coverage data is
+    missing, for example an uninstrumented VMM binary.
+    """
+    entry_edges = [
+        ("a.bin", set()),
+        ("b.bin", set()),
+        ("c.bin", set()),
+    ]
+    try:
+        FUZZ_MOD._select_minimal_corpus(entry_edges)
+    except FUZZ_MOD.EmptyCoverageError:
+        return
+    raise AssertionError(
+        "expected EmptyCoverageError when no entry contributes edges")
+
+
+def test_minimize_no_entries_raises():
+    """An empty input set has empty coverage and must also raise."""
+    try:
+        FUZZ_MOD._select_minimal_corpus([])
+    except FUZZ_MOD.EmptyCoverageError:
+        return
+    raise AssertionError("expected EmptyCoverageError for empty input")
+
+
+def test_minimize_single_edge_survivor_not_wiped():
+    """One real edge among empty entries is enough to avoid the guard."""
+    entry_edges = [
+        ("empty1.bin", set()),
+        ("real.bin", {42}),
+        ("empty2.bin", set()),
+    ]
+    keep, covered = FUZZ_MOD._select_minimal_corpus(entry_edges)
+    assert keep == ["real.bin"]
+    assert covered == {42}
+
+
+# ---------------------------------------------------------------------------
 
 def main():
     setup()
