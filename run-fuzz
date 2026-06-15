@@ -1122,6 +1122,38 @@ def cmd_triage(args):
         print()
 
 
+class EmptyCoverageError(Exception):
+    """No corpus entry contributed any coverage edge.
+
+    Signals that coverage collection produced nothing, so deleting any
+    corpus entry would be destroying data based on a bogus measurement.
+    """
+
+
+def _select_minimal_corpus(entry_edges):
+    """Greedy set cover over (path, edge_set) pairs.
+
+    Returns (keep, covered) where keep is the minimal list of paths whose
+    union of edges equals the full coverage, and covered is that union.
+    Entries are considered most valuable first by edge count.
+
+    Raises EmptyCoverageError when the total coverage is empty, which
+    means every entry looked redundant only because measurement failed.
+    The caller must not delete anything in that case.
+    """
+    covered = set()
+    keep = []
+    for path, edges in sorted(entry_edges, key=lambda x: len(x[1]),
+                              reverse=True):
+        new = edges - covered
+        if new:
+            covered |= new
+            keep.append(path)
+    if not covered:
+        raise EmptyCoverageError(len(entry_edges))
+    return keep, covered
+
+
 def cmd_minimize(args):
     """Remove corpus entries that don't contribute unique coverage."""
     if not shutil.which("llvm-profdata") or not shutil.which("llvm-cov"):
@@ -1172,15 +1204,19 @@ def cmd_minimize(args):
             print(f"  [{i+1}/{len(corpus_files)}] evaluated", end="\r")
 
     # Greedy set-cover: keep entries that add unique edges
-    covered = set()
-    keep = []
-    # Sort by most unique edges first
-    entry_edges.sort(key=lambda x: len(x[1]), reverse=True)
-    for path, edges in entry_edges:
-        new = edges - covered
-        if new:
-            covered |= new
-            keep.append(path)
+    try:
+        keep, covered = _select_minimal_corpus(entry_edges)
+    except EmptyCoverageError:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+        sys.exit(
+            "\n[!] Aborting: zero coverage edges collected across all "
+            f"{len(corpus_files)} entries.\n"
+            "    No corpus entry was deleted.\n"
+            "    The VMM binary is almost certainly not built with "
+            "coverage instrumentation.\n"
+            "    Rebuild it with RUSTFLAGS=\"-C instrument-coverage\" "
+            "and retry."
+        )
 
     removed = len(corpus_files) - len(keep)
     keep_set = set(keep)
