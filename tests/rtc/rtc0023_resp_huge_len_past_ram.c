@@ -17,8 +17,6 @@
 #include <string.h>
 #include <stdint.h>
 
-#define VIRTIO_RTC_REQ_READ 0x0001
-
 static test_result_t test_rtc_resp_huge_len_past_ram(struct virtio_dev *dev,
                                                      struct vring *vr)
 {

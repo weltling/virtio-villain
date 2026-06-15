@@ -15,8 +15,6 @@
 #include <string.h>
 #include <stdint.h>
 
-#define VIRTIO_RTC_REQ_READ 0x0001
-
 static test_result_t test_rtc_huge_resp(struct virtio_dev *dev,
                                         struct vring *vr)
 {

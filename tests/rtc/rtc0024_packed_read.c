@@ -14,8 +14,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define VIRTIO_RTC_REQ_READ_TIME 0x0001
-
 static test_result_t test_rtc_packed_read(struct virtio_dev *dev,
                                           struct vring_packed *vr)
 {
@@ -23,7 +21,7 @@ static test_result_t test_rtc_packed_read(struct virtio_dev *dev,
     memset(buf, 0, 4096);
 
     struct rtc_req_read *req = (void *)buf;
-    req->msg_type = VIRTIO_RTC_REQ_READ_TIME;
+    req->msg_type = VIRTIO_RTC_REQ_READ;
     req->clock_id = 0;
 
     struct rtc_resp_read *resp = (void *)(buf + 256);

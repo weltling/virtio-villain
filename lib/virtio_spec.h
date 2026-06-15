@@ -710,6 +710,35 @@ struct admin_resp {
  * byte identical across tests live here; tests with deliberately
  * divergent request or response layouts keep their own local copies. */
 
+/* Request and notification message types, feature bits, status
+ * codes, flags and counter ids. Verified against OASIS virtio v1.4
+ * (RTC Device section). */
+#define VIRTIO_RTC_REQ_READ              0x0001
+#define VIRTIO_RTC_REQ_READ_CROSS        0x0002
+#define VIRTIO_RTC_REQ_CFG               0x1000
+#define VIRTIO_RTC_REQ_CLOCK_CAP         0x1001
+#define VIRTIO_RTC_REQ_CROSS_CAP         0x1002
+#define VIRTIO_RTC_REQ_READ_ALARM        0x1003
+#define VIRTIO_RTC_REQ_SET_ALARM         0x1004
+#define VIRTIO_RTC_REQ_SET_ALARM_ENABLED 0x1005
+#define VIRTIO_RTC_NOTIF_ALARM           0x2000
+
+#define VIRTIO_RTC_F_ALARM               0
+
+#define VIRTIO_RTC_S_OK                  0
+#define VIRTIO_RTC_S_EOPNOTSUPP          2
+#define VIRTIO_RTC_S_ENODEV              3
+#define VIRTIO_RTC_S_EINVAL              4
+#define VIRTIO_RTC_S_EIO                 5
+
+#define VIRTIO_RTC_FLAG_ALARM_ENABLED    (1 << 0)
+#define VIRTIO_RTC_FLAG_ALARM_CAP        (1 << 0)
+#define VIRTIO_RTC_FLAG_CROSS_CAP        (1 << 0)
+
+#define VIRTIO_RTC_COUNTER_ARM_VCT       0
+#define VIRTIO_RTC_COUNTER_X86_TSC       1
+#define VIRTIO_RTC_COUNTER_INVALID       0xFF
+
 /* Common request header prefix. */
 struct rtc_req_head {
     uint16_t msg_type;

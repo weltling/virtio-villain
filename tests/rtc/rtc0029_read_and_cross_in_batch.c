@@ -17,9 +17,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define VIRTIO_RTC_REQ_READ_TIME  0x0001
-#define VIRTIO_RTC_REQ_READ_CROSS 0x0002
-
 static test_result_t test_rtc_read_and_cross(struct virtio_dev *dev,
                                              struct vring *vr)
 {
@@ -29,7 +26,7 @@ static test_result_t test_rtc_read_and_cross(struct virtio_dev *dev,
     memset(p2, 0, 4096);
 
     struct rtc_req_read *r1 = (void *)p1;
-    r1->msg_type = VIRTIO_RTC_REQ_READ_TIME;
+    r1->msg_type = VIRTIO_RTC_REQ_READ;
     r1->clock_id = 0;
 
     struct rtc_req_read_cross *r2 = (void *)p2;

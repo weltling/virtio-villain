@@ -15,8 +15,6 @@
 #include <string.h>
 #include <stdint.h>
 
-#define VIRTIO_RTC_REQ_CFG 0x1000
-
 static test_result_t test_rtc_indirect_no_feature(struct virtio_dev *dev,
                                                   struct vring *vr)
 {

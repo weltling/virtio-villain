@@ -16,8 +16,6 @@
 
 #include <string.h>
 
-#define VIRTIO_RTC_REQ_READ 0x0001
-
 static int do_one(struct virtio_dev *dev, struct vring *vr,
                   uint16_t base, uint16_t avail_slot, uint64_t *out)
 {

@@ -15,8 +15,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define VIRTIO_RTC_REQ_READ_TIME 0x0001
-
 static test_result_t test_rtc_zero_resp_len(struct virtio_dev *dev,
                                             struct vring *vr)
 {
@@ -24,7 +22,7 @@ static test_result_t test_rtc_zero_resp_len(struct virtio_dev *dev,
     memset(buf, 0, 4096);
 
     struct rtc_req_read *req = (void *)buf;
-    req->msg_type = VIRTIO_RTC_REQ_READ_TIME;
+    req->msg_type = VIRTIO_RTC_REQ_READ;
     req->clock_id = 0;
 
     vring_raw_set_desc(vr, 0, vv_virt_to_phys(req),

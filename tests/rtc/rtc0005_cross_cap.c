@@ -14,9 +14,6 @@
 #include <string.h>
 #include <stdint.h>
 
-#define VIRTIO_RTC_REQ_CROSS_CAP 0x1002
-#define VIRTIO_RTC_COUNTER_X86_TSC 1
-
 static test_result_t test_rtc_cross_cap(struct virtio_dev *dev,
                                         struct vring *vr)
 {

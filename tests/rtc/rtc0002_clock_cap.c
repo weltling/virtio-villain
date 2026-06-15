@@ -14,8 +14,6 @@
 #include <string.h>
 #include <stdint.h>
 
-#define VIRTIO_RTC_REQ_CLOCK_CAP 0x1001
-
 static test_result_t test_rtc_clock_cap(struct virtio_dev *dev,
                                         struct vring *vr)
 {

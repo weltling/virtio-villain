@@ -25,13 +25,6 @@
 #include <stdint.h>
 #include <unistd.h>
 
-#define VIRTIO_RTC_F_ALARM            0
-#define VIRTIO_RTC_REQ_SET_ALARM      0x1004
-#define VIRTIO_RTC_NOTIF_ALARM        0x2000
-#define VIRTIO_RTC_FLAG_ALARM_ENABLED 0x1
-#define VIRTIO_RTC_S_OK               0
-#define VIRTIO_RTC_S_ENODEV           3
-
 static test_result_t test_rtc_alarm_fire(struct virtio_dev *dev,
                                          struct vring *vr)
 {

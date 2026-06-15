@@ -16,8 +16,6 @@
 #include <string.h>
 #include <stdint.h>
 
-#define VIRTIO_RTC_REQ_READ_CROSS 0x0002
-
 static test_result_t test_rtc_invalid_hw(struct virtio_dev *dev,
                                          struct vring *vr)
 {

@@ -16,8 +16,6 @@
 #include <string.h>
 #include <unistd.h>
 
-#define VIRTIO_RTC_REQ_SET_ALARM 0x2002
-
 static test_result_t test_rtc_alarm_zero(struct virtio_dev *dev,
                                          struct vring *vr)
 {

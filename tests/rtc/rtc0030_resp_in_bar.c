@@ -18,8 +18,6 @@
 
 #include <string.h>
 
-#define VIRTIO_RTC_REQ_CFG 0x1000
-
 static test_result_t test_rtc_resp_in_bar(struct virtio_dev *dev,
                                           struct vring *vr)
 {
