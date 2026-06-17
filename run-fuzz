@@ -532,6 +532,14 @@ def run_vmm(vmm_path, initramfs_path, profraw_dir, timeout=3,
         )
         crashed = result.returncode not in (0, 3)  # 3 = isa-debug-exit
         output = result.stderr.decode(errors="replace")
+        # A VMM built with LeakSanitizer aborts its own atexit leak scan
+        # when kernel.yama.ptrace_scope blocks StopTheWorld, exiting non
+        # zero even though the run was clean. Do not count that teardown
+        # artifact as a crash. A genuine sanitizer finding is preserved
+        # because _is_sanitizer_ptrace_artifact only matches when no real
+        # error report is present.
+        if crashed and _is_sanitizer_ptrace_artifact(output):
+            crashed = False
         return result.returncode, crashed, output
     except subprocess.TimeoutExpired:
         return -1, True, ""
@@ -856,11 +864,57 @@ def _annotate_blob(blob):
     return notes
 
 
+def _is_sanitizer_noise_line(line):
+    """True if the line is LeakSanitizer ptrace teardown noise.
+
+    A VMM built with LeakSanitizer emits these lines at exit when
+    kernel.yama.ptrace_scope denies the StopTheWorld ptrace attach.
+    They are not a guest triggered fault. Note the ptrace warning text
+    mentions seccomp, which would otherwise be misread as a real
+    seccomp violation by the classifier below.
+    """
+    return (
+        "ptrace appears to be blocked" in line
+        or "LeakSanitizer has encountered a fatal error" in line
+        or "LeakSanitizer does not work under ptrace" in line
+        or "LSAN_OPTIONS=verbosity" in line
+    )
+
+
+def _is_sanitizer_ptrace_artifact(output):
+    """True if output is only the LeakSanitizer ptrace teardown abort.
+
+    Requires the ptrace abort noise to be present and no genuine fault
+    indicator on any other line, so a real AddressSanitizer or
+    LeakSanitizer report, a VMM panic, a NEEDS_RESET, an ERROR log, or a
+    seccomp kill is never masked even when LSan also fails to ptrace.
+    """
+    if not output:
+        return False
+    has_ptrace_abort = False
+    for line in output.splitlines():
+        if _is_sanitizer_noise_line(line):
+            has_ptrace_abort = True
+            continue
+        low = line.lower()
+        if ("panic" in line
+                or "NEEDS_RESET" in line
+                or "ERROR" in line
+                or "runtime error:" in line
+                or "seccomp" in low):
+            return False
+    return has_ptrace_abort
+
+
 def _classify_vmm_output(output):
     """Extract a short error class from VMM stderr output."""
     if not output:
         return "timeout"
+    if _is_sanitizer_ptrace_artifact(output):
+        return "sanitizer ptrace teardown (not a crash)"
     for line in output.splitlines():
+        if _is_sanitizer_noise_line(line):
+            continue
         if "panicked" in line or "panic" in line:
             return line.strip()
         if "seccomp" in line.lower():
@@ -883,9 +937,12 @@ def _print_crash_detail(blob, vmm_output, crash_path):
     if notes:
         for note in notes:
             print(f"    ⚠ {note}")
-    # Show relevant VMM output lines (skip boilerplate WARN lines)
+    # Show relevant VMM output lines (skip boilerplate WARN lines and
+    # LeakSanitizer ptrace teardown noise).
     interesting = [ln.strip() for ln in vmm_output.splitlines()
-                   if "ERROR" in ln or "panic" in ln or "seccomp" in ln.lower()]
+                   if ("ERROR" in ln or "panic" in ln
+                       or "seccomp" in ln.lower())
+                   and not _is_sanitizer_noise_line(ln)]
     for line in interesting[:3]:
         print(f"    vmm: {line}")
 
@@ -918,7 +975,8 @@ def cmd_replay(args):
         )
         status = "CRASH" if crashed else "OK"
         print(f"    exit={exit_code} {status}")
-        _print_crash_detail(blob, output, path)
+        if crashed:
+            _print_crash_detail(blob, output, path)
 
     shutil.rmtree(profraw_dir, ignore_errors=True)
 
