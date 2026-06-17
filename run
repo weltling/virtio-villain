@@ -21,6 +21,7 @@ import tempfile
 import threading
 import platform
 import time
+import atexit
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
@@ -55,6 +56,145 @@ KERNEL_NAMES = {
     "aarch64": "Image-arm64",
 }
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+# --- Host system configuration (opt-in via --apply-sysconfig) ----------
+#
+# Some host kernel settings make a sanitizer instrumented VMM misbehave in
+# ways that look like guest triggered faults. This registry lists sysctls
+# the harness can tune on request. Add new entries here as they prove
+# useful; each is self describing.
+#
+# Fields:
+#   key  sysctl name in dotted form, mapped to /proc/sys/<slashed path>
+#   want desired value as a string
+#   why  one line reason shown to the user before the change
+#
+# Only entries whose current value differs from want are changed, and only
+# changed entries are reverted on exit, so applying is idempotent and the
+# revert never clobbers a value the harness did not set.
+SYSCONFIGS = [
+    {
+        "key": "kernel.yama.ptrace_scope",
+        "want": "0",
+        "why": "LeakSanitizer StopTheWorld ptrace attach at VMM exit; "
+               "a non zero scope makes LSan abort and look like a crash",
+    },
+]
+
+
+def _sysctl_path(key):
+    """Map a dotted sysctl name to its /proc/sys path."""
+    return os.path.join("/proc/sys", key.replace(".", "/"))
+
+
+def _sysctl_read(key):
+    """Return the current sysctl value as a string, or None if absent."""
+    try:
+        with open(_sysctl_path(key)) as f:
+            return f.read().split()[0]
+    except (OSError, IndexError):
+        return None
+
+
+def _sysctl_write(key, value):
+    """Set a sysctl through sudo. Returns True on success."""
+    try:
+        r = subprocess.run(
+            ["sudo", "sysctl", "-w", f"{key}={value}"],
+            capture_output=True, text=True)
+    except OSError as e:
+        print(f"  sysctl: cannot run sudo: {e}", file=sys.stderr)
+        return False
+    if r.returncode != 0:
+        print(f"  sysctl: failed to set {key}={value}: "
+              f"{r.stderr.strip()}", file=sys.stderr)
+        return False
+    return True
+
+
+def apply_sysconfigs(configs=None):
+    """Apply registry entries whose value differs from desired.
+
+    Returns a restore map {key: old_value} covering only the entries this
+    call actually changed, suitable for passing to revert_sysconfigs.
+
+    Entries that need changing but cannot be written, for example when
+    sudo is missing or authentication fails, are reported with a clear
+    warning so the caller is not left believing the tuning took effect.
+    """
+    if configs is None:
+        configs = SYSCONFIGS
+    print("apply-sysconfig: changing system wide kernel settings "
+          "(reverted on exit)", file=sys.stderr)
+    restore = {}
+    failed = []
+    for cfg in configs:
+        key, want, why = cfg["key"], cfg["want"], cfg["why"]
+        cur = _sysctl_read(key)
+        if cur is None:
+            print(f"  {key}: not present on this host, skipping",
+                  file=sys.stderr)
+            continue
+        if cur == want:
+            continue
+        print(f"  {key}: {cur} -> {want}", file=sys.stderr)
+        print(f"    reason: {why}", file=sys.stderr)
+        if _sysctl_write(key, want):
+            restore[key] = cur
+        else:
+            failed.append(key)
+    if failed:
+        print("apply-sysconfig: WARNING: could not apply "
+              f"{', '.join(failed)}. Continuing without the tuning; "
+              "a sanitizer instrumented VMM may report false crashes. "
+              "Check that sudo is available and you can authenticate.",
+              file=sys.stderr)
+    return restore
+
+
+def revert_sysconfigs(restore):
+    """Restore the entries apply_sysconfigs changed. Best effort."""
+    if not restore:
+        return
+    for key, old in list(restore.items()):
+        if _sysctl_write(key, old):
+            print(f"  sysctl: {key} restored to {old}", file=sys.stderr)
+        del restore[key]
+
+
+def enable_sysconfigs():
+    """Apply the sysconfig registry and arrange automatic revert.
+
+    Reverts on normal exit and on unhandled exceptions through atexit,
+    and on the common fatal signals that would otherwise bypass atexit
+    and leave the host changed. Only the values this process changed are
+    restored. SIGKILL cannot be intercepted, but these sysctls are not
+    persistent, so a reboot restores the boot default in that case.
+    Safe to call from any entry point that wants the tuning.
+    """
+    restore = apply_sysconfigs()
+    if not restore:
+        return
+    atexit.register(revert_sysconfigs, restore)
+
+    def _on_signal(signum, _frame):
+        revert_sysconfigs(restore)
+        # Restore default disposition and re raise so the process dies
+        # with the conventional status for the signal.
+        signal.signal(signum, signal.SIG_DFL)
+        os.kill(os.getpid(), signum)
+
+    # SIGINT and SIGTERM are the usual interactive and kill paths.
+    # SIGHUP fires when the controlling terminal closes, SIGQUIT on
+    # Ctrl backslash, SIGABRT on assert or abort. All bypass atexit
+    # under their default disposition, so revert explicitly first.
+    for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP,
+                signal.SIGQUIT, signal.SIGABRT):
+        try:
+            signal.signal(sig, _on_signal)
+        except (ValueError, OSError):
+            pass
 
 
 def print_banner(f=sys.stderr):
@@ -1095,6 +1235,14 @@ def main():
                              "(CH --api-socket or QEMU -qmp). The socket "
                              "is enabled by default and required for "
                              "save, restore and hotplug oriented tests.")
+    parser.add_argument("--apply-sysconfig", action="store_true",
+                        help="Apply host kernel settings that this harness "
+                             "needs for a sanitizer instrumented VMM, then "
+                             "revert them on exit. Currently sets "
+                             "kernel.yama.ptrace_scope=0 so LeakSanitizer "
+                             "can run. Uses sudo and changes system wide "
+                             "state, only the values it changed are "
+                             "reverted.")
     parser.add_argument("-i", "--include", action="append", default=[],
                         metavar="GLOB",
                         help="Run tests whose name matches the shell glob, "
@@ -1126,6 +1274,9 @@ def main():
     parser.add_argument("tests", nargs="*",
                         help="Test IDs to run (default: all)")
     args = parser.parse_args()
+
+    if args.apply_sysconfig:
+        enable_sysconfigs()
 
     profraw_dir = os.path.join(_SCRIPT_DIR, "target", "profraw")
     os.makedirs(profraw_dir, exist_ok=True)
