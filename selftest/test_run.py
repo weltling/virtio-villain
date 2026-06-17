@@ -864,6 +864,155 @@ def test_minimize_single_edge_survivor_not_wiped():
 
 
 # ---------------------------------------------------------------------------
+# run-fuzz LeakSanitizer ptrace artifact filtering.
+#
+# A VMM built with LeakSanitizer aborts its exit time leak scan when
+# kernel.yama.ptrace_scope blocks the StopTheWorld ptrace attach, exiting
+# non zero even though the run was clean. The fuzzer must not score that
+# teardown as a crash, and must not misread the ptrace warning text (which
+# mentions seccomp) as a real seccomp violation.
+
+_LSAN_PTRACE_NOISE = (
+    "==1234==WARNING: ptrace appears to be blocked "
+    "(is seccomp enabled?). LeakSanitizer may hang.\n"
+    "==1234==LeakSanitizer has encountered a fatal error.\n"
+    "==1234==HINT: LeakSanitizer does not work under ptrace (strace, gdb)\n"
+)
+
+
+def test_sanitizer_artifact_detected_for_ptrace_noise():
+    """Pure ptrace teardown noise is recognised as a non crash."""
+    assert FUZZ_MOD._is_sanitizer_ptrace_artifact(_LSAN_PTRACE_NOISE) is True
+
+
+def test_sanitizer_artifact_false_on_empty_output():
+    """No output is a timeout, not a sanitizer artifact."""
+    assert FUZZ_MOD._is_sanitizer_ptrace_artifact("") is False
+
+
+def test_sanitizer_artifact_false_when_real_asan_report():
+    """A genuine AddressSanitizer report is never masked."""
+    output = (
+        _LSAN_PTRACE_NOISE
+        + "==1234==ERROR: AddressSanitizer: heap-use-after-free\n"
+        + "SUMMARY: AddressSanitizer: heap-use-after-free foo.rs:1\n"
+    )
+    assert FUZZ_MOD._is_sanitizer_ptrace_artifact(output) is False
+
+
+def test_sanitizer_artifact_false_when_real_leak_report():
+    """A real detected leak is never masked."""
+    output = (
+        "==1234==ERROR: LeakSanitizer: detected memory leaks\n"
+        "Direct leak of 16 byte(s) in 1 object(s)\n"
+    )
+    assert FUZZ_MOD._is_sanitizer_ptrace_artifact(output) is False
+
+
+def test_classify_ptrace_noise_not_seccomp():
+    """The ptrace warning must not be classified as a seccomp violation."""
+    cls = FUZZ_MOD._classify_vmm_output(_LSAN_PTRACE_NOISE)
+    assert "seccomp" not in cls
+    assert "ptrace teardown" in cls
+
+
+def test_classify_real_seccomp_still_detected():
+    """A genuine seccomp kill is still classified as such."""
+    output = "ERROR: seccomp: killing process due to bad syscall\n"
+    cls = FUZZ_MOD._classify_vmm_output(output)
+    assert cls == "seccomp violation"
+
+
+def test_classify_real_error_after_ptrace_noise():
+    """A real ERROR line is reported even when ptrace noise precedes it."""
+    output = (
+        "==1234==WARNING: ptrace appears to be blocked "
+        "(is seccomp enabled?).\n"
+        "cloud-hypervisor: ERROR:foo.rs:9 -- something genuinely broke\n"
+    )
+    cls = FUZZ_MOD._classify_vmm_output(output)
+    assert "something genuinely broke" in cls
+
+
+# ---------------------------------------------------------------------------
+# run --apply-sysconfig registry, apply and revert.
+#
+# apply_sysconfigs must only change entries whose current value differs
+# from the desired value, must return a restore map covering exactly the
+# entries it changed, and revert_sysconfigs must restore those values.
+
+def test_sysctl_path_mapping():
+    """Dotted sysctl names map to their /proc/sys path."""
+    assert (RUN_MOD._sysctl_path("kernel.yama.ptrace_scope")
+            == "/proc/sys/kernel/yama/ptrace_scope")
+
+
+def test_apply_sysconfigs_changes_only_differing():
+    """Only entries whose value differs from want are changed."""
+    reads = {"kernel.a": "1", "kernel.b": "0"}
+    writes = []
+    RUN_MOD._sysctl_read = lambda key: reads.get(key)
+    RUN_MOD._sysctl_write = lambda key, val: (writes.append((key, val))
+                                              or True)
+    configs = [
+        {"key": "kernel.a", "want": "0", "why": "x"},
+        {"key": "kernel.b", "want": "0", "why": "y"},
+    ]
+    restore = RUN_MOD.apply_sysconfigs(configs)
+    # kernel.a differed (1 -> 0) and was changed; kernel.b already 0.
+    assert writes == [("kernel.a", "0")]
+    assert restore == {"kernel.a": "1"}
+
+
+def test_apply_sysconfigs_skips_absent():
+    """Absent sysctls are skipped, not changed."""
+    writes = []
+    RUN_MOD._sysctl_read = lambda key: None
+    RUN_MOD._sysctl_write = lambda key, val: (writes.append((key, val))
+                                              or True)
+    configs = [{"key": "kernel.missing", "want": "0", "why": "x"}]
+    restore = RUN_MOD.apply_sysconfigs(configs)
+    assert writes == []
+    assert restore == {}
+
+
+def test_apply_sysconfigs_records_only_successful_writes():
+    """A failed write is not recorded for revert."""
+    RUN_MOD._sysctl_read = lambda key: "1"
+    RUN_MOD._sysctl_write = lambda key, val: False
+    configs = [{"key": "kernel.a", "want": "0", "why": "x"}]
+    restore = RUN_MOD.apply_sysconfigs(configs)
+    assert restore == {}
+
+
+def test_apply_sysconfigs_warns_on_failure():
+    """A needed change that fails to write emits a warning summary."""
+    import io
+    import contextlib
+    RUN_MOD._sysctl_read = lambda key: "1"
+    RUN_MOD._sysctl_write = lambda key, val: False
+    configs = [{"key": "kernel.a", "want": "0", "why": "x"}]
+    buf = io.StringIO()
+    with contextlib.redirect_stderr(buf):
+        restore = RUN_MOD.apply_sysconfigs(configs)
+    assert restore == {}
+    text = buf.getvalue()
+    assert "WARNING" in text
+    assert "kernel.a" in text
+
+
+def test_revert_sysconfigs_restores_values():
+    """revert_sysconfigs writes back the saved old values and clears."""
+    writes = []
+    RUN_MOD._sysctl_write = lambda key, val: (writes.append((key, val))
+                                              or True)
+    restore = {"kernel.a": "1", "kernel.b": "2"}
+    RUN_MOD.revert_sysconfigs(restore)
+    assert sorted(writes) == [("kernel.a", "1"), ("kernel.b", "2")]
+    assert restore == {}
+
+
+# ---------------------------------------------------------------------------
 
 def main():
     setup()
