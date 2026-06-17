@@ -1652,8 +1652,20 @@ def main():
     )
     sub = parser.add_subparsers(dest="command")
 
+    # Shared flag for subcommands that boot the VMM. Applied via the run
+    # module so the registry and revert logic live in exactly one place.
+    sysconf_parent = argparse.ArgumentParser(add_help=False)
+    sysconf_parent.add_argument(
+        "--apply-sysconfig", action="store_true",
+        help="Apply host kernel settings needed for a sanitizer "
+             "instrumented VMM, then revert them on exit. Currently "
+             "sets kernel.yama.ptrace_scope=0 so LeakSanitizer can run. "
+             "Uses sudo and changes system wide state, only the values "
+             "it changed are reverted.")
+
     # --- fuzz (default) ---
-    p_fuzz = sub.add_parser("fuzz", help="Run the fuzzing loop")
+    p_fuzz = sub.add_parser("fuzz", help="Run the fuzzing loop",
+                            parents=[sysconf_parent])
     p_fuzz.add_argument("--vmm", required=True, help="Path to VMM binary")
     p_fuzz.add_argument("--kernel", default=None,
                         help="Path to guest kernel (auto-detected if omitted)")
@@ -1695,7 +1707,8 @@ def main():
                        help="Overwrite existing test file")
 
     # --- replay ---
-    p_replay = sub.add_parser("replay", help="Replay crash blobs against VMM")
+    p_replay = sub.add_parser("replay", help="Replay crash blobs against VMM",
+                              parents=[sysconf_parent])
     p_replay.add_argument("--vmm", required=True, help="Path to VMM binary")
     p_replay.add_argument("--kernel", default=None,
                           help="Path to guest kernel (auto-detected if omitted)")
@@ -1711,7 +1724,8 @@ def main():
                         help="Directory to write seeds into")
 
     # --- triage ---
-    p_triage = sub.add_parser("triage", help="Replay and group crashes by error class")
+    p_triage = sub.add_parser("triage", help="Replay and group crashes by error class",
+                              parents=[sysconf_parent])
     p_triage.add_argument("--vmm", required=True, help="Path to VMM binary")
     p_triage.add_argument("--kernel", default=None,
                           help="Path to guest kernel (auto-detected if omitted)")
@@ -1723,7 +1737,8 @@ def main():
                           help="Directory containing crash blobs")
 
     # --- minimize ---
-    p_min = sub.add_parser("minimize", help="Remove corpus entries with redundant coverage")
+    p_min = sub.add_parser("minimize", help="Remove corpus entries with redundant coverage",
+                           parents=[sysconf_parent])
     p_min.add_argument("--vmm", required=True, help="Path to VMM binary")
     p_min.add_argument("--kernel", default=None,
                        help="Path to guest kernel (auto-detected if omitted)")
@@ -1735,7 +1750,8 @@ def main():
                        help="Show what would be removed without deleting")
 
     # --- cov-report ---
-    p_cov = sub.add_parser("cov-report", help="Generate HTML coverage report from corpus")
+    p_cov = sub.add_parser("cov-report", help="Generate HTML coverage report from corpus",
+                           parents=[sysconf_parent])
     p_cov.add_argument("--vmm", required=True, help="Path to VMM binary")
     p_cov.add_argument("--kernel", default=None,
                        help="Path to guest kernel (auto-detected if omitted)")
@@ -1749,6 +1765,9 @@ def main():
                        help="Skip merging target/profraw/ from test runs")
 
     args = parser.parse_args()
+
+    if getattr(args, "apply_sysconfig", False):
+        _run_mod.enable_sysconfigs()
 
     if args.command == "decode":
         cmd_decode(args)
