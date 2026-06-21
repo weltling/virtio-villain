@@ -709,6 +709,114 @@ def test_xfail_and_xpass_mixed():
 
 
 # ---------------------------------------------------------------------------
+# Machine readable report formatters.
+
+def _sample_results():
+    return [
+        ("RNG0001", "PASS", "boot ok"),
+        ("X0001", "FAIL", "panic: boom\nNEEDS_RESET"),
+        ("X0002", "WEDGED", "no marker"),
+        ("X0003", "SKIP", "no device"),
+        ("X0004", "REJECT", "silent"),
+        ("X0005", "XFAIL", "known bug"),
+        ("X0006", "XPASS", "marker stale"),
+    ]
+
+
+def _sample_info():
+    return {
+        "RNG0001": ("RNG basic request", "1.2", "5.4.6"),
+        "X0001": ("boom test", "1.2", "2.6"),
+    }
+
+
+def test_unit_build_results_doc_counts():
+    doc = RUN_MOD.build_results_doc(
+        _sample_results(), _sample_info(),
+        backend_name="ch", vmm="/bin/ch")
+    assert doc["tool"] == "virtio-villain"
+    assert doc["backend"] == "ch"
+    assert doc["vmm"] == "/bin/ch"
+    assert doc["total"] == 7
+    c = doc["counts"]
+    assert c == {"pass": 1, "fail": 1, "reject": 1, "wedged": 1,
+                 "skip": 1, "xfail": 1, "xpass": 1}
+
+
+def test_unit_build_results_doc_per_test_fields():
+    doc = RUN_MOD.build_results_doc(
+        _sample_results(), _sample_info(),
+        backend_name="ch", vmm="/bin/ch")
+    by_name = {t["name"]: t for t in doc["tests"]}
+    rng = by_name["RNG0001"]
+    assert rng["status"] == "PASS"
+    assert rng["description"] == "RNG basic request"
+    assert rng["spec_version"] == "1.2"
+    assert rng["spec_section"] == "5.4.6"
+    # A passing test carries no output payload.
+    assert rng["output"] == ""
+    # A failing test keeps its output for triage.
+    assert "panic: boom" in by_name["X0001"]["output"]
+
+
+def test_unit_format_results_json_roundtrips():
+    import json
+    doc = RUN_MOD.build_results_doc(
+        _sample_results(), _sample_info(),
+        backend_name="ch", vmm="/bin/ch")
+    text = RUN_MOD.format_results_json(doc)
+    parsed = json.loads(text)
+    assert parsed == doc
+
+
+def test_unit_format_results_junit_wellformed():
+    import xml.dom.minidom as md
+    doc = RUN_MOD.build_results_doc(
+        _sample_results(), _sample_info(),
+        backend_name="ch", vmm="/bin/ch")
+    xml = RUN_MOD.format_results_junit(doc)
+    assert xml.startswith("<?xml")
+    # Must parse as well-formed XML.
+    md.parseString(xml)
+
+
+def test_unit_format_results_junit_classification():
+    import xml.etree.ElementTree as ET
+    doc = RUN_MOD.build_results_doc(
+        _sample_results(), _sample_info(),
+        backend_name="ch", vmm="/bin/ch")
+    xml = RUN_MOD.format_results_junit(doc)
+    root = ET.fromstring(xml)
+    suite = root.find("testsuite")
+    assert suite.get("tests") == "7"
+    # FAIL, WEDGED and XPASS all count as JUnit failures.
+    assert suite.get("failures") == "3"
+    # SKIP and XFAIL count as skipped.
+    assert suite.get("skipped") == "2"
+    cases = {c.get("name"): c for c in suite.findall("testcase")}
+    assert cases["X0001"].find("failure") is not None
+    assert cases["X0002"].find("failure") is not None
+    assert cases["X0006"].find("failure") is not None
+    assert cases["X0003"].find("skipped") is not None
+    assert cases["X0005"].find("skipped") is not None
+    # PASS and REJECT are plain testcases.
+    assert cases["RNG0001"].find("failure") is None
+    assert cases["RNG0001"].find("skipped") is None
+    assert cases["X0004"].find("failure") is None
+
+
+def test_unit_xml_safe_strips_illegal_chars():
+    # A NUL and other C0 control bytes are illegal in XML 1.0.
+    dirty = "ok\x00\x08bad\x1f"
+    clean = RUN_MOD._xml_safe(dirty)
+    assert "\x00" not in clean
+    assert "\x08" not in clean
+    assert "\x1f" not in clean
+    # Tab, newline and carriage return are preserved.
+    assert RUN_MOD._xml_safe("a\tb\nc\rd") == "a\tb\nc\rd"
+
+
+# ---------------------------------------------------------------------------
 # --no-api-socket flag plumbing.
 
 def test_no_api_socket_flag_in_command():

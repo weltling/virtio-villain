@@ -332,6 +332,25 @@ Pipe to a file or through `| cat` to suppress colors.
 ./run -m ./cloud-hypervisor -c T01                         # forward guest console to stdout
 ```
 
+### Machine readable output
+
+For CI, the runner can emit a machine readable report instead of (or
+alongside) the human table:
+
+```bash
+./run -m ./cloud-hypervisor --format json                  # JSON report on stdout
+./run -m ./cloud-hypervisor --format junit                 # JUnit XML on stdout
+./run -m ./cloud-hypervisor --format junit --output r.xml  # JUnit XML to a file
+```
+
+With `--format json` or `--format junit` the human table moves to
+stderr and the report goes to stdout, so `2>/dev/null` leaves only the
+report. With `--output FILE` the report is written to the file and the
+human table stays on stdout. The JUnit mapping is: FAIL, WEDGED and
+XPASS become `<failure>`, SKIP and XFAIL become `<skipped>`, PASS and
+REJECT are plain test cases. The exit code is unchanged: nonzero when
+any test fails, wedges, or xpasses.
+
 ### Dependencies
 
 Build:

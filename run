@@ -9,6 +9,7 @@ and exit codes, prints a summary.
 
 import argparse
 import fnmatch
+import json
 import os
 import re
 import shlex
@@ -1200,6 +1201,105 @@ def filter_tests(tests, includes, excludes, dirs, exclude_dirs):
     return result
 
 
+_JUNIT_FAILURE = {"FAIL", "WEDGED", "XPASS"}
+_JUNIT_SKIPPED = {"SKIP", "XFAIL"}
+
+
+def _xml_safe(text):
+    """Drop code points that XML 1.0 forbids so the report stays valid."""
+    return "".join(
+        ch for ch in text
+        if ch in ("\t", "\n", "\r")
+        or 0x20 <= ord(ch) <= 0xD7FF
+        or 0xE000 <= ord(ch) <= 0xFFFD
+        or 0x10000 <= ord(ch) <= 0x10FFFF
+    )
+
+
+def build_results_doc(results, test_info, *, backend_name, vmm):
+    """Normalize run results into a JSON serializable document.
+
+    results is a list of (name, status, output) tuples. test_info maps
+    a test name to (description, spec_version, spec_section). Output is
+    kept only for non PASS verdicts to keep the report lean.
+    """
+    tests = []
+    for name, status, output in results:
+        desc, ver, sec = test_info.get(name, ("", "", ""))
+        tests.append({
+            "name": name,
+            "status": status,
+            "description": desc,
+            "spec_version": ver,
+            "spec_section": sec,
+            "output": (output or "") if status != "PASS" else "",
+        })
+    counts = {
+        key: sum(1 for t in tests if t["status"] == st)
+        for key, st in (
+            ("pass", "PASS"), ("fail", "FAIL"), ("reject", "REJECT"),
+            ("wedged", "WEDGED"), ("skip", "SKIP"), ("xfail", "XFAIL"),
+            ("xpass", "XPASS"),
+        )
+    }
+    return {
+        "tool": "virtio-villain",
+        "backend": backend_name,
+        "vmm": vmm,
+        "total": len(tests),
+        "counts": counts,
+        "tests": tests,
+    }
+
+
+def format_results_json(doc):
+    """Render the results document as indented JSON."""
+    return json.dumps(doc, indent=2)
+
+
+def format_results_junit(doc):
+    """Render the results document as a JUnit XML report.
+
+    FAIL, WEDGED and XPASS map to <failure> so a CI gate fails on them,
+    matching the runner exit code. SKIP and XFAIL map to <skipped>.
+    PASS and REJECT are reported as plain passing testcases.
+    """
+    import xml.etree.ElementTree as ET
+
+    counts = doc["counts"]
+    failures = counts["fail"] + counts["wedged"] + counts["xpass"]
+    skipped = counts["skip"] + counts["xfail"]
+    attrs = {
+        "name": "virtio-villain",
+        "tests": str(doc["total"]),
+        "failures": str(failures),
+        "errors": "0",
+        "skipped": str(skipped),
+    }
+    root = ET.Element("testsuites", attrs)
+    suite = ET.SubElement(root, "testsuite", attrs)
+    classname = f"virtio-villain.{doc['backend']}"
+    for t in doc["tests"]:
+        case = ET.SubElement(suite, "testcase", {
+            "classname": classname,
+            "name": t["name"],
+            "time": "0",
+        })
+        status = t["status"]
+        if status in _JUNIT_FAILURE:
+            node = ET.SubElement(case, "failure", {
+                "type": status,
+                "message": t["description"] or status,
+            })
+            node.text = _xml_safe(t["output"])
+        elif status in _JUNIT_SKIPPED:
+            node = ET.SubElement(case, "skipped", {"message": status})
+            if t["output"]:
+                node.text = _xml_safe(t["output"])
+    body = ET.tostring(root, encoding="unicode")
+    return '<?xml version="1.0" encoding="UTF-8"?>\n' + body
+
+
 def main():
     print_banner(sys.stderr)
     parser = argparse.ArgumentParser(description="virtio-villain test runner")
@@ -1271,6 +1371,16 @@ def main():
                              "matches NAME. Repeatable. Plain names match "
                              "exactly. Shell globs are supported. Applied "
                              "after --include and --dir.")
+    parser.add_argument("--format", choices=["text", "json", "junit"],
+                        default="text",
+                        help="Result report format (default: text). "
+                             "json and junit emit a machine readable "
+                             "report for CI. With either, the human table "
+                             "goes to stderr and the report to stdout "
+                             "unless --output is given.")
+    parser.add_argument("--output", default=None, metavar="FILE",
+                        help="Write the --format report to FILE instead of "
+                             "stdout. The human table stays on stdout.")
     parser.add_argument("tests", nargs="*",
                         help="Test IDs to run (default: all)")
     args = parser.parse_args()
@@ -1278,6 +1388,8 @@ def main():
     if args.apply_sysconfig:
         enable_sysconfigs()
 
+    machine_report = args.format != "text"
+    human = sys.stderr if (machine_report and not args.output) else sys.stdout
     profraw_dir = os.path.join(_SCRIPT_DIR, "target", "profraw")
     os.makedirs(profraw_dir, exist_ok=True)
     os.environ["LLVM_PROFILE_FILE"] = os.path.join(
@@ -1365,7 +1477,7 @@ def main():
     mmio_tests = [t for t in tests if t.startswith("M")]
     if mmio_tests and not mmio_backend and not backend.mmio_transport:
         print(f"Note: {len(mmio_tests)} MMIO test(s) need qemu-system-{platform.machine()} "
-              f"in PATH")
+              f"in PATH", file=human)
         tests = [t for t in tests if not t.startswith("M")]
 
     # Probe whether the kernel boots on the MMIO backend; if not, skip
@@ -1389,11 +1501,12 @@ def main():
             os.unlink(probe_disk)
         if not probe_ok:
             print(f"Note: kernel lacks virtio-mmio support; "
-                  f"skipping {len(mmio_tests)} MMIO test(s)")
+                  f"skipping {len(mmio_tests)} MMIO test(s)", file=human)
             mmio_backend = None
             tests = [t for t in tests if not t.startswith("M")]
 
-    print(f"Running {len(tests)} test(s) against {args.vmm} ({backend.name})\n")
+    print(f"Running {len(tests)} test(s) against {args.vmm} ({backend.name})\n",
+          file=human)
 
     def _backend_for(test_name):
         """Return (backend, kernel) for a given test."""
@@ -1499,16 +1612,17 @@ def main():
         results.append((name, status, output))
         if not args.console:
             _clear_progress()
-            print(_format_test_line(name, status))
+            print(_format_test_line(name, status), file=human)
         if args.log_dir and output:
             log_path = os.path.join(args.log_dir, f"{name}.log")
             with open(log_path, "w") as f:
                 f.write(output)
             if status == "FAIL":
-                print(f"       log: {log_path}")
+                print(f"       log: {log_path}", file=human)
         if not args.console and status == "FAIL" and output:
             for line in output.splitlines()[-10:]:
-                print(f"{_DIM}       {line}{_RESET}" if is_tty else f"       {line}")
+                print(f"{_DIM}       {line}{_RESET}" if is_tty else f"       {line}",
+                      file=human)
 
     pool = None
     try:
@@ -1619,42 +1733,54 @@ def main():
             summary += f", {num_xfail} xfail"
         if num_xpass:
             summary += f", {num_xpass} xpass"
-    print(summary)
+    print(summary, file=human)
 
     failed = [name for name, s, _ in results if s == "FAIL"]
     if failed:
         hdr = "\033[31mFAILED:\033[0m" if is_tty else "FAILED:"
-        print(f"\n{hdr}")
+        print(f"\n{hdr}", file=human)
         for name in failed:
             desc, ver, sec = test_info.get(name, ("", "", ""))
-            print(f"  {name:<7} {desc}")
+            print(f"  {name:<7} {desc}", file=human)
 
     wedged = [name for name, s, _ in results if s == "WEDGED"]
     if wedged:
         hdr = "\033[33mWEDGED (device needs reset):\033[0m" if is_tty \
               else "WEDGED (device needs reset):"
-        print(f"\n{hdr}")
+        print(f"\n{hdr}", file=human)
         for name in wedged:
             desc, ver, sec = test_info.get(name, ("", "", ""))
-            print(f"  {name:<7} {desc}")
+            print(f"  {name:<7} {desc}", file=human)
 
     xfail = [name for name, s, _ in results if s == "XFAIL"]
     if xfail:
         hdr = "\033[34mXFAIL (expected failure, known VMM bug):\033[0m" \
               if is_tty else "XFAIL (expected failure, known VMM bug):"
-        print(f"\n{hdr}")
+        print(f"\n{hdr}", file=human)
         for name in xfail:
             desc, ver, sec = test_info.get(name, ("", "", ""))
-            print(f"  {name:<7} {desc}")
+            print(f"  {name:<7} {desc}", file=human)
 
     xpass = [name for name, s, _ in results if s == "XPASS"]
     if xpass:
         hdr = "\033[31mXPASS (xfail marker is stale, remove it):\033[0m" \
               if is_tty else "XPASS (xfail marker is stale, remove it):"
-        print(f"\n{hdr}")
+        print(f"\n{hdr}", file=human)
         for name in xpass:
             desc, ver, sec = test_info.get(name, ("", "", ""))
-            print(f"  {name:<7} {desc}")
+            print(f"  {name:<7} {desc}", file=human)
+
+    if machine_report:
+        doc = build_results_doc(results, test_info,
+                                backend_name=backend.name, vmm=args.vmm)
+        report = (format_results_json(doc) if args.format == "json"
+                  else format_results_junit(doc))
+        if args.output:
+            with open(args.output, "w") as f:
+                f.write(report + "\n")
+            print(f"Wrote {args.format} report to {args.output}", file=human)
+        else:
+            sys.stdout.write(report + "\n")
 
     sys.exit(0 if not failed and not wedged and not xpass else 1)
 
