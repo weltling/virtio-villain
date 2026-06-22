@@ -977,6 +977,11 @@ def cmd_replay(args):
         print(f"    exit={exit_code} {status}")
         if crashed:
             _print_crash_detail(blob, output, path)
+        if getattr(args, "verbose", False):
+            print("    --- full VMM stderr ---")
+            for line in output.splitlines():
+                print(f"    vmm: {line}")
+            print("    --- end VMM stderr ---")
 
     shutil.rmtree(profraw_dir, ignore_errors=True)
 
@@ -1716,6 +1721,8 @@ def main():
                           help="Path to raw disk image (created in tmpdir if omitted)")
     p_replay.add_argument("--timeout", type=int, default=5,
                           help="VMM boot timeout in seconds")
+    p_replay.add_argument("-v", "--verbose", action="store_true",
+                          help="Print the full captured VMM stderr log")
     p_replay.add_argument("blobs", nargs="+", help="Blob files to replay")
 
     # --- seed ---
