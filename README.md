@@ -351,6 +351,18 @@ XPASS become `<failure>`, SKIP and XFAIL become `<skipped>`, PASS and
 REJECT are plain test cases. The exit code is unchanged: nonzero when
 any test fails, wedges, or xpasses.
 
+Every failing verdict also carries a security severity tier that scores
+the VMM behaviour by attacker capability: CRITICAL for guest controlled
+memory corruption in the host VMM (the precursor to a guest to host
+escape), HIGH for a VMM crash, panic or hang, LOW for a device that
+wedges itself with NEEDS_RESET while the VMM keeps running, and NONE for
+a graceful rejection. The tier appears in the FAIL and WEDGED detail
+lines of the human output, as a `security` object per test in the JSON
+report, and as a `security` attribute plus an inline note on the JUnit
+`<failure>` node. The tier flags only that a fault is reachable;
+exploitability always needs manual analysis. The same triage drives the
+`run-fuzz replay` and `run-fuzz triage` crash corpus tooling.
+
 ### Dependencies
 
 Build:

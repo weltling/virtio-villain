@@ -805,6 +805,55 @@ def test_unit_format_results_junit_classification():
     assert cases["X0004"].find("failure") is None
 
 
+def _security_results():
+    """Results whose output exercises each security tier in the runner."""
+    return [
+        ("RNG0001", "PASS", "boot ok"),
+        ("X0001", "FAIL",
+         "==1==ERROR: AddressSanitizer: heap-use-after-free on 0x60\n"),
+        ("X0002", "WEDGED",
+         "Corrupted request detected ... Setting device status to "
+         "'NEEDS_RESET'\n"),
+        ("X0003", "FAIL",
+         "thread '<_disk0_q0>' panicked at 'index out of bounds'\n"),
+        ("X0004", "FAIL", "TIMEOUT after 30s"),
+    ]
+
+
+def test_unit_build_results_doc_security_tiers():
+    doc = RUN_MOD.build_results_doc(
+        _security_results(), {}, backend_name="ch", vmm="/bin/ch")
+    by_name = {t["name"]: t for t in doc["tests"]}
+    # A passing test carries no security verdict.
+    assert by_name["RNG0001"]["security"] is None
+    assert by_name["X0001"]["security"]["tier"] == "CRITICAL"
+    assert by_name["X0002"]["security"]["tier"] == "LOW"
+    assert by_name["X0003"]["security"]["tier"] == "HIGH"
+    assert by_name["X0004"]["security"]["tier"] == "HIGH"
+
+
+def test_unit_format_results_junit_carries_security():
+    import xml.etree.ElementTree as ET
+    doc = RUN_MOD.build_results_doc(
+        _security_results(), {}, backend_name="ch", vmm="/bin/ch")
+    xml = RUN_MOD.format_results_junit(doc)
+    root = ET.fromstring(xml)
+    cases = {c.get("name"): c
+             for c in root.find("testsuite").findall("testcase")}
+    fail = cases["X0001"].find("failure")
+    # The tier is exposed both as an attribute and inline in the body.
+    assert fail.get("security") == "CRITICAL"
+    assert "security: CRITICAL" in fail.text
+
+
+def test_unit_security_triage_from_output_only():
+    """The runner triages from captured output without an exit code."""
+    tier, _ = RUN_MOD._security_triage("device rejected the input")
+    assert tier == "NONE"
+    tier, _ = RUN_MOD._security_triage("TIMEOUT after 30s")
+    assert tier == "HIGH"
+
+
 def test_unit_xml_safe_strips_illegal_chars():
     # A NUL and other C0 control bytes are illegal in XML 1.0.
     dirty = "ok\x00\x08bad\x1f"
@@ -1069,6 +1118,81 @@ def test_classify_real_error_after_ptrace_noise():
     )
     cls = FUZZ_MOD._classify_vmm_output(output)
     assert "something genuinely broke" in cls
+
+
+# ---------------------------------------------------------------------------
+# run-fuzz security severity triage.
+#
+# Each replay outcome maps to a severity tier so a crash corpus can be
+# prioritised: memory corruption first, then VMM crashes, then device
+# wedges, then graceful rejections.
+
+def test_security_triage_critical_on_asan_uaf():
+    """An AddressSanitizer use-after-free is CRITICAL."""
+    output = (
+        "==123==ERROR: AddressSanitizer: heap-use-after-free on address "
+        "0x602000000010\n"
+        "    #0 0x55 in foo block/src/io/request.rs:42\n"
+    )
+    tier, why = FUZZ_MOD._security_triage(output, 1)
+    assert tier == "CRITICAL"
+    assert "corruption" in why
+
+
+def test_security_triage_critical_on_segv_signal():
+    """A VMM killed by SIGSEGV is CRITICAL even without output."""
+    tier, _ = FUZZ_MOD._security_triage("", -11)
+    assert tier == "CRITICAL"
+
+
+def test_security_triage_high_on_panic():
+    """A Rust panic that takes down the VMM is HIGH."""
+    output = "thread '<_disk0_q0>' panicked at 'index out of bounds'\n"
+    tier, why = FUZZ_MOD._security_triage(output, 101)
+    assert tier == "HIGH"
+    assert "panic" in why
+
+
+def test_security_triage_high_on_timeout():
+    """A hang with no output is HIGH (guest stalls the VMM)."""
+    tier, why = FUZZ_MOD._security_triage("", -1)
+    assert tier == "HIGH"
+    assert "hang" in why or "timeout" in why
+
+
+def test_security_triage_low_on_needs_reset():
+    """A device wedge via NEEDS_RESET is LOW, not a host compromise."""
+    output = (
+        "cloud-hypervisor: <_disk0_q0> WARN:virtio-devices/src/lib.rs:86 "
+        "-- Corrupted request detected ... Setting device status to "
+        "'NEEDS_RESET' and stopping processing queues until reset.\n"
+        + _LSAN_PTRACE_NOISE
+    )
+    tier, why = FUZZ_MOD._security_triage(output, 1)
+    assert tier == "LOW"
+    assert "wedged" in why or "DoS" in why
+
+
+def test_security_triage_none_on_graceful_rejection():
+    """A graceful block rejection plus LSan teardown is NONE."""
+    output = (
+        "cloud-hypervisor: <_disk0_q0> ERROR:block/src/io/request.rs:155 "
+        "-- Need a data descriptor\n"
+        + _LSAN_PTRACE_NOISE
+    )
+    tier, _ = FUZZ_MOD._security_triage(output, 1)
+    assert tier == "NONE"
+
+
+def test_security_triage_critical_outranks_benign_rejection():
+    """Real corruption wins even when a benign rejection is also logged."""
+    output = (
+        "cloud-hypervisor: ERROR:block/src/io/request.rs:91 "
+        "-- Missing head descriptor\n"
+        "==123==ERROR: AddressSanitizer: heap-buffer-overflow\n"
+    )
+    tier, _ = FUZZ_MOD._security_triage(output, 1)
+    assert tier == "CRITICAL"
 
 
 # ---------------------------------------------------------------------------

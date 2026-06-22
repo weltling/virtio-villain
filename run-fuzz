@@ -864,21 +864,14 @@ def _annotate_blob(blob):
     return notes
 
 
-def _is_sanitizer_noise_line(line):
-    """True if the line is LeakSanitizer ptrace teardown noise.
-
-    A VMM built with LeakSanitizer emits these lines at exit when
-    kernel.yama.ptrace_scope denies the StopTheWorld ptrace attach.
-    They are not a guest triggered fault. Note the ptrace warning text
-    mentions seccomp, which would otherwise be misread as a real
-    seccomp violation by the classifier below.
-    """
-    return (
-        "ptrace appears to be blocked" in line
-        or "LeakSanitizer has encountered a fatal error" in line
-        or "LeakSanitizer does not work under ptrace" in line
-        or "LSAN_OPTIONS=verbosity" in line
-    )
+# Security triage helpers and the sanitizer noise filter live in the run
+# module so the test runner and the fuzzer share one classification.
+# Re-export them here for local use and for the selftest, which loads
+# this module by path.
+_is_sanitizer_noise_line = _run_mod._is_sanitizer_noise_line
+_SECURITY_ORDER = _run_mod._SECURITY_ORDER
+_CORRUPTION_MARKERS = _run_mod._CORRUPTION_MARKERS
+_security_triage = _run_mod._security_triage
 
 
 def _is_benign_rejection_line(line):
@@ -993,6 +986,8 @@ def cmd_replay(args):
         )
         status = "CRASH" if crashed else "OK"
         print(f"    exit={exit_code} {status}")
+        tier, rationale = _security_triage(output, exit_code)
+        print(f"    security: {tier} -- {rationale}")
         if crashed:
             _print_crash_detail(blob, output, path)
         if getattr(args, "verbose", False):
@@ -1167,6 +1162,9 @@ def cmd_triage(args):
 
     # Group: error_class -> [(path, annotations)]
     groups = {}
+    # Security tier -> count, and per blob tier for the listing.
+    severity = {tier: 0 for tier in _SECURITY_ORDER}
+    tier_of = {}
 
     total = len(crash_files)
     for i, path in enumerate(crash_files):
@@ -1181,6 +1179,9 @@ def cmd_triage(args):
         )
         error_class = _classify_vmm_output(output) if crashed else "NO CRASH (fixed?)"
         notes = _annotate_blob(blob)
+        tier, _ = _security_triage(output, exit_code)
+        severity[tier] += 1
+        tier_of[path] = tier
         groups.setdefault(error_class, []).append((path, notes, crashed))
 
     print(" " * 60, end="\r")
@@ -1192,6 +1193,12 @@ def cmd_triage(args):
     print(f"{'='*60}")
     print()
 
+    print("SECURITY SEVERITY:")
+    for tier in _SECURITY_ORDER:
+        if severity[tier]:
+            print(f"  {tier:<8} {severity[tier]}")
+    print()
+
     for error_class, entries in sorted(groups.items(), key=lambda x: -len(x[1])):
         crashes_in_group = sum(1 for _, _, c in entries if c)
         status = "CRASH" if crashes_in_group else "OK"
@@ -1199,7 +1206,7 @@ def cmd_triage(args):
         for path, notes, crashed in entries:
             name = os.path.basename(path)
             note_str = "; ".join(notes[:2]) if notes else "no anomaly detected"
-            print(f"       {name}: {note_str}")
+            print(f"       {tier_of[path]:<8} {name}: {note_str}")
         print()
 
 
