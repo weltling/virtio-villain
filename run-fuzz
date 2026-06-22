@@ -1939,6 +1939,7 @@ def main():
     p_fuzz.add_argument("--cpus", type=int, default=1,
                         help="vCPUs per VM (default: 1)")
     p_fuzz.add_argument("--memory", default="128M",
+                        type=_run_mod._normalize_mem,
                         help="RAM per VM (default: 128M)")
     p_fuzz.add_argument("--no-coverage", action="store_true",
                         help="Skip coverage feedback (dumb fuzzing)")

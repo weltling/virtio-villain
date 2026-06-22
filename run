@@ -1568,6 +1568,17 @@ def format_results_junit(doc):
     return '<?xml version="1.0" encoding="UTF-8"?>\n' + body
 
 
+def _normalize_mem(value):
+    """Uppercase the size unit so lowercase input is accepted.
+
+    Some VMM size parsers only take uppercase unit suffixes (512M, 1G);
+    a lowercase 512m then fails config parsing and aborts every test
+    before boot. Uppercasing the value at the CLI boundary is safe
+    across backends, so both forms work.
+    """
+    return value.strip().upper()
+
+
 def main():
     print_banner(sys.stderr)
     parser = argparse.ArgumentParser(description="virtio-villain test runner")
@@ -1588,7 +1599,7 @@ def main():
                         help="Disk image format (default: raw)")
     parser.add_argument("-s", "--cpus", type=int, default=None,
                         help="Number of vCPUs (default: 4 for CH, 1 for QEMU)")
-    parser.add_argument("-M", "--memory", default="512M",
+    parser.add_argument("-M", "--memory", default="512M", type=_normalize_mem,
                         help="Guest memory size (default: 512M)")
     parser.add_argument("--blk-queues", type=int, default=4,
                         help="Number of block device queues (default: 4)")
