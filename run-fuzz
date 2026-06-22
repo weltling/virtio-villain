@@ -881,6 +881,20 @@ def _is_sanitizer_noise_line(line):
     )
 
 
+def _is_benign_rejection_line(line):
+    """True if the line is the VMM gracefully rejecting a malformed
+    descriptor chain rather than faulting.
+
+    The VMM logs block request validation failures at ERROR level, for
+    example "Need a data descriptor" or "Missing head descriptor" from
+    its block request path. These mean the device correctly refused bad
+    guest input, which is the desired outcome of a fuzz case, not a
+    crash. They must not be mistaken for a genuine fault that masks the
+    LeakSanitizer ptrace teardown artifact.
+    """
+    return "ERROR:block/src/io/request.rs:" in line
+
+
 def _is_sanitizer_ptrace_artifact(output):
     """True if output is only the LeakSanitizer ptrace teardown abort.
 
@@ -888,6 +902,8 @@ def _is_sanitizer_ptrace_artifact(output):
     indicator on any other line, so a real AddressSanitizer or
     LeakSanitizer report, a VMM panic, a NEEDS_RESET, an ERROR log, or a
     seccomp kill is never masked even when LSan also fails to ptrace.
+    Graceful block request rejections are not genuine faults and do not
+    defeat the match.
     """
     if not output:
         return False
@@ -895,6 +911,8 @@ def _is_sanitizer_ptrace_artifact(output):
     for line in output.splitlines():
         if _is_sanitizer_noise_line(line):
             has_ptrace_abort = True
+            continue
+        if _is_benign_rejection_line(line):
             continue
         low = line.lower()
         if ("panic" in line

@@ -1017,6 +1017,35 @@ def test_sanitizer_artifact_false_when_real_leak_report():
     assert FUZZ_MOD._is_sanitizer_ptrace_artifact(output) is False
 
 
+def test_sanitizer_artifact_true_with_benign_block_rejection():
+    """Graceful block request rejections do not defeat the artifact match.
+
+    Cloud Hypervisor logs malformed descriptor chains at ERROR level
+    from block/src/io/request.rs while continuing to run. Such a run
+    that exits non zero only because of the LSan ptrace teardown is not
+    a crash.
+    """
+    output = (
+        "cloud-hypervisor: <_disk0_q0> ERROR:block/src/io/request.rs:155 "
+        "-- Need a data descriptor: request = Request { request_type: In }\n"
+        "cloud-hypervisor: <_disk0_q0> WARN:virtio-devices/src/block.rs:290 "
+        "-- Failed to parse virtio-blk request at head 0: too few descriptors\n"
+        + _LSAN_PTRACE_NOISE
+    )
+    assert FUZZ_MOD._is_sanitizer_ptrace_artifact(output) is True
+
+
+def test_sanitizer_artifact_false_block_error_with_real_panic():
+    """A real panic alongside a benign block rejection is still a crash."""
+    output = (
+        "cloud-hypervisor: ERROR:block/src/io/request.rs:91 "
+        "-- Missing head descriptor\n"
+        "thread '<_disk0_q0>' panicked at 'index out of bounds'\n"
+        + _LSAN_PTRACE_NOISE
+    )
+    assert FUZZ_MOD._is_sanitizer_ptrace_artifact(output) is False
+
+
 def test_classify_ptrace_noise_not_seccomp():
     """The ptrace warning must not be classified as a seccomp violation."""
     cls = FUZZ_MOD._classify_vmm_output(_LSAN_PTRACE_NOISE)
