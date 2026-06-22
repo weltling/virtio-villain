@@ -5,6 +5,7 @@
 import importlib.machinery
 import importlib.util
 import os
+import random
 import shutil
 import subprocess
 import sys
@@ -1006,6 +1007,119 @@ def test_minimize_no_entries_raises():
     except FUZZ_MOD.EmptyCoverageError:
         return
     raise AssertionError("expected EmptyCoverageError for empty input")
+
+
+# ---------------------------------------------------------------------------
+# run-fuzz structure-aware mutation (VqBlob intermediate representation).
+#
+# VqBlob parses a blob into a virtqueue object, lets operators mutate it
+# structurally, then serializes back with a coherent byte layout. These
+# tests pin the round-trip and the structural operators so the framing
+# stays consistent while adversarial semantics are preserved.
+
+def test_vqblob_roundtrip_preserves_fields():
+    """parse(serialize(x)) is a fixed point for a well-formed blob."""
+    blob = FUZZ_MOD.make_seed()
+    vq = FUZZ_MOD.VqBlob.parse(blob)
+    again = FUZZ_MOD.VqBlob.parse(vq.serialize())
+    assert again.queue_size == vq.queue_size
+    assert again.avail_idx == vq.avail_idx
+    assert again.descs == vq.descs
+    assert again.avail_ring == vq.avail_ring
+
+
+def test_vqblob_serialize_is_blob_size():
+    """serialize always emits exactly BLOB_SIZE bytes."""
+    vq = FUZZ_MOD.VqBlob.parse(FUZZ_MOD.make_seed())
+    assert len(vq.serialize()) == FUZZ_MOD.BLOB_SIZE
+
+
+def test_vqblob_parse_tolerates_short_blob():
+    """A blob shorter than the header parses without raising."""
+    vq = FUZZ_MOD.VqBlob.parse(b"\x10\x00")
+    assert vq.descs == []
+    assert len(vq.serialize()) == FUZZ_MOD.BLOB_SIZE
+
+
+def test_op_make_chain_links_all_but_last():
+    """make_chain sets NEXT on every descriptor except the tail."""
+    vq = FUZZ_MOD.VqBlob.parse(FUZZ_MOD.make_seed())
+    # Ensure at least three descriptors to exercise the chain.
+    vq.descs = [[16, 0, 0], [16, 0, 0], [16, 0, 0]]
+    FUZZ_MOD._op_make_chain(vq)
+    for i in range(len(vq.descs) - 1):
+        assert vq.descs[i][1] & FUZZ_MOD._F_NEXT
+        assert vq.descs[i][2] == i + 1
+    assert not (vq.descs[-1][1] & FUZZ_MOD._F_NEXT)
+
+
+def test_op_make_loop_sets_next_in_range():
+    """make_loop sets NEXT and points within the descriptor table."""
+    vq = FUZZ_MOD.VqBlob.parse(FUZZ_MOD.make_seed())
+    vq.descs = [[16, 0, 9], [16, 0, 9]]
+    FUZZ_MOD._op_make_loop(vq)
+    looped = [d for d in vq.descs if d[1] & FUZZ_MOD._F_NEXT]
+    assert looped
+    for d in vq.descs:
+        if d[1] & FUZZ_MOD._F_NEXT:
+            assert 0 <= d[2] < len(vq.descs)
+
+
+def test_op_make_indirect_clears_next():
+    """make_indirect sets INDIRECT and clears NEXT on the target."""
+    vq = FUZZ_MOD.VqBlob.parse(FUZZ_MOD.make_seed())
+    vq.descs = [[16, FUZZ_MOD._F_NEXT, 1]]
+    FUZZ_MOD._op_make_indirect(vq)
+    assert vq.descs[0][1] & FUZZ_MOD._F_INDIRECT
+    assert not (vq.descs[0][1] & FUZZ_MOD._F_NEXT)
+
+
+def test_op_clone_desc_aliases():
+    """clone_desc duplicates a descriptor so two slots match."""
+    vq = FUZZ_MOD.VqBlob.parse(FUZZ_MOD.make_seed())
+    vq.descs = [[512, FUZZ_MOD._F_WRITE, 0]]
+    FUZZ_MOD._op_clone_desc(vq)
+    assert len(vq.descs) == 2
+    assert vq.descs[0] == vq.descs[1]
+
+
+def test_structural_mutate_stays_well_framed():
+    """structural mutation always yields a parseable BLOB_SIZE blob."""
+    random.seed(1234)
+    blob = FUZZ_MOD.make_seed()
+    for _ in range(200):
+        blob = bytes(FUZZ_MOD._structural_mutate(blob))
+        assert len(blob) == FUZZ_MOD.BLOB_SIZE
+        # Must re-parse without raising.
+        FUZZ_MOD.VqBlob.parse(blob)
+
+
+def test_structural_mutate_stays_light():
+    """structural blobs do not ratchet rings to the hard maximum.
+
+    Operators only grow the descriptor and avail rings, so without a cap
+    repeated mutation saturates a blob and every VM run then processes
+    hundreds of request heads, which is the slow path. The cap keeps each
+    case cheap while chains and indirect tables stay expressible.
+    """
+    random.seed(99)
+    blob = FUZZ_MOD.make_seed()
+    for _ in range(500):
+        blob = bytes(FUZZ_MOD._structural_mutate(blob))
+        vq = FUZZ_MOD.VqBlob.parse(blob)
+        assert len(vq.descs) <= FUZZ_MOD.SOFT_DESCS
+        assert len(vq.avail_ring) <= FUZZ_MOD.SOFT_AVAIL
+
+
+def test_serialize_masks_oversized_fields():
+    """Out of range field values are masked, never crashing struct.pack."""
+    vq = FUZZ_MOD.VqBlob.parse(FUZZ_MOD.make_seed())
+    vq.descs = [[0x1_0000_0000, 0x1_FFFF, 0x9_9999]]
+    vq.avail_ring = [0x1_2345]
+    vq.queue_size = 0x9_0000
+    vq.avail_idx = 0x9_0000
+    out = vq.serialize()
+    assert len(out) == FUZZ_MOD.BLOB_SIZE
 
 
 def test_minimize_single_edge_survivor_not_wiped():

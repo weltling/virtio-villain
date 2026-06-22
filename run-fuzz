@@ -111,6 +111,7 @@ def mutate(blob):
         _zero_fill_region,
         _duplicate_desc,
         _indirect_inject,
+        _structural_mutate,
         _multi_strategy,
     ])
     return bytes(strategy(data))
@@ -372,6 +373,227 @@ def _multi_strategy(data):
     for _ in range(count):
         data = bytearray(random.choice(strategies)(data))
     return data
+
+
+# --- Structure-aware mutation ---
+#
+# The byte-level strategies above edit a flat bytearray with fixed offset
+# math. Changing num_descs or avail_count in the header does not move the
+# descriptor, avail, and payload regions, so the layout silently desyncs.
+# VqBlob parses a blob into a virtqueue object, lets operators mutate at
+# the structural level (descriptors, chains, avail ring, header), then
+# serializes back with a consistent byte layout. Semantic adversariality
+# (out of range heads, chain loops, oversized lengths, num_descs greater
+# than queue_size) is preserved; only the on-disk framing stays coherent
+# so the guest parser reads exactly what the operator intended.
+
+# Mirror the C harness clamps in lib/fuzz_input.h.
+MAX_DESCS = 128       # FUZZ_MAX_DESCS
+MAX_AVAIL = 256       # FUZZ_MAX_QUEUE_SIZE
+
+# Structural operators only grow the rings, which would ratchet a blob to
+# the hard maximum over successive mutations. A saturated blob makes the
+# VMM process hundreds of request heads of long chains per run, wedging
+# and hitting the timeout far more often. Keep structural blobs light: a
+# handful of descriptors and heads still expresses chains, loops, and
+# indirect tables, and num_descs above the default queue_size of 16.
+SOFT_DESCS = 16
+SOFT_AVAIL = 16
+
+_F_NEXT = 0x01
+_F_WRITE = 0x02
+_F_INDIRECT = 0x04
+
+# Virtio dictionary: lengths and flag combinations worth steering toward.
+STRUCT_LENS = [0, 1, 15, 16, 17, 512, 4095, 4096,
+               0xFFFF, 0x10000, 0x7FFFFFFF, 0x80000000, 0xFFFFFFFF]
+STRUCT_FLAGS = [0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+                0x0F, 0x8000, 0xFFFF]
+
+
+class VqBlob:
+    """Structured view of a fuzz blob: header, descriptors, avail, payload."""
+
+    def __init__(self, queue_size, avail_idx, descs, avail_ring, payload):
+        self.queue_size = queue_size
+        self.avail_idx = avail_idx
+        self.descs = descs            # list of [len, flags, next]
+        self.avail_ring = avail_ring  # list of int (head indices)
+        self.payload = bytes(payload)
+
+    @classmethod
+    def parse(cls, blob):
+        """Tolerant parse mirroring the C side: clamp counts, stop at EOF."""
+        blob = bytes(blob)
+        if len(blob) < HEADER_SIZE:
+            blob = blob + b"\x00" * (HEADER_SIZE - len(blob))
+        qs, nd, ai, ac = struct.unpack_from(HEADER_FMT, blob, 0)
+        nd = min(nd, MAX_DESCS)
+        ac = min(ac, MAX_AVAIL)
+
+        off = HEADER_SIZE
+        descs = []
+        for _ in range(nd):
+            if off + DESC_SIZE > len(blob):
+                break
+            descs.append(list(struct.unpack_from(DESC_FMT, blob, off)))
+            off += DESC_SIZE
+
+        avail_ring = []
+        for _ in range(ac):
+            if off + 2 > len(blob):
+                break
+            avail_ring.append(struct.unpack_from("<H", blob, off)[0])
+            off += 2
+
+        return cls(qs, ai, descs, avail_ring, blob[off:])
+
+    def serialize(self):
+        """Re-emit a BLOB_SIZE blob, trimming so every region fits."""
+        descs = [
+            (d[0] & 0xFFFFFFFF, d[1] & 0xFFFF, d[2] & 0xFFFF)
+            for d in self.descs[:MAX_DESCS]
+        ]
+        avail = [v & 0xFFFF for v in self.avail_ring[:MAX_AVAIL]]
+
+        def _fits():
+            return (HEADER_SIZE + len(descs) * DESC_SIZE
+                    + len(avail) * 2) <= BLOB_SIZE
+
+        while not _fits() and avail:
+            avail.pop()
+        while not _fits() and descs:
+            descs.pop()
+
+        cap = BLOB_SIZE - HEADER_SIZE - len(descs) * DESC_SIZE - len(avail) * 2
+        payload = self.payload[:max(0, cap)]
+        return make_blob(self.queue_size & 0xFFFF, descs,
+                         self.avail_idx & 0xFFFF, avail, payload)
+
+
+def _op_set_len(vq):
+    """Set a descriptor length to a boundary value."""
+    if not vq.descs:
+        return
+    vq.descs[random.randrange(len(vq.descs))][0] = random.choice(STRUCT_LENS)
+
+
+def _op_set_flags(vq):
+    """Replace a descriptor's flags with an interesting combination."""
+    if not vq.descs:
+        return
+    vq.descs[random.randrange(len(vq.descs))][1] = random.choice(STRUCT_FLAGS)
+
+
+def _op_make_chain(vq):
+    """Link every descriptor into a single NEXT chain 0->1->...->n-1."""
+    n = len(vq.descs)
+    if n < 2:
+        return
+    for i in range(n - 1):
+        vq.descs[i][1] |= _F_NEXT
+        vq.descs[i][2] = i + 1
+    vq.descs[n - 1][1] &= ~_F_NEXT
+
+
+def _op_make_loop(vq):
+    """Point a descriptor's NEXT back to itself or an earlier slot."""
+    n = len(vq.descs)
+    if n == 0:
+        return
+    i = random.randrange(n)
+    vq.descs[i][1] |= _F_NEXT
+    vq.descs[i][2] = random.randint(0, n - 1)
+
+
+def _op_make_indirect(vq):
+    """Mark a descriptor INDIRECT (clearing NEXT) with a table-like length."""
+    if not vq.descs:
+        return
+    i = random.randrange(len(vq.descs))
+    vq.descs[i][1] = (vq.descs[i][1] | _F_INDIRECT) & ~_F_NEXT
+    vq.descs[i][0] = random.choice([0, 16, 17, 32, 256, 4096])
+
+
+def _op_insert_desc(vq):
+    """Insert a fresh descriptor at a random position."""
+    if len(vq.descs) >= SOFT_DESCS:
+        return
+    length = random.choice(STRUCT_LENS)
+    flags = random.choice(STRUCT_FLAGS)
+    nxt = random.randint(0, len(vq.descs)) if vq.descs else 0
+    vq.descs.insert(random.randint(0, len(vq.descs)), [length, flags, nxt])
+
+
+def _op_clone_desc(vq):
+    """Duplicate a descriptor, aliasing its buffer."""
+    if not vq.descs or len(vq.descs) >= SOFT_DESCS:
+        return
+    i = random.randrange(len(vq.descs))
+    vq.descs.insert(i, list(vq.descs[i]))
+
+
+def _op_remove_desc(vq):
+    """Drop a descriptor, keeping at least one."""
+    if len(vq.descs) <= 1:
+        return
+    vq.descs.pop(random.randrange(len(vq.descs)))
+
+
+def _op_avail_point(vq):
+    """Aim an avail ring entry at a boundary head index."""
+    if not vq.avail_ring:
+        vq.avail_ring = [0]
+    n = max(1, len(vq.descs))
+    vq.avail_ring[random.randrange(len(vq.avail_ring))] = random.choice(
+        [0, n - 1, n, n + 1, 0xFFFF])
+
+
+def _op_dup_avail(vq):
+    """Replay a head by duplicating an avail ring entry."""
+    if not vq.avail_ring or len(vq.avail_ring) >= SOFT_AVAIL:
+        return
+    vq.avail_ring.append(vq.avail_ring[random.randrange(len(vq.avail_ring))])
+
+
+def _op_remove_avail(vq):
+    """Drop an avail ring entry, keeping at least one."""
+    if len(vq.avail_ring) <= 1:
+        return
+    vq.avail_ring.pop(random.randrange(len(vq.avail_ring)))
+
+
+def _op_avail_idx(vq):
+    """Set avail_idx to a boundary value."""
+    vq.avail_idx = random.choice(
+        [0, 1, len(vq.avail_ring), vq.queue_size,
+         (vq.queue_size + 1) & 0xFFFF, 0xFFFF])
+
+
+def _op_queue_size(vq):
+    """Set queue_size to an invalid or boundary value."""
+    vq.queue_size = random.choice(
+        [0, 1, 3, 7, 15, 127, 256, 512, 1024, 32768, 65535])
+
+
+_STRUCT_OPS = [
+    _op_set_len, _op_set_flags, _op_make_chain, _op_make_loop,
+    _op_make_indirect, _op_insert_desc, _op_clone_desc, _op_remove_desc,
+    _op_avail_point, _op_dup_avail, _op_remove_avail, _op_avail_idx,
+    _op_queue_size,
+]
+
+
+def _structural_mutate(data):
+    """Parse into a VqBlob, apply structural operators, serialize back."""
+    vq = VqBlob.parse(bytes(data))
+    for _ in range(random.randint(1, 3)):
+        random.choice(_STRUCT_OPS)(vq)
+    # Cap ring sizes so a parent that arrived saturated does not keep its
+    # weight; structural exploration needs variety, not maximum length.
+    del vq.descs[SOFT_DESCS:]
+    del vq.avail_ring[SOFT_AVAIL:]
+    return bytearray(vq.serialize())
 
 
 # --- Coverage ---
