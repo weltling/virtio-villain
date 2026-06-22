@@ -515,16 +515,22 @@ RUSTFLAGS="-Zsanitizer=address" \
   cargo +nightly build -Zbuild-std --target x86_64-unknown-linux-gnu
 ```
 
-A single binary cannot carry both coverage instrumentation and
-AddressSanitizer. They share LLVM runtime hooks and collide. The
-recommended approach is two separate builds, one per signal, run as
-separate campaigns. SanitizerCoverage is an alternative to `-C
-instrument-coverage` that works alongside ASan in one binary.
+Coverage instrumentation and AddressSanitizer are independent LLVM
+passes with separate runtimes, so a single binary can carry both. The
+combined build needs nightly and build-std (because ASan does), and is
+heavier and slower than either alone. This is the only build that gives
+`run-fuzz` both growing coverage and memory error detection at once.
 
 ```bash
-RUSTFLAGS="-Zsanitizer=address -C passes=sancov-module" \
+RUSTFLAGS="-C instrument-coverage -Zsanitizer=address" \
   cargo +nightly build -Zbuild-std --target x86_64-unknown-linux-gnu
 ```
+
+Separate single signal builds are still recommended for routine
+campaigns: they build faster, run faster, and keep each signal clean.
+`run-fuzz` reads coverage from the source based `instrument-coverage`
+profraw via `llvm-profdata` and `llvm-cov`, so a coverage signal needs
+that flag specifically.
 
 Ensure `rust-src` is available.
 
