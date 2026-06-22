@@ -1137,11 +1137,12 @@ def test_minimize_single_edge_survivor_not_wiped():
 # ---------------------------------------------------------------------------
 # run-fuzz LeakSanitizer ptrace artifact filtering.
 #
-# A VMM built with LeakSanitizer aborts its exit time leak scan when
-# kernel.yama.ptrace_scope blocks the StopTheWorld ptrace attach, exiting
-# non zero even though the run was clean. The fuzzer must not score that
-# teardown as a crash, and must not misread the ptrace warning text (which
-# mentions seccomp) as a real seccomp violation.
+# A VMM built with LeakSanitizer aborts its exit time leak scan when its
+# StopTheWorld ptrace attach is denied. The VMM is non dumpable, so a same
+# uid tracer is refused with EPERM regardless of kernel.yama.ptrace_scope
+# or seccomp. The fuzzer must not score that teardown as a crash, and must
+# not misread the ptrace warning text (which mentions seccomp) as a real
+# seccomp violation.
 
 _LSAN_PTRACE_NOISE = (
     "==1234==WARNING: ptrace appears to be blocked "
@@ -1232,6 +1233,26 @@ def test_classify_real_error_after_ptrace_noise():
     )
     cls = FUZZ_MOD._classify_vmm_output(output)
     assert "something genuinely broke" in cls
+
+
+def test_sanitizer_noise_matches_tracer_child_exit():
+    """The residual sanitizer tracer exit line counts as teardown noise."""
+    assert RUN_MOD._is_sanitizer_noise_line(
+        "==1497092==Child exited with signal 42.") is True
+    # A plain VMM log line that happens to mention a child exit, without
+    # the sanitizer == prefix, is not swallowed.
+    assert RUN_MOD._is_sanitizer_noise_line(
+        "worker: Child exited with signal 9") is False
+
+
+def test_sanitizer_artifact_recovered_run_is_not_a_crash():
+    """With CAP_SYS_PTRACE the scan recovers; only soft noise remains."""
+    output = (
+        "==1497092==WARNING: ptrace appears to be blocked "
+        "(is seccomp enabled?). LeakSanitizer may hang.\n"
+        "==1497092==Child exited with signal 42.\n"
+    )
+    assert FUZZ_MOD._is_sanitizer_ptrace_artifact(output) is True
 
 
 # ---------------------------------------------------------------------------
@@ -1385,6 +1406,196 @@ def test_revert_sysconfigs_restores_values():
     RUN_MOD.revert_sysconfigs(restore)
     assert sorted(writes) == [("kernel.a", "1"), ("kernel.b", "2")]
     assert restore == {}
+
+
+# ---------------------------------------------------------------------------
+# run --apply-sysconfig CAP_SYS_PTRACE grant for the LeakSanitizer leak
+# scan. The VMM is non dumpable, so a same uid LSan tracer is denied; the
+# grant bypasses it. The helpers parse getcap, append the capability as a
+# separate clause so existing caps survive, and revert exactly.
+
+class _CP:
+    """Minimal stand in for subprocess.CompletedProcess."""
+
+    def __init__(self, returncode=0, stdout="", stderr=""):
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr
+
+
+def test_getcap_parses_expression():
+    """getcap "PATH cap=ep" yields the capability expression."""
+    orig_which = RUN_MOD.shutil.which
+    orig_run = RUN_MOD.subprocess.run
+    try:
+        RUN_MOD.shutil.which = lambda c: "/usr/sbin/" + c
+        RUN_MOD.subprocess.run = lambda *a, **k: _CP(
+            0, "/path/to/vmm cap_net_admin=ep\n")
+        assert RUN_MOD._getcap("/path/to/vmm") == "cap_net_admin=ep"
+    finally:
+        RUN_MOD.shutil.which = orig_which
+        RUN_MOD.subprocess.run = orig_run
+
+
+def test_getcap_strips_equals_form():
+    """An older "PATH = cap+ep" form is parsed to the bare expression."""
+    orig_which = RUN_MOD.shutil.which
+    orig_run = RUN_MOD.subprocess.run
+    try:
+        RUN_MOD.shutil.which = lambda c: "/usr/sbin/" + c
+        RUN_MOD.subprocess.run = lambda *a, **k: _CP(
+            0, "/path/to/vmm = cap_net_admin+ep\n")
+        assert RUN_MOD._getcap("/path/to/vmm") == "cap_net_admin+ep"
+    finally:
+        RUN_MOD.shutil.which = orig_which
+        RUN_MOD.subprocess.run = orig_run
+
+
+def test_getcap_empty_when_no_caps():
+    """A file with no capabilities yields the empty string, not None."""
+    orig_which = RUN_MOD.shutil.which
+    orig_run = RUN_MOD.subprocess.run
+    try:
+        RUN_MOD.shutil.which = lambda c: "/usr/sbin/" + c
+        RUN_MOD.subprocess.run = lambda *a, **k: _CP(0, "")
+        assert RUN_MOD._getcap("/path/to/vmm") == ""
+    finally:
+        RUN_MOD.shutil.which = orig_which
+        RUN_MOD.subprocess.run = orig_run
+
+
+def test_apply_ptrace_cap_appends_clause():
+    """The grant appends cap_sys_ptrace, preserving existing caps."""
+    orig_which = RUN_MOD.shutil.which
+    orig_lsan = RUN_MOD._is_leak_sanitized
+    orig_getcap = RUN_MOD._getcap
+    orig_apply = RUN_MOD._setcap_apply
+    captured = []
+    try:
+        RUN_MOD.shutil.which = lambda c: "/usr/sbin/" + c
+        RUN_MOD._is_leak_sanitized = lambda p: True
+        RUN_MOD._getcap = lambda p: "cap_net_admin=ep"
+        RUN_MOD._setcap_apply = lambda expr, p: (captured.append(expr) or True)
+        orig = RUN_MOD.apply_ptrace_cap(__file__)
+        assert captured == ["cap_net_admin=ep cap_sys_ptrace=ep"]
+        assert orig == "cap_net_admin=ep"
+    finally:
+        RUN_MOD.shutil.which = orig_which
+        RUN_MOD._is_leak_sanitized = orig_lsan
+        RUN_MOD._getcap = orig_getcap
+        RUN_MOD._setcap_apply = orig_apply
+
+
+def test_apply_ptrace_cap_no_existing_caps():
+    """With no existing caps the grant is the sole clause."""
+    orig_which = RUN_MOD.shutil.which
+    orig_lsan = RUN_MOD._is_leak_sanitized
+    orig_getcap = RUN_MOD._getcap
+    orig_apply = RUN_MOD._setcap_apply
+    captured = []
+    try:
+        RUN_MOD.shutil.which = lambda c: "/usr/sbin/" + c
+        RUN_MOD._is_leak_sanitized = lambda p: True
+        RUN_MOD._getcap = lambda p: ""
+        RUN_MOD._setcap_apply = lambda expr, p: (captured.append(expr) or True)
+        orig = RUN_MOD.apply_ptrace_cap(__file__)
+        assert captured == ["cap_sys_ptrace=ep"]
+        assert orig == ""
+    finally:
+        RUN_MOD.shutil.which = orig_which
+        RUN_MOD._is_leak_sanitized = orig_lsan
+        RUN_MOD._getcap = orig_getcap
+        RUN_MOD._setcap_apply = orig_apply
+
+
+def test_apply_ptrace_cap_skips_when_already_present():
+    """If the cap is already set, nothing is changed or recorded."""
+    orig_which = RUN_MOD.shutil.which
+    orig_lsan = RUN_MOD._is_leak_sanitized
+    orig_getcap = RUN_MOD._getcap
+    orig_apply = RUN_MOD._setcap_apply
+    called = []
+    try:
+        RUN_MOD.shutil.which = lambda c: "/usr/sbin/" + c
+        RUN_MOD._is_leak_sanitized = lambda p: True
+        RUN_MOD._getcap = lambda p: "cap_sys_ptrace=ep"
+        RUN_MOD._setcap_apply = lambda expr, p: (called.append(expr) or True)
+        assert RUN_MOD.apply_ptrace_cap(__file__) is None
+        assert called == []
+    finally:
+        RUN_MOD.shutil.which = orig_which
+        RUN_MOD._is_leak_sanitized = orig_lsan
+        RUN_MOD._getcap = orig_getcap
+        RUN_MOD._setcap_apply = orig_apply
+
+
+def test_apply_ptrace_cap_skips_non_lsan():
+    """A VMM without the LeakSanitizer runtime is not touched."""
+    orig_which = RUN_MOD.shutil.which
+    orig_lsan = RUN_MOD._is_leak_sanitized
+    orig_apply = RUN_MOD._setcap_apply
+    called = []
+    try:
+        RUN_MOD.shutil.which = lambda c: "/usr/sbin/" + c
+        RUN_MOD._is_leak_sanitized = lambda p: False
+        RUN_MOD._setcap_apply = lambda expr, p: (called.append(expr) or True)
+        assert RUN_MOD.apply_ptrace_cap(__file__) is None
+        assert called == []
+    finally:
+        RUN_MOD.shutil.which = orig_which
+        RUN_MOD._is_leak_sanitized = orig_lsan
+        RUN_MOD._setcap_apply = orig_apply
+
+
+def test_revert_ptrace_cap_reapplies_original():
+    """A non empty original is restored with setcap."""
+    orig_apply = RUN_MOD._setcap_apply
+    orig_remove = RUN_MOD._setcap_remove
+    applied = []
+    removed = []
+    try:
+        RUN_MOD._setcap_apply = lambda expr, p: (applied.append((expr, p))
+                                                 or True)
+        RUN_MOD._setcap_remove = lambda p: (removed.append(p) or True)
+        RUN_MOD.revert_ptrace_cap("/path/vmm", "cap_net_admin=ep")
+        assert applied == [("cap_net_admin=ep", "/path/vmm")]
+        assert removed == []
+    finally:
+        RUN_MOD._setcap_apply = orig_apply
+        RUN_MOD._setcap_remove = orig_remove
+
+
+def test_revert_ptrace_cap_clears_when_originally_none():
+    """An empty original means the VMM had no caps; clear them."""
+    orig_apply = RUN_MOD._setcap_apply
+    orig_remove = RUN_MOD._setcap_remove
+    applied = []
+    removed = []
+    try:
+        RUN_MOD._setcap_apply = lambda expr, p: (applied.append((expr, p))
+                                                 or True)
+        RUN_MOD._setcap_remove = lambda p: (removed.append(p) or True)
+        RUN_MOD.revert_ptrace_cap("/path/vmm", "")
+        assert removed == ["/path/vmm"]
+        assert applied == []
+    finally:
+        RUN_MOD._setcap_apply = orig_apply
+        RUN_MOD._setcap_remove = orig_remove
+
+
+def test_revert_ptrace_cap_noop_when_unchanged():
+    """A None token means nothing was granted, so nothing is reverted."""
+    orig_apply = RUN_MOD._setcap_apply
+    orig_remove = RUN_MOD._setcap_remove
+    touched = []
+    try:
+        RUN_MOD._setcap_apply = lambda expr, p: (touched.append(1) or True)
+        RUN_MOD._setcap_remove = lambda p: (touched.append(1) or True)
+        RUN_MOD.revert_ptrace_cap("/path/vmm", None)
+        assert touched == []
+    finally:
+        RUN_MOD._setcap_apply = orig_apply
+        RUN_MOD._setcap_remove = orig_remove
 
 
 # ---------------------------------------------------------------------------

@@ -755,11 +755,13 @@ def run_vmm(vmm_path, initramfs_path, profraw_dir, timeout=3,
         crashed = result.returncode not in (0, 3)  # 3 = isa-debug-exit
         output = result.stderr.decode(errors="replace")
         # A VMM built with LeakSanitizer aborts its own atexit leak scan
-        # when kernel.yama.ptrace_scope blocks StopTheWorld, exiting non
-        # zero even though the run was clean. Do not count that teardown
+        # when its StopTheWorld ptrace attach is denied (the VMM is non
+        # dumpable, so a same uid tracer gets EPERM), exiting non zero
+        # even though the run was clean. Do not count that teardown
         # artifact as a crash. A genuine sanitizer finding is preserved
         # because _is_sanitizer_ptrace_artifact only matches when no real
-        # error report is present.
+        # error report is present. Run with --apply-sysconfig to grant
+        # CAP_SYS_PTRACE and remove the artifact at the source.
         if crashed and _is_sanitizer_ptrace_artifact(output):
             crashed = False
         return result.returncode, crashed, output
@@ -1909,11 +1911,12 @@ def main():
     sysconf_parent = argparse.ArgumentParser(add_help=False)
     sysconf_parent.add_argument(
         "--apply-sysconfig", action="store_true",
-        help="Apply host kernel settings needed for a sanitizer "
-             "instrumented VMM, then revert them on exit. Currently "
-             "sets kernel.yama.ptrace_scope=0 so LeakSanitizer can run. "
-             "Uses sudo and changes system wide state, only the values "
-             "it changed are reverted.")
+        help="Apply host settings a sanitizer instrumented VMM needs, "
+             "then revert them on exit. Grants the VMM CAP_SYS_PTRACE "
+             "so LeakSanitizer can complete its exit time leak scan "
+             "against the non dumpable VMM, and sets "
+             "kernel.yama.ptrace_scope=0 as a fallback. Uses sudo; only "
+             "the values it changed are reverted.")
 
     # --- fuzz (default) ---
     p_fuzz = sub.add_parser("fuzz", help="Run the fuzzing loop",
@@ -2021,7 +2024,7 @@ def main():
     args = parser.parse_args()
 
     if getattr(args, "apply_sysconfig", False):
-        _run_mod.enable_sysconfigs()
+        _run_mod.enable_sysconfigs(getattr(args, "vmm", None))
 
     if args.command == "decode":
         cmd_decode(args)
