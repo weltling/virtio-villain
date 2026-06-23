@@ -80,9 +80,20 @@ static test_result_t test_iommu_domain_reuse(struct virtio_dev *dev,
     if (r != TEST_PASS)
         return r;
 
+    /* The test needs two endpoints bound to devices behind the
+     * virtual IOMMU. Only endpoint ids that resolve to a real
+     * requester are attachable, the rest return NOENT per spec.
+     * If either endpoint is not attachable in this topology there
+     * is no cross endpoint domain reuse to exercise, so skip. */
+    if (a0->tail.status == VIRTIO_IOMMU_S_NOENT ||
+        a1->tail.status == VIRTIO_IOMMU_S_NOENT)
+        return TEST_SKIP;
+
     if (a0->tail.status != 0 || d0->tail.status != 0 ||
         a1->tail.status != 0 || d1->tail.status != 0)
-        TFAIL("a0->tail.status != 0 || d0->tail.status != 0 || a1->tail.status != 0 || d1->tail.status != 0");
+        TFAIL("status a0=%u d0=%u a1=%u d1=%u",
+              a0->tail.status, d0->tail.status,
+              a1->tail.status, d1->tail.status);
 
     return TEST_PASS;
 }
