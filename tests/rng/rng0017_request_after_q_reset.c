@@ -18,8 +18,6 @@
 static test_result_t test_rng_after_q_reset(struct virtio_dev *dev,
                                             struct vring *vr)
 {
-    volatile struct virtio_pci_common_cfg *cfg = dev->common;
-
     /* Submit an initial request */
     uint8_t *buf = vv_alloc_pages(1);
     memset(buf, 0, 64);
@@ -32,12 +30,9 @@ static test_result_t test_rng_after_q_reset(struct virtio_dev *dev,
     if (r != TEST_PASS)
         return r;
 
-    /* Reset queue 0 */
-    cfg->queue_select = 0;
-    __sync_synchronize();
-    cfg->queue_enable = 0;
-    __sync_synchronize();
-    usleep(50000);
+    /* Reset queue 0 via the queue_reset register (spec 2.6.1) */
+    if (virtio_pci_queue_reset(dev, 0) < 0)
+        return TEST_SKIP;
 
     /* Reallocate and re-enable */
     struct vring vr2;

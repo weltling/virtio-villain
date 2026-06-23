@@ -33,18 +33,16 @@ static test_result_t test_ring_reset_twice(struct virtio_dev *dev,
     if (!cfg->queue_enable)
         return TEST_SKIP;
 
-    /* First reset */
-    cfg->queue_enable = 0;
-    __sync_synchronize();
-    usleep(50000);
+    /* First reset via the queue_reset register (spec 2.6.1) */
+    if (virtio_pci_queue_reset(dev, 0) < 0)
+        TFAIL("queue_enable not cleared after first reset");
 
     if (cfg->queue_enable != 0)
         TFAIL("cfg->queue_enable != 0");
 
     /* Second reset (queue already disabled) */
-    cfg->queue_enable = 0;
-    __sync_synchronize();
-    usleep(50000);
+    if (virtio_pci_queue_reset(dev, 0) < 0)
+        TFAIL("queue_enable not cleared after second reset");
 
     /* Must still be disabled, device must not crash */
     if (cfg->queue_enable != 0)

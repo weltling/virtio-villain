@@ -36,12 +36,9 @@ static test_result_t test_ring_reset_other_active(struct virtio_dev *dev,
     vring_alloc(&vr1, 64);
     vring_attach(dev, &vr1, 1);
 
-    /* Reset queue 0 */
-    cfg->queue_select = 0;
-    __sync_synchronize();
-    cfg->queue_enable = 0;
-    __sync_synchronize();
-    usleep(50000);
+    /* Reset queue 0 via the queue_reset register (spec 2.6.1) */
+    if (virtio_pci_queue_reset(dev, 0) < 0)
+        TFAIL("queue_enable not cleared after reset");
 
     /* Submit I/O on queue 1 which should still work */
     struct virtio_blk_outhdr *hdr = vv_alloc_pages(1);

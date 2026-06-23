@@ -35,10 +35,9 @@ static test_result_t test_ring_reset_new_size(struct virtio_dev *dev,
     if (!cfg->queue_enable || orig_size < 32)
         return TEST_SKIP;
 
-    /* Reset queue 0 */
-    cfg->queue_enable = 0;
-    __sync_synchronize();
-    usleep(50000);
+    /* Reset queue 0 via the queue_reset register (spec 2.6.1) */
+    if (virtio_pci_queue_reset(dev, 0) < 0)
+        TFAIL("queue_enable not cleared after reset");
 
     /* Re-enable with smaller size (half of original, minimum 16) */
     uint16_t new_size = orig_size / 2;

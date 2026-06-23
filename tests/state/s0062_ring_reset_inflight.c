@@ -50,11 +50,8 @@ static test_result_t test_ring_reset_inflight(struct virtio_dev *dev,
     virtio_pci_kick(dev, 0);
 
     /* Immediately reset the queue without waiting */
-    cfg->queue_select = 0;
-    __sync_synchronize();
-    cfg->queue_enable = 0;
-    __sync_synchronize();
-    usleep(100000);
+    if (virtio_pci_queue_reset(dev, 0) < 0)
+        TFAIL("queue_enable not cleared after reset");
 
     /* Queue must now be disabled */
     if (cfg->queue_enable != 0)

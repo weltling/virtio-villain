@@ -27,8 +27,9 @@ static test_result_t test_net_mq_during_reset(struct virtio_dev *dev,
     if (qs == 0)
         return TEST_SKIP;  /* Only 1 queue pair, cannot test MQ */
 
-    cfg->queue_enable = 0;
-    __sync_synchronize();
+    /* Reset queue 2 via the queue_reset register (spec 2.6.1) */
+    if (virtio_pci_queue_reset(dev, 2) < 0)
+        return TEST_SKIP;
 
     /* Now send MQ VQ_PAIRS_SET via ctrl queue */
     struct virtio_net_ctrl_hdr *ctrl = vv_alloc_pages(1);

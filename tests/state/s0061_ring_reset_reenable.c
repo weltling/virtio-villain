@@ -27,12 +27,9 @@ static test_result_t test_ring_reset_reenable(struct virtio_dev *dev,
     if (!(offered & (1U << (VIRTIO_F_RING_RESET % 32))))
         return TEST_SKIP;
 
-    /* Disable queue 0 (reset) */
-    cfg->queue_select = 0;
-    __sync_synchronize();
-    cfg->queue_enable = 0;
-    __sync_synchronize();
-    usleep(50000);
+    /* Reset queue 0 via the queue_reset register (spec 2.6.1) */
+    if (virtio_pci_queue_reset(dev, 0) < 0)
+        TFAIL("queue_enable not cleared after reset");
 
     if (cfg->queue_enable != 0)
         TFAIL("cfg->queue_enable != 0");

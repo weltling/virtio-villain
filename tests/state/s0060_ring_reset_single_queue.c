@@ -37,11 +37,9 @@ static test_result_t test_ring_reset_single(struct virtio_dev *dev,
     if (!enable_before)
         return TEST_SKIP;
 
-    /* Reset the queue: write queue_reset = 1 (via queue_enable = 0 with
-     * RING_RESET negotiated, per PCI transport 4.1.4.3.2) */
-    cfg->queue_enable = 0;
-    __sync_synchronize();
-    usleep(50000);
+    /* Reset the queue via the queue_reset register (spec 2.6.1). */
+    if (virtio_pci_queue_reset(dev, 0) < 0)
+        TFAIL("queue_enable not cleared after reset");
 
     /* Verify queue is now disabled */
     uint16_t enable_after = cfg->queue_enable;

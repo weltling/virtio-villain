@@ -27,17 +27,13 @@ static test_result_t test_watchdog_ping_after_ring_reset(struct virtio_dev *dev,
     if (!(cfg->device_feature & (1U << (VIRTIO_F_RING_RESET % 32))))
         return TEST_SKIP;
 
-    /* Disable the queue (ring reset under RING_RESET) */
-    cfg->queue_select = 0;
-    __sync_synchronize();
-    cfg->queue_enable = 0;
-    __sync_synchronize();
-    usleep(50000);
+    /* Reset the queue via the queue_reset register (spec 2.6.1) */
+    if (virtio_pci_queue_reset(dev, 0) < 0)
+        return TEST_SKIP;
 
-    /* Re-enable the queue */
-    cfg->queue_enable = 1;
+    /* Re-program and re-enable the queue */
+    vring_attach(dev, vr, 0);
     __sync_synchronize();
-    usleep(50000);
 
     if (cfg->device_status == 0)
         TWEDGED("cfg->device_status == 0");
