@@ -30,10 +30,11 @@
 #define VIRTIO_IOMMU_S_IOERR          1
 #define VIRTIO_IOMMU_S_UNSUPP         2
 #define VIRTIO_IOMMU_S_DEVERR         3
-#define VIRTIO_IOMMU_S_RANGE          4
-#define VIRTIO_IOMMU_S_NOENT          5
-#define VIRTIO_IOMMU_S_FAULT          6
-#define VIRTIO_IOMMU_S_NOMEM          7
+#define VIRTIO_IOMMU_S_INVAL          4
+#define VIRTIO_IOMMU_S_RANGE          5
+#define VIRTIO_IOMMU_S_NOENT          6
+#define VIRTIO_IOMMU_S_FAULT          7
+#define VIRTIO_IOMMU_S_NOMEM          8
 
 /* MAP flags */
 #define VIRTIO_IOMMU_MAP_F_READ       (1 << 0)
