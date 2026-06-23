@@ -56,6 +56,7 @@ KERNEL_NAMES = {
     "x86_64": "vmlinux-x86_64",
     "aarch64": "Image-arm64",
 }
+DEFAULT_VMM_TRACE_FILE = "/tmp/vmm-trace.log"
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -366,12 +367,34 @@ class VmmBackend:
     name = None
     console_device = "hvc0"
     mmio_transport = False
+    # Whether this backend can emit a tracepoint log via --vmm-trace.
+    supports_trace = False
 
     def __init__(self, binary):
         self.binary = binary
 
     def build_cmd(self, kernel, initramfs, disk_path, cmdline, opts=None):
         raise NotImplementedError
+
+    def trace_args(self, opts):
+        """Return VMM-specific tracing flags for opts, or [] if none.
+
+        opts['vmm_trace'] is a list of event names or globs and
+        opts['vmm_trace_file'] is the log path. Backends that set
+        supports_trace override this; the base returns nothing.
+        """
+        return []
+
+    @staticmethod
+    def _qemu_trace_flags(opts):
+        """Build QEMU -D/--trace flags from the generic trace opts."""
+        events = opts.get("vmm_trace") or []
+        if not events:
+            return []
+        args = ["-D", opts.get("vmm_trace_file") or DEFAULT_VMM_TRACE_FILE]
+        for ev in events:
+            args += ["--trace", ev]
+        return args
 
 
 class CloudHypervisor(VmmBackend):
@@ -453,8 +476,12 @@ class CloudHypervisor(VmmBackend):
 class Qemu(VmmBackend):
     name = "qemu"
     console_device = "ttyS0"
+    supports_trace = True
     _cid_counter = 2  # start above reserved CIDs (0=hypervisor, 1=local, 2=host)
     _cid_lock = threading.Lock()
+
+    def trace_args(self, opts):
+        return self._qemu_trace_flags(opts)
 
     @classmethod
     def _next_cid(cls):
@@ -521,6 +548,7 @@ class Qemu(VmmBackend):
             ]
         if api_socket:
             cmd += ["-qmp", f"unix:{api_socket},server=on,wait=off"]
+        cmd[1:1] = self.trace_args(opts)
         return cmd
 
 
@@ -529,6 +557,10 @@ class QemuMicrovm(VmmBackend):
     name = "qemu-mmio"
     console_device = "ttyS0"
     mmio_transport = True
+    supports_trace = True
+
+    def trace_args(self, opts):
+        return self._qemu_trace_flags(opts)
 
     def build_cmd(self, kernel, initramfs, disk_path, cmdline, opts=None):
         opts = opts or {}
@@ -558,6 +590,7 @@ class QemuMicrovm(VmmBackend):
         ]
         if arch != "aarch64":
             cmd += ["-device", "isa-debug-exit,iobase=0x501,iosize=1"]
+        cmd[1:1] = self.trace_args(opts)
         return cmd
 
 
@@ -1614,6 +1647,19 @@ def main():
                              "(CH --api-socket or QEMU -qmp). The socket "
                              "is enabled by default and required for "
                              "save, restore and hotplug oriented tests.")
+    parser.add_argument("--vmm-trace", action="append", default=[],
+                        metavar="EVENTS",
+                        help="Enable VMM tracepoints. Comma separated event "
+                             "names or globs, repeatable. Example: "
+                             "'virtio_queue_notify,virtqueue_pop' or "
+                             "'virtio_blk_*'. Only backends that support "
+                             "tracing accept this; others error out. Best "
+                             "used with --jobs 1 since all VMs share one "
+                             "trace file.")
+    parser.add_argument("--vmm-trace-file", default=None, metavar="PATH",
+                        help="Where the VMM writes the trace log when "
+                             f"--vmm-trace is set (default: "
+                             f"{DEFAULT_VMM_TRACE_FILE}).")
     parser.add_argument("--apply-sysconfig", action="store_true",
                         help="Apply host settings that a sanitizer "
                              "instrumented VMM needs, then revert them on "
@@ -1681,6 +1727,13 @@ def main():
     kernel = args.kernel or fetch_kernel()
     backend = detect_vmm(args.vmm)
 
+    vmm_trace = []
+    for spec in args.vmm_trace:
+        vmm_trace += [e.strip() for e in spec.split(",") if e.strip()]
+    if vmm_trace and not backend.supports_trace:
+        sys.exit(f"--vmm-trace is not supported by the '{backend.name}' "
+                 f"backend")
+
     vm_opts = {
         "cpus": args.cpus if args.cpus else (4 if backend.name == "ch" else 1),
         "memory": args.memory,
@@ -1688,6 +1741,8 @@ def main():
         "net_queues": args.net_queues,
         "packed": args.packed,
         "api_enabled": not args.no_api_socket,
+        "vmm_trace": vmm_trace,
+        "vmm_trace_file": args.vmm_trace_file,
     }
 
     # Scale the per VM wall clock deadline by the host oversubscription
