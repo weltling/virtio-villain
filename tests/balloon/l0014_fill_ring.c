@@ -20,11 +20,12 @@ static test_result_t test_balloon_fill_ring(struct virtio_dev *dev,
                                             struct vring *vr)
 {
     uint32_t *pfns = vv_alloc_pages(1);
-    uint64_t base = vv_virt_to_phys(vv_alloc_pages(16));
+    uint8_t *base = vv_alloc_pages(vr->size);
     uint64_t pfns_phys = vv_virt_to_phys(pfns);
 
     for (uint16_t i = 0; i < vr->size; i++) {
-        pfns[i] = (uint32_t)((base >> VIRTIO_BALLOON_PFN_SHIFT) + i);
+        uint64_t pa = vv_virt_to_phys(base + (size_t)i * PAGE_SIZE);
+        pfns[i] = (uint32_t)(pa >> VIRTIO_BALLOON_PFN_SHIFT);
         vring_raw_set_desc(vr, i, pfns_phys + i * 4, 4, 0, 0);
         vring_raw_set_avail(vr, i, i);
     }
