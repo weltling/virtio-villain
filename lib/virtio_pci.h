@@ -62,6 +62,8 @@ struct virtio_pci_common_cfg {
     uint64_t queue_desc;
     uint64_t queue_avail;
     uint64_t queue_used;
+    uint16_t queue_notify_data;
+    uint16_t queue_reset;
 } __attribute__((packed));
 
 /* ISR status register bits (spec 4.1.4.5) */
@@ -112,6 +114,14 @@ int virtio_pci_init(struct virtio_dev *dev);
 
 /* Reset device (set status to 0). */
 void virtio_pci_reset(struct virtio_dev *dev);
+
+/*
+ * Reset a single virtqueue via the queue_reset register (spec 2.6.1,
+ * requires the device to offer VIRTIO_F_RING_RESET). Selects the
+ * queue, writes queue_reset = 1, then polls until the device clears
+ * queue_enable. Returns 0 once the queue is disabled, -1 on timeout.
+ */
+int virtio_pci_queue_reset(struct virtio_dev *dev, uint16_t queue);
 
 /* Send a queue notification (kick). */
 void virtio_pci_kick(struct virtio_dev *dev, uint16_t queue);

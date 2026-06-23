@@ -188,6 +188,29 @@ void virtio_pci_reset(struct virtio_dev *dev)
     }
 }
 
+int virtio_pci_queue_reset(struct virtio_dev *dev, uint16_t queue)
+{
+    volatile struct virtio_pci_common_cfg *cfg = dev->common;
+
+    cfg->queue_select = queue;
+    __sync_synchronize();
+    cfg->queue_reset = 1;
+    __sync_synchronize();
+
+    /*
+     * Spec 2.6.1: the device clears queue_enable once the reset has
+     * completed. A synchronous device does this within the same MMIO
+     * write; poll briefly to tolerate an asynchronous one.
+     */
+    for (int i = 0; i < 1000; i++) {
+        __sync_synchronize();
+        if (cfg->queue_enable == 0)
+            return 0;
+        usleep(1000);
+    }
+    return -1;
+}
+
 void virtio_pci_kick(struct virtio_dev *dev, uint16_t queue)
 {
     volatile struct virtio_pci_common_cfg *cfg = dev->common;
