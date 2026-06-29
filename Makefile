@@ -9,6 +9,10 @@ OBJDIR  ?= $(TARGET)/obj
 # Auto generate per object header dependencies.
 DEPFLAGS = -MMD -MP
 
+# Quiet by default; pass V=1 for full command lines.
+V ?= 0
+Q = $(if $(filter 1,$(V)),,@)
+
 SRCS = bin/init.c \
        lib/pci.c \
        lib/virtio_pci.c \
@@ -23,11 +27,13 @@ DEPS = $(OBJS:.o=.d)
 
 $(TARGET)/init: $(OBJS)
 	@mkdir -p $(TARGET)
-	$(CC) $(CFLAGS) $(LDFLAGS) -I. -o $@ $(OBJS)
+	@echo "  LINK  $@"
+	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -I. -o $@ $(OBJS)
 
 $(OBJDIR)/%.o: %.c
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $(DEPFLAGS) -I. -c -o $@ $<
+	@echo "  CC    $<"
+	$(Q)$(CC) $(CFLAGS) $(DEPFLAGS) -I. -c -o $@ $<
 
 -include $(DEPS)
 
@@ -72,11 +78,13 @@ FUZZ_DEPS = $(FUZZ_OBJS:.o=.d)
 
 $(TARGET)/fuzz: $(FUZZ_OBJS)
 	@mkdir -p $(TARGET)
-	$(CC) $(CFLAGS) $(LDFLAGS) -I. -o $@ $(FUZZ_OBJS)
+	@echo "  LINK  $@"
+	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -I. -o $@ $(FUZZ_OBJS)
 
 $(OBJDIR)/fuzz/%.o: %.c
 	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) $(DEPFLAGS) -I. -c -o $@ $<
+	@echo "  CC    $<"
+	$(Q)$(CC) $(CFLAGS) $(DEPFLAGS) -I. -c -o $@ $<
 
 -include $(FUZZ_DEPS)
 
