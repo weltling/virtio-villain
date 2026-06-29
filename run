@@ -399,11 +399,12 @@ class VmmBackend:
 
 class CloudHypervisor(VmmBackend):
     name = "ch"
-    # Runner output rides on ttyS0 so the virtio-console device stays
-    # available for the console tests to claim without hijacking init's
-    # stdout. The virtio-console device is still instantiated via
-    # `--console null`.
-    console_device = "ttyS0"
+    # Runner output rides on the legacy serial port so the
+    # virtio-console device stays available for the console tests to
+    # claim without hijacking init's stdout. The virtio-console device
+    # is still instantiated via `--console null`. CH wires a 16550 at
+    # ttyS0 on x86_64 and a PL011 at ttyAMA0 on aarch64.
+    console_device = "ttyAMA0" if platform.machine() == "aarch64" else "ttyS0"
     # CH uses MMIO transport on aarch64, PCI on x86_64
     mmio_transport = (platform.machine() == "aarch64")
     _cid_counter = 2
