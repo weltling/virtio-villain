@@ -3,13 +3,33 @@ name: selftest
 on: [push, pull_request]
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # x86_64 musl, the primary target, packs the initramfs too.
+          - arch: x86_64
+            runner: ubuntu-latest
+            cc: musl-gcc
+            pkgs: musl-tools
+          # aarch64 cross build on the x86_64 runner, compile only.
+          - arch: aarch64-cross
+            runner: ubuntu-latest
+            cc: aarch64-linux-gnu-gcc
+            pkgs: gcc-aarch64-linux-gnu
+          # aarch64 native build, compile only, no KVM so no run.
+          - arch: aarch64-native
+            runner: ubuntu-24.04-arm
+            cc: musl-gcc
+            pkgs: musl-tools
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y musl-tools
-      - run: make deps-check CC=musl-gcc
-      - run: make -j$(nproc) CC=musl-gcc
-      - run: make initramfs CC=musl-gcc
+      - run: sudo apt-get update && sudo apt-get install -y ${{ matrix.pkgs }}
+      - run: make deps-check CC=${{ matrix.cc }}
+      - run: make -j$(nproc) CC=${{ matrix.cc }}
+      - run: make initramfs CC=${{ matrix.cc }}
+        if: matrix.arch == 'x86_64'
   selftest:
     runs-on: ubuntu-latest
     steps:
@@ -17,13 +37,31 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y musl-tools
       - run: make selftest
   fuzz-build:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-latest
+            cc: musl-gcc
+            pkgs: musl-tools
+          - arch: aarch64-cross
+            runner: ubuntu-latest
+            cc: aarch64-linux-gnu-gcc
+            pkgs: gcc-aarch64-linux-gnu
+          - arch: aarch64-native
+            runner: ubuntu-24.04-arm
+            cc: musl-gcc
+            pkgs: musl-tools
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y musl-tools
-      - run: make fuzz CC=musl-gcc
-      - run: make fuzz-initramfs CC=musl-gcc
+      - run: sudo apt-get update && sudo apt-get install -y ${{ matrix.pkgs }}
+      - run: make fuzz CC=${{ matrix.cc }}
+      - run: make fuzz-initramfs CC=${{ matrix.cc }}
+        if: matrix.arch == 'x86_64'
       - run: test -f target/fuzz-initramfs.cpio.gz
+        if: matrix.arch == 'x86_64'
   flake8:
     runs-on: ubuntu-latest
     steps:
