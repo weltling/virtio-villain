@@ -5,7 +5,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#if defined(__x86_64__) || defined(__i386__)
 #include <sys/io.h>
+#endif
 #include <sys/mount.h>
 #include <sys/reboot.h>
 #include <termios.h>
@@ -303,9 +305,11 @@ static void shutdown(int failures)
         (void)write(fd, &val, 1);
         close(fd);
     } else {
+#if defined(__x86_64__) || defined(__i386__)
         if (iopl(3) != 0)
             ioperm(0x501, 1, 1);
         outb(0x01, 0x501);
+#endif
     }
 
     reboot(RB_POWER_OFF);
