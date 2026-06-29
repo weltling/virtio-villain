@@ -22,6 +22,23 @@
 
 #define QUEUE_SIZE 16
 
+/*
+ * On reset the device reports its maximum supported queue size in the
+ * queue_size register (spec 4.1.4.3.2). A driver must not program a
+ * size larger than that. Some devices (e.g. the CH watchdog) advertise
+ * a max below QUEUE_SIZE, so clamp the requested size to the device
+ * maximum. Returns the size to allocate and program for this queue.
+ */
+static uint16_t queue_size_for(struct virtio_dev *dev, uint16_t q)
+{
+    dev->common->queue_select = q;
+    __sync_synchronize();
+    uint16_t max = dev->common->queue_size;
+    if (max != 0 && QUEUE_SIZE > max)
+        return max;
+    return QUEUE_SIZE;
+}
+
 static int term_width(void)
 {
     struct winsize ws;
@@ -145,7 +162,7 @@ static int run_test(struct test_entry *t)
     /* Set up all queues the device requires */
     struct vring queues[16];
     for (uint16_t q = 0; q < nq && q < 16; q++) {
-        vring_alloc(&queues[q], QUEUE_SIZE);
+        vring_alloc(&queues[q], queue_size_for(&dev, q));
         vring_attach(&dev, &queues[q], q);
     }
 
@@ -196,10 +213,10 @@ static int run_test_packed(struct test_entry *t)
         nq = 1;
 
     struct vring_packed extra[16];
-    vring_packed_alloc(&vr, QUEUE_SIZE);
+    vring_packed_alloc(&vr, queue_size_for(&dev, 0));
     vring_packed_attach(&dev, &vr, 0);
     for (uint16_t q = 1; q < nq && q < 16; q++) {
-        vring_packed_alloc(&extra[q], QUEUE_SIZE);
+        vring_packed_alloc(&extra[q], queue_size_for(&dev, q));
         vring_packed_attach(&dev, &extra[q], q);
     }
 
