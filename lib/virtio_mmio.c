@@ -32,7 +32,8 @@ static int is_virtio_mmio_device(const char *platform_dir, const char *name)
     if (fd < 0)
         return 0;
     char buf[64] = {0};
-    (void)read(fd, buf, sizeof(buf) - 1);
+    ssize_t r = read(fd, buf, sizeof(buf) - 1);
+    (void)r;
     close(fd);
     return strstr(buf, "LNRO0005") != NULL;
 }
@@ -124,7 +125,8 @@ static int scan_device_tree(struct virtio_mmio_dev *dev)
             continue;
 
         char buf[64] = {0};
-        (void)read(fd, buf, sizeof(buf) - 1);
+        ssize_t r = read(fd, buf, sizeof(buf) - 1);
+        (void)r;
         close(fd);
 
         if (strstr(buf, "virtio,mmio") == NULL)

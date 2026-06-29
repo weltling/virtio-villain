@@ -53,7 +53,8 @@ void pci_enable(const char *slot)
     snprintf(path, sizeof(path), "%s/enable", slot);
     int fd = open(path, O_WRONLY);
     if (fd >= 0) {
-        (void)write(fd, "1", 1);
+        ssize_t r = write(fd, "1", 1);
+        (void)r;
         close(fd);
     }
 }
@@ -68,32 +69,37 @@ int pci_cfg_open(const char *slot)
 uint8_t pci_cfg_read8(int fd, uint32_t offset)
 {
     uint8_t val = 0;
-    (void)pread(fd, &val, 1, offset);
+    ssize_t r = pread(fd, &val, 1, offset);
+    (void)r;
     return val;
 }
 
 uint16_t pci_cfg_read16(int fd, uint32_t offset)
 {
     uint16_t val = 0;
-    (void)pread(fd, &val, 2, offset);
+    ssize_t r = pread(fd, &val, 2, offset);
+    (void)r;
     return val;
 }
 
 uint32_t pci_cfg_read32(int fd, uint32_t offset)
 {
     uint32_t val = 0;
-    (void)pread(fd, &val, 4, offset);
+    ssize_t r = pread(fd, &val, 4, offset);
+    (void)r;
     return val;
 }
 
 void pci_cfg_write8(int fd, uint32_t offset, uint8_t val)
 {
-    (void)pwrite(fd, &val, 1, offset);
+    ssize_t r = pwrite(fd, &val, 1, offset);
+    (void)r;
 }
 
 void pci_cfg_write32(int fd, uint32_t offset, uint32_t val)
 {
-    (void)pwrite(fd, &val, 4, offset);
+    ssize_t r = pwrite(fd, &val, 4, offset);
+    (void)r;
 }
 
 volatile void *pci_map_bar(const char *slot, int bar)

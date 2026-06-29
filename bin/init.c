@@ -302,7 +302,8 @@ static void shutdown(int failures)
     if (fd >= 0) {
         uint8_t val = 0x01;
         lseek(fd, 0x501, SEEK_SET);
-        (void)write(fd, &val, 1);
+        ssize_t r = write(fd, &val, 1);
+        (void)r;
         close(fd);
     } else {
 #if defined(__x86_64__) || defined(__i386__)
