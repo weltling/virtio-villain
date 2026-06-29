@@ -29,7 +29,8 @@ static test_result_t test_pci_id_validation(struct virtio_dev *dev,
         return TEST_SKIP;
 
     char buf[32] = {0};
-    read(fd, buf, sizeof(buf) - 1);
+    ssize_t r = read(fd, buf, sizeof(buf) - 1);
+    (void)r;
     close(fd);
 
     unsigned long vendor = strtoul(buf, NULL, 16);
@@ -41,7 +42,8 @@ static test_result_t test_pci_id_validation(struct virtio_dev *dev,
     if (fd < 0)
         return TEST_SKIP;
     memset(buf, 0, sizeof(buf));
-    read(fd, buf, sizeof(buf) - 1);
+    r = read(fd, buf, sizeof(buf) - 1);
+    (void)r;
     close(fd);
 
     unsigned long device = strtoul(buf, NULL, 16);
