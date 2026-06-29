@@ -17,7 +17,7 @@ jobs:
           - arch: aarch64-cross
             runner: ubuntu-latest
             cc: aarch64-linux-gnu-gcc
-            pkgs: gcc-aarch64-linux-gnu
+            pkgs: gcc-aarch64-linux-gnu libc6-dev-arm64-cross
           # aarch64 native build, compile only, no KVM so no run.
           - arch: aarch64-native
             runner: ubuntu-24.04-arm
@@ -49,7 +49,7 @@ jobs:
           - arch: aarch64-cross
             runner: ubuntu-latest
             cc: aarch64-linux-gnu-gcc
-            pkgs: gcc-aarch64-linux-gnu
+            pkgs: gcc-aarch64-linux-gnu libc6-dev-arm64-cross
           - arch: aarch64-native
             runner: ubuntu-24.04-arm
             cc: musl-gcc
