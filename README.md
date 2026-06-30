@@ -584,6 +584,7 @@ longer reproduce, many blobs often trigger the same underlying issue.
 
 A subset of upstream Cloud Hypervisor fixes surfaced by this harness:
 
+- [#8491](https://github.com/cloud-hypervisor/cloud-hypervisor/pull/8491) virtio-devices: Omit the device config capability for configless devices
 - [#8388](https://github.com/cloud-hypervisor/cloud-hypervisor/pull/8388) block: Fix WriteZeroes sector arithmetic overflow
 - [#8295](https://github.com/cloud-hypervisor/cloud-hypervisor/pull/8295) virtio-devices: Signal NEEDS_RESET
 - [#8272](https://github.com/cloud-hypervisor/cloud-hypervisor/pull/8272) virtio-devices: Respect PCI CFG cap.length for BAR access
