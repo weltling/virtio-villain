@@ -19,17 +19,25 @@ static test_result_t test_forward_large_config(struct virtio_dev *dev,
 
     (void)vr;
 
-    if (!cfg)
+    if (!cfg || dev->device_cfg_length == 0)
         return TEST_SKIP;
 
-    /* Read at various offsets well beyond typical config sizes.
-     * The device must not crash on out of range reads. */
+    /* Read the whole advertised config region, including any space
+     * past the config struct this harness knows. Spec v1.3 2.4:
+     * future device versions may extend the config space, and reads
+     * within the advertised region must return defined values and
+     * not crash. Stay within device_cfg_length: reading past the
+     * advertised capability is an out of bounds access, not a
+     * forward compatible one. */
     volatile uint32_t val = 0;
     (void)val;
 
-    for (int off = 0; off < 256; off += 4) {
+    uint32_t len = dev->device_cfg_length;
+    uint32_t off = 0;
+    for (; off + 4 <= len; off += 4)
         val = *(volatile uint32_t *)(cfg + off);
-    }
+    for (; off < len; off++)
+        val = cfg[off];
 
     return TEST_PASS;
 }
