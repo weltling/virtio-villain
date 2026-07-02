@@ -449,7 +449,7 @@ class CloudHypervisor(VmmBackend):
             "--kernel", kernel,
             "--initramfs", initramfs,
             "--disk", f"path={disk_path},image_type={disk_fmt},num_queues={blk_queues},iommu=on",
-            "--net", f"tap=,num_queues={net_queues}",
+            "--net", f"tap=,num_queues={net_queues}{',iommu=on' if opts.get('net_iommu') else ''}",
             "--vsock", f"cid={cid},socket={vsock_sock}",
             "--balloon", "size=0",
             "--watchdog",
