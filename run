@@ -446,6 +446,7 @@ class CloudHypervisor(VmmBackend):
                       else f"size={mem},hotplug_size=256M,hotplug_method=virtio-mem")
         cmd = [
             self.binary,
+            *(["-vv"] if os.environ.get("VV_CH_DEBUG") else []),
             "--kernel", kernel,
             "--initramfs", initramfs,
             "--disk", f"path={disk_path},image_type={disk_fmt},num_queues={blk_queues},iommu=on",
