@@ -1002,8 +1002,25 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
         cmd += [disk_path, str(DISK_SIZE)]
         subprocess.run(cmd, check=True, capture_output=True)
 
+    # Optional per test sidecar. It may declare launch requirements via
+    # vmm_config() (extra VMM opts and guest kernel initcalls to skip)
+    # and/or a run(ctx) host actor. Load it once here and reuse the
+    # module for the host actor thread further down.
+    sidecar_path = _find_sidecar(test_name)
+    sidecar_mod = _load_sidecar(sidecar_path) if sidecar_path else None
+    sidecar_cfg = {}
+    if sidecar_mod is not None and hasattr(sidecar_mod, "vmm_config"):
+        sidecar_cfg = sidecar_mod.vmm_config() or {}
+
+    # Guest kernel initcalls to skip. The block device is always present,
+    # so keep its guest driver from claiming it. A test whose sidecar
+    # drives a device the kernel would otherwise own adds more here (for
+    # example the net repro that owns the net and iommu devices itself).
+    skip_initcalls = ["virtio_blk_init"]
+    skip_initcalls += list(sidecar_cfg.get("skip_initcalls", []))
     cmdline = (f"console={backend.console_device} "
-               f"initcall_blacklist=virtio_blk_init vv.test={test_name}")
+               f"initcall_blacklist={','.join(skip_initcalls)} "
+               f"vv.test={test_name}")
     # Create pmem backing file
     pmem_path = disk_path.rsplit(".", 1)[0] + ".pmem"
     with open(pmem_path, "wb") as f:
@@ -1046,6 +1063,11 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
                     break
                 time.sleep(0.02)
             opts["fs_socket"] = fs_socket
+    # Apply any VMM opts the sidecar declared (for example placing the
+    # net device behind the vIOMMU). These are generic opts the backend
+    # build_cmd already understands, so the runner stays test agnostic.
+    for key, value in sidecar_cfg.get("opts", {}).items():
+        opts[key] = value
     cmd = backend.build_cmd(kernel, INITRAMFS, disk_path, cmdline, opts)
 
     if verbose >= 1:
@@ -1084,9 +1106,8 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
             start_new_session=not console,
         )
         _register_proc(proc)
-        sidecar_path = _find_sidecar(test_name)
         chunks = []
-        if sidecar_path:
+        if sidecar_mod is not None and hasattr(sidecar_mod, "run"):
             sidecar_tmpdir = tempfile.mkdtemp(prefix=f"vv-sc-{test_name}.")
             sidecar_log_lines = []
 
@@ -1111,11 +1132,7 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
 
             def _sc_run():
                 try:
-                    mod = _load_sidecar(sidecar_path)
-                    if not hasattr(mod, "run"):
-                        raise AttributeError(
-                            f"sidecar {sidecar_path} has no run(ctx)")
-                    mod.run(ctx)
+                    sidecar_mod.run(ctx)
                 except BaseException as e:  # capture for the runner
                     import traceback as _tb
                     sidecar_state["err"] = (e, _tb.format_exc())
