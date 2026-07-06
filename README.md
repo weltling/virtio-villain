@@ -237,62 +237,14 @@ there are any FAILs or WEDGEDs.
 
 ## Host side sidecars
 
-A few tests need something to happen on the **host** side while the
-guest is running. Hot plug, hot unplug, save and restore, snapshot,
-device pause, on the fly config change. Those actions live outside the
-guest by definition. The framework supports them through an optional
-Python file placed next to the C test, named with the same numeric
-ID. When `run` starts a test it looks for `tests/<dir>/<id>*.py`. If
-present, the file is imported and its `run(ctx)` function is invoked
-on a background thread for the lifetime of that one test.
-
-The sidecar receives a context object with the VMM backend name, the
-VMM PID, a private temp directory, the API socket path, the disk path,
-a logger, a shared output buffer reader, a stop event, and a
-`vm_api(command, args)` helper that talks to `ch-remote` for Cloud
-Hypervisor and to QMP for QEMU. The sidecar can wait for guest output
-with `ctx.wait_text("[vv]")`, materialize files in `ctx.tmpdir`,
-and drive the host with `ctx.vm_api("add-disk", [...])`. The sidecar
-exits cleanly when the backend does not support the action or the API
-socket is disabled, in which case the guest reports SKIP rather than
-FAIL.
-
-### Why this is not the same as VMM integration tests
-
-The VMMs already have integration test suites that cover hot plug,
-save and restore, and similar host driven scenarios. Those suites use
-the **kernel's** `virtio_pci` and per device drivers to verify the
-result. A kernel driver is tolerant by design. It retries, it ignores
-optional capabilities, it applies device specific quirks, it accepts a
-working subset of registers, and it considers the device healthy as
-long as the filesystem mounts and the link passes packets. A whole
-class of device side bugs survives that. Malformed capability chains,
-wrong `notify_off_multiplier` on a hot added function, a stale
-`device_status` carried over from a previous instance, an ignored
-`queue_enable`, a `FEATURES_OK` echo that does not round trip, a
-broken `device_feature_select` mux on the new device.
-
-Virtio Villain bypasses the kernel driver entirely. The init binary
-runs with `initcall_blacklist=virtio_<class>_init`, walks the PCI
-capability list itself, derives the doorbell address from
-`notify_bar_base + notify_cap.offset + queue_notify_off *
-notify_off_multiplier` for the device under test, writes the full reset
-and feature negotiation sequence, programs the per queue GPAs by hand,
-and asserts on the exact spec mandated values. Sidecar tests apply
-that same from scratch driver to a device that **did not exist at
-boot**, where the most interesting VMM regressions hide. A sidecar
-test answers a different question than an integration test. Integration
-asks "does the kernel mount the disk after hot plug". Sidecar asks
-"does every spec mandated virtio register on the hot added function
-behave correctly when a from scratch driver pokes it".
-
-Sidecars are also the natural place for tests that combine a host
-action with a precise guest level assertion the kernel cannot make.
-Save and restore that should leave `queue_notify_off` unchanged, hot
-unplug followed by hot replug that should leave no residual
-`device_status` bits, snapshot during in flight I/O that should drain
-the used ring deterministically. Each of those is a single C test
-plus a single Python sidecar in the same directory.
+A few tests need a host side action while the guest runs: hot plug,
+hot unplug, save and restore, snapshot, device pause, or an on the fly
+config change. These are driven by an optional Python file placed next
+to the C test with the same numeric ID, whose `run(ctx)` runs for the
+lifetime of that test and drives the host through `ch-remote` or QMP.
+This exercises spec mandated registers on a device that did not exist
+at boot, which a tolerant kernel driver never checks. See
+[docs/sidecars.md](docs/sidecars.md).
 
 ## Quick Start
 
@@ -419,166 +371,12 @@ the exact command line.
 
 ## Fuzzing
 
-In addition to the deterministic test suite, the repository includes a
-coverage guided mutation fuzzer that generates random virtqueue inputs
-and boots them against a VMM to find crashes.
-
-### Components
-
-- `bin/fuzz.c` - minimal guest (PID 1) that reads a 4096-byte blob
-  from its `.fuzz_input` ELF section, builds a vring from the encoded
-  descriptor chain, kicks the queue, and reboots
-- `lib/fuzz_input.h` - blob format: packed header (queue_size,
-  num_descs, avail_idx, avail_count), descriptor structs (len, flags,
-  next), avail ring entries, and raw payload bytes
-- `run-fuzz` - Python3 orchestrator that mutates blobs, patches them
-  into the fuzz guest ELF, boots the VMM, and classifies results
-
-### Usage
-
-```bash
-make fuzz            # build the fuzz guest ELF
-make fuzz-initramfs  # package into initramfs
-
-./run-fuzz fuzz --vmm ./cloud-hypervisor                  # auto downloads kernel into target/
-./run-fuzz fuzz --vmm ./cloud-hypervisor --kernel path/to/vmlinux
-./run-fuzz fuzz --vmm ./cloud-hypervisor -n 1000          # 1000 iterations
-./run-fuzz fuzz --vmm ./cloud-hypervisor -j 8 --cpus 1    # 8 parallel VMs
-./run-fuzz fuzz --vmm ./cloud-hypervisor --no-coverage    # skip llvm-cov
-```
-
-Defaults are 10000 iterations, 1 job, 1 vCPU, 128M of guest RAM, and a
-3 second VMM boot timeout. Corpus inputs land in `target/corpus/` and
-crash blobs in `target/crashes/`. Both directories are gitignored and
-persist across runs.
-
-Other subcommands.
-
-```bash
-./run-fuzz seed                                                # seed corpus from existing tests
-./run-fuzz decode target/crashes/crash_*.bin                   # print blob contents
-./run-fuzz replay --vmm ./cloud-hypervisor target/crashes/...  # reproduce one or more crashes
-./run-fuzz triage --vmm ./cloud-hypervisor                     # group crashes by error class
-./run-fuzz minimize --vmm ./cloud-hypervisor                   # drop corpus entries with redundant coverage
-./run-fuzz cov-report --vmm ./cloud-hypervisor                 # summarize edges hit by the corpus
-```
-
-`minimize` and `cov-report` need a coverage instrumented VMM and the
-`llvm-profdata` and `llvm-cov` tools listed under Dependencies.
-
-### Mutation Strategies
-
-`run-fuzz` picks one strategy per iteration, uniformly at random,
-from the following set. The blob format (`lib/fuzz_input.h`) is a
-4096 byte record with a header, a descriptor table, an avail ring,
-and a raw payload area.
-
-- `bit_flip`, `byte_arith`, `interesting_16` - generic byte and word
-  level mutations
-- `endian_swap`, `zero_fill_region`, `payload_noise` - structural
-  noise on payload regions
-- `header_corrupt`, `queue_size_mutate` - rewrite the blob header so
-  the guest builds a malformed queue
-- `desc_flags`, `desc_addr_mutate`, `grow_desc`, `shrink_desc`,
-  `duplicate_desc`, `chain_shuffle` - mutate the descriptor table
-  (flags, addresses, lengths, ordering, multiplicity)
-- `avail_corrupt`, `avail_ring_replay` - corrupt or replay avail
-  ring entries
-- `indirect_inject` - turn a regular descriptor into an indirect
-  table reference
-- `splice_corpus` - splice bytes from another corpus blob into the
-  current one
-- `multi_strategy` - apply 2 or 3 of the above in sequence
-
-### Coverage Guidance
-
-When the VMM is built with coverage instrumentation, `run-fuzz`
-collects `llvm-profdata` / `llvm-cov` output after each run to
-identify inputs that reach new code paths. These are added to the
-corpus for further mutation. Without instrumentation, the fuzzer
-operates in blind mutation mode.
-
-#### Building Cloud Hypervisor for Fuzzing
-
-Coverage only with the stable toolchain.
-
-```bash
-cd cloud-hypervisor
-RUSTFLAGS="-C instrument-coverage" cargo build
-```
-
-AddressSanitizer only on nightly. Catches memory safety bugs in
-unsafe code, UAF, OOB, and use after poison.
-
-```bash
-RUSTFLAGS="-Zsanitizer=address" \
-  cargo +nightly build -Zbuild-std --target x86_64-unknown-linux-gnu
-```
-
-Coverage instrumentation and AddressSanitizer are independent LLVM
-passes with separate runtimes, so a single binary can carry both. The
-combined build needs nightly and build-std (because ASan does), and is
-heavier and slower than either alone. This is the only build that gives
-`run-fuzz` both growing coverage and memory error detection at once.
-
-```bash
-RUSTFLAGS="-C instrument-coverage -Zsanitizer=address" \
-  cargo +nightly build -Zbuild-std --target x86_64-unknown-linux-gnu
-```
-
-Separate single signal builds are still recommended for routine
-campaigns: they build faster, run faster, and keep each signal clean.
-`run-fuzz` reads coverage from the source based `instrument-coverage`
-profraw via `llvm-profdata` and `llvm-cov`, so a coverage signal needs
-that flag specifically.
-
-Ensure `rust-src` is available.
-
-```bash
-rustup component add rust-src --toolchain nightly-x86_64-unknown-linux-gnu
-```
-
-| Build | What it catches | Overhead |
-|-------|----------------|----------|
-| `-C instrument-coverage` | panics, asserts, logic bugs | ~3x |
-| `-Zsanitizer=address` | memory safety in unsafe blocks | ~10x |
-
-The `run-fuzz` script automatically passes `--seccomp false` to the
-VMM since coverage profiling emits files at exit which requires
-syscalls not in the default seccomp allowlist.
-
-Ensure `llvm-profdata` and `llvm-cov` match the LLVM version used by
-`rustc`.
-
-```bash
-rustup component add llvm-tools-preview
-```
-
-Or use the system LLVM if versions match.
-
-### Triaging Crashes
-
-Each file in `target/crashes/` is a raw 4096 byte blob. To investigate:
-
-```bash
-./run-fuzz decode target/crashes/crash_*.bin                              # print blob contents
-./run-fuzz replay --vmm ./cloud-hypervisor target/crashes/crash_XXXX.bin  # reproduce
-./run-fuzz triage --vmm ./cloud-hypervisor                                # group all by error class
-```
-
-`decode` prints the queue config, descriptor chain (lengths, flags,
-next pointers), avail ring entries, and payload stats for each blob.
-
-`replay` patches each blob into the fuzz guest, boots the VMM, and
-reports whether it crashed or exited cleanly. Use `--timeout 10` for
-slow VMMs.
-
-`triage` replays every blob in `target/crashes/` and groups them by
-the panic message or signal observed, which collapses dozens of
-inputs that hit the same root cause into one bucket.
-
-After fixing a VMM bug, replay all crashes to confirm which ones no
-longer reproduce, many blobs often trigger the same underlying issue.
+Alongside the deterministic suite, a coverage guided mutation fuzzer
+encodes a descriptor chain into a 4096 byte blob, patches it into a
+fuzz guest, boots the VMM, and classifies the result. With a coverage
+instrumented VMM it feeds new edges back into the corpus, and crashes
+are grouped by error class for triage. See
+[docs/fuzzing.md](docs/fuzzing.md).
 
 ## Found Bugs
 
