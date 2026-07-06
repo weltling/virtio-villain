@@ -31,6 +31,7 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 #include "lib/virtio_iommu.h"
 
 #include <stdint.h>
@@ -78,9 +79,6 @@ static int endpoint_from_slot(const char *slot, uint32_t *out)
  * attached, the global bypass no longer applies to it and the domain
  * mappings govern its translation.
  */
-#define VIRTIO_F_VERSION_1_BIT       32
-#define VIRTIO_F_ACCESS_PLATFORM_BIT 33
-
 static int iommu_bringup(struct virtio_dev *iommu, struct vring *reqvr,
                          struct vring *evtvr)
 {
@@ -109,8 +107,8 @@ static int iommu_bringup(struct virtio_dev *iommu, struct vring *reqvr,
     uint64_t offered = ((uint64_t)feat_hi << 32) | feat_lo;
 
     uint64_t want = 0;
-    if (offered & (1ULL << VIRTIO_F_VERSION_1_BIT))
-        want |= (1ULL << VIRTIO_F_VERSION_1_BIT);
+    if (offered & (1ULL << VIRTIO_F_VERSION_1))
+        want |= (1ULL << VIRTIO_F_VERSION_1);
 
     cfg->driver_feature_select = 0;
     __sync_synchronize();
@@ -185,12 +183,12 @@ static int net_reactivate_access_platform(struct virtio_dev *dev,
     uint32_t feat_hi = cfg->device_feature;
     uint64_t offered = ((uint64_t)feat_hi << 32) | feat_lo;
 
-    if (!(offered & (1ULL << VIRTIO_F_ACCESS_PLATFORM_BIT)))
+    if (!(offered & (1ULL << VIRTIO_F_ACCESS_PLATFORM)))
         return 1; /* net not behind a vIOMMU on this backing */
 
-    uint64_t want = (1ULL << VIRTIO_F_ACCESS_PLATFORM_BIT);
-    if (offered & (1ULL << VIRTIO_F_VERSION_1_BIT))
-        want |= (1ULL << VIRTIO_F_VERSION_1_BIT);
+    uint64_t want = (1ULL << VIRTIO_F_ACCESS_PLATFORM);
+    if (offered & (1ULL << VIRTIO_F_VERSION_1))
+        want |= (1ULL << VIRTIO_F_VERSION_1);
 
     cfg->driver_feature_select = 0;
     __sync_synchronize();
