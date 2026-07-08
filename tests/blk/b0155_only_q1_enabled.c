@@ -54,7 +54,8 @@ static test_result_t test_blk_only_q1_enabled(struct virtio_dev *dev,
     cfg->queue_avail = q0.avail_phys;
     cfg->queue_used = q0.used_phys;
     cfg->queue_msix_vector = 0xFFFF;
-    cfg->queue_enable = 0;
+    /* Leave queue 0 disabled by not writing queue_enable. Its reset
+       default is 0. Writing 0 is not a valid queue_enable operation. */
     __sync_synchronize();
 
     vring_attach(dev, &q1, 1);
