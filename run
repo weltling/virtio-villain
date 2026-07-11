@@ -1830,8 +1830,8 @@ def main():
 
     mmio_tests = [t for t in tests if t.startswith("M")]
     if mmio_tests and not mmio_backend and not backend.mmio_transport:
-        print(f"Note: {len(mmio_tests)} MMIO test(s) need qemu-system-{platform.machine()} "
-              f"in PATH", file=human)
+        print(f"Note: {len(mmio_tests)} MMIO test(s) skipped "
+              f"(no MMIO transport available)", file=human)
         tests = [t for t in tests if not t.startswith("M")]
 
     # Probe whether the kernel boots on the MMIO backend; if not, skip
