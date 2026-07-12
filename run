@@ -1031,6 +1031,11 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
         "virtio_rtc_drv_init",
         "virtio_watchdog_driver_init",
         "virtio_input_driver_init",
+        # Subsystems unused by the harness
+        "ext4_init_fs",
+        "fuse_init",
+        "audit_init",
+        "cpufreq_core_init",
     ]
     skip_initcalls += list(sidecar_cfg.get("skip_initcalls", []))
     cmdline = (f"console={backend.console_device} "
