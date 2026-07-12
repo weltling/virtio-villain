@@ -25,9 +25,9 @@ static test_result_t test_pci_cap_list_sanity(struct virtio_dev *dev,
     if (!dev->common)
         TFAIL("!dev->common");
 
-    /* common_length should be >= sizeof(virtio_pci_common_cfg) */
-    if (dev->common_length < sizeof(struct virtio_pci_common_cfg))
-        TFAIL("dev->common_length < sizeof(struct virtio_pci_common_cfg)");
+    /* common_length should be >= the v1.2 minimum (56 bytes) */
+    if (dev->common_length < 56)
+        TFAIL("dev->common_length < 56 (virtio 1.2 minimum)");
 
     /* ISR should exist and have non-zero length */
     if (!dev->isr || dev->isr_length == 0)
