@@ -1770,6 +1770,9 @@ def main():
 
     if args.no_packed:
         args.packed = False
+        if not args.exclude_dir:
+            args.exclude_dir = []
+        args.exclude_dir.append("packed")
 
     kernel = args.kernel or fetch_kernel()
     backend = detect_vmm(args.vmm)
