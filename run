@@ -1017,7 +1017,21 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
     # so keep its guest driver from claiming it. A test whose sidecar
     # drives a device the kernel would otherwise own adds more here (for
     # example the net repro that owns the net and iommu devices itself).
-    skip_initcalls = ["virtio_blk_init"]
+    skip_initcalls = [
+        "virtio_blk_init",
+        "virtio_net_driver_init",
+        "virtio_console_init",
+        "virtio_balloon_driver_init",
+        "virtio_rng_driver_init",
+        "virtio_mem_driver_init",
+        "virtio_pmem_driver_init",
+        "virtio_iommu_drv_init",
+        "virtio_fs_init",
+        "virtio_vsock_init",
+        "virtio_rtc_drv_init",
+        "virtio_watchdog_driver_init",
+        "virtio_input_driver_init",
+    ]
     skip_initcalls += list(sidecar_cfg.get("skip_initcalls", []))
     cmdline = (f"console={backend.console_device} "
                f"initcall_blacklist={','.join(skip_initcalls)} "
