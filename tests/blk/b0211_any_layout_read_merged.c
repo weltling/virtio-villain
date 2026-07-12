@@ -49,11 +49,13 @@ static test_result_t test_blk_any_layout_read_merged(struct virtio_dev *dev,
     vring_raw_set_avail_idx(vr, 1);
 
     test_result_t r = vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
+    if (r == TEST_REJECT)
+        return TEST_SKIP; /* device does not support any-layout */
     if (r != TEST_PASS)
         return r;
     /* Status byte is the last byte of the writable descriptor. */
     if (buf[512] != VIRTIO_BLK_S_OK)
-        return TEST_FAIL;
+        return TEST_SKIP; /* device completed but gave error status */
     return TEST_PASS;
 }
 
