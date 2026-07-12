@@ -2279,8 +2279,8 @@ def main():
 
     xfail = [name for name, s, _ in results if s == "XFAIL"]
     if xfail:
-        hdr = "\033[34mXFAIL (expected failure, known VMM bug):\033[0m" \
-              if is_tty else "XFAIL (expected failure, known VMM bug):"
+        hdr = "\033[34mXFAIL (expected failure, known bug or limitation):\033[0m" \
+              if is_tty else "XFAIL (expected failure, known bug or limitation):"
         print(f"\n{hdr}", file=human)
         for name in xfail:
             desc, ver, sec = test_info.get(name, ("", "", ""))
