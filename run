@@ -1335,6 +1335,23 @@ DIR_PREFIXES = {}
 for _p, _d in PREFIX_DIR.items():
     DIR_PREFIXES.setdefault(_d, set()).add(_p)
 
+# Maps test name prefix to the PCI device ID that must be present.
+# Transport tests (T, PCI, S) use BLK as the default probe device.
+PREFIX_DEVICE_ID = {
+    "B": 0x1042, "Z": 0x1042,   # blk
+    "N": 0x1041,                 # net
+    "C": 0x1043,                 # console
+    "RNG": 0x1044,               # rng
+    "L": 0x1045,                 # balloon
+    "V": 0x1053,                 # vsock
+    "I": 0x1057,                 # iommu
+    "R": 0x1058,                 # mem
+    "E": 0x105b,                 # pmem
+    "D": 0x1063,                 # watchdog
+    "RTC": 0x1051,               # rtc
+    "F": 0x105a,                 # fs
+}
+
 
 def _test_prefix(name):
     """Return the leading uppercase prefix of a test name, or ''."""
@@ -1681,6 +1698,11 @@ def main():
                         help="Use packed virtqueues (default)")
     parser.add_argument("--no-packed", action="store_true",
                         help="Use split virtqueues")
+    parser.add_argument("--skip-unsupported", action="store_true",
+                        help="Probe the VMM for available devices and "
+                             "features before running tests. Tests that "
+                             "target a missing device or require features "
+                             "not offered are excluded from the run.")
     parser.add_argument("--no-api-socket", action="store_true",
                         help="Disable per VM control socket "
                              "(CH --api-socket or QEMU -qmp). The socket "
@@ -1889,6 +1911,71 @@ def main():
                   f"skipping {len(mmio_tests)} MMIO test(s)", file=human)
             mmio_backend = None
             tests = [t for t in tests if not t.startswith("M")]
+
+    # Probe VMM for available devices when --skip-unsupported is set.
+    if args.skip_unsupported:
+        probe_disk = tempfile.mktemp(suffix=".raw")
+        with open(probe_disk, "wb") as f:
+            f.truncate(DISK_SIZE)
+        probe_pmem = probe_disk.rsplit(".", 1)[0] + ".pmem"
+        with open(probe_pmem, "wb") as f:
+            f.truncate(128 * 1024 * 1024)
+        probe_opts = dict(vm_opts)
+        probe_opts["pmem_path"] = probe_pmem
+        probe_opts.pop("api_enabled", None)
+        probe_opts.pop("api_socket", None)
+        skip_ic = [
+            "virtio_blk_init", "virtio_net_driver_init",
+            "virtio_console_init", "virtio_balloon_driver_init",
+            "virtio_rng_driver_init", "virtio_mem_driver_init",
+            "virtio_pmem_driver_init", "virtio_iommu_drv_init",
+            "virtio_fs_init", "virtio_vsock_init",
+            "virtio_rtc_drv_init", "virtio_watchdog_driver_init",
+            "virtio_input_driver_init",
+        ]
+        probe_cmdline = (f"console={backend.console_device} "
+                         f"initcall_blacklist={','.join(skip_ic)} "
+                         f"vv.test=probe")
+        probe_cmd = backend.build_cmd(
+            kernel, INITRAMFS, probe_disk, probe_cmdline, probe_opts)
+        available_devices = set()
+        try:
+            result = subprocess.run(
+                probe_cmd, stdin=subprocess.DEVNULL,
+                capture_output=True, timeout=15,
+                start_new_session=True)
+            for line in result.stdout.decode(errors="replace").splitlines():
+                if line.startswith("PROBE\t"):
+                    parts = line.split("\t")
+                    if len(parts) >= 3:
+                        dev_id = int(parts[1], 16)
+                        available_devices.add(dev_id)
+        except (subprocess.TimeoutExpired, OSError):
+            pass
+        finally:
+            try:
+                os.unlink(probe_disk)
+            except FileNotFoundError:
+                pass
+            try:
+                os.unlink(probe_pmem)
+            except FileNotFoundError:
+                pass
+
+        if available_devices:
+            before = len(tests)
+            filtered = []
+            for t in tests:
+                prefix = _test_prefix(t)
+                req_dev = PREFIX_DEVICE_ID.get(prefix)
+                if req_dev and req_dev not in available_devices:
+                    continue
+                filtered.append(t)
+            tests = filtered
+            skipped = before - len(tests)
+            if skipped:
+                print(f"Note: {skipped} test(s) skipped "
+                      f"(device not available)", file=human)
 
     print(f"Running {len(tests)} test(s) against {args.vmm} ({backend.name})\n",
           file=human)

@@ -405,6 +405,41 @@ int main(int argc, char **argv)
         shutdown(0);
     }
 
+    if (strcmp(test_name, "probe") == 0) {
+        /* Probe all known device types and report feature bits. */
+        static const uint16_t dev_ids[] = {
+            VIRTIO_PCI_DEVICE_NET,
+            VIRTIO_PCI_DEVICE_BLK,
+            VIRTIO_PCI_DEVICE_CONSOLE,
+            VIRTIO_PCI_DEVICE_RNG,
+            VIRTIO_PCI_DEVICE_BALLOON,
+            VIRTIO_PCI_DEVICE_VSOCK,
+            VIRTIO_PCI_DEVICE_IOMMU,
+            VIRTIO_PCI_DEVICE_MEM,
+            VIRTIO_PCI_DEVICE_PMEM,
+            VIRTIO_PCI_DEVICE_WATCHDOG,
+            VIRTIO_PCI_DEVICE_RTC,
+            VIRTIO_PCI_DEVICE_FS,
+        };
+        for (size_t i = 0; i < sizeof(dev_ids) / sizeof(dev_ids[0]); i++) {
+            struct virtio_dev dev;
+            if (virtio_pci_find(dev_ids[i], &dev) < 0)
+                continue;
+            volatile struct virtio_pci_common_cfg *cfg = dev.common;
+            cfg->device_feature_select = 0;
+            __sync_synchronize();
+            uint32_t lo = cfg->device_feature;
+            cfg->device_feature_select = 1;
+            __sync_synchronize();
+            uint32_t hi = cfg->device_feature;
+            uint64_t features = ((uint64_t)hi << 32) | lo;
+            uint16_t nq = cfg->num_queues;
+            printf("PROBE\t0x%04x\t0x%016llx\t%u\n",
+                   dev_ids[i], (unsigned long long)features, nq);
+        }
+        shutdown(0);
+    }
+
     /* Run a single named test */
     struct test_entry *t = test_find(test_name);
     if (!t) {
