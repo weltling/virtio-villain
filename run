@@ -632,9 +632,10 @@ def fetch_kernel():
 def get_test_list(init_binary=os.path.join("target", "init")):
     """Get available tests by running target/init --list-tsv on the host.
 
-    Returns (list of test IDs, dict mapping ID to (desc, ver, section)).
+    Returns (list of test IDs, dict mapping ID to (desc, ver, section),
+    dict mapping ID to {device_id, flags}).
     The --list-tsv output is TAB separated:
-        name<TAB>desc<TAB>version<TAB>section
+        name<TAB>desc<TAB>version<TAB>section[<TAB>device_id<TAB>flags]
     """
     result = subprocess.run(
         [init_binary, "--list-tsv"],
@@ -644,6 +645,7 @@ def get_test_list(init_binary=os.path.join("target", "init")):
         sys.exit(f"Failed to list tests: {result.stderr}")
     tests = []
     info = {}
+    meta = {}
     for line in result.stdout.splitlines():
         if not line:
             continue
@@ -653,7 +655,12 @@ def get_test_list(init_binary=os.path.join("target", "init")):
         tid, desc, ver, sec = fields[0], fields[1], fields[2], fields[3]
         tests.append(tid)
         info[tid] = (desc, ver, sec)
-    return tests, info
+        if len(fields) >= 6:
+            meta[tid] = {
+                "device_id": int(fields[4], 16),
+                "flags": int(fields[5]),
+            }
+    return tests, info, meta
 
 
 # Registry of live VMM subprocess handles. We track every Popen we
@@ -1864,16 +1871,16 @@ def main():
     if args.tests:
         tests = args.tests
         try:
-            known, test_info = get_test_list()
+            known, test_info, _test_meta = get_test_list()
         except (FileNotFoundError, OSError, SystemExit):
-            known, test_info = [], {}
+            known, test_info, _test_meta = [], {}, {}
         if known and not os.environ.get("VV_ALLOW_UNKNOWN_TESTS"):
             known_set = {t.upper() for t in known}
             unknown = [t for t in tests if t.upper() not in known_set]
             if unknown:
                 sys.exit(f"Unknown test name(s): {', '.join(unknown)}")
     else:
-        tests, test_info = get_test_list()
+        tests, test_info, _test_meta = get_test_list()
 
     tests = filter_tests(tests, args.include, args.exclude,
                          args.dirs, args.exclude_dir)
@@ -2113,6 +2120,9 @@ def main():
             if t.upper().startswith("P0"):
                 return True
             if t.upper().startswith(("N0", "I0")):
+                return True
+            meta = _test_meta.get(t)
+            if meta and meta["flags"] & 4:  # TEST_FLAG_XFAIL
                 return True
             return False
 
