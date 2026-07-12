@@ -126,9 +126,9 @@ static test_result_t apply_xfail(struct test_entry *t, test_result_t r)
         return r;
     if (r == TEST_PASS)
         return TEST_XPASS;
-    if (r == TEST_FAIL)
-        return TEST_XFAIL;
-    return r;
+    if (r == TEST_SKIP)
+        return r;
+    return TEST_XFAIL;
 }
 
 /*
