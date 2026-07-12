@@ -11,6 +11,7 @@ import argparse
 import fnmatch
 import json
 import os
+import random
 import re
 import shlex
 import signal
@@ -1735,6 +1736,14 @@ def main():
                              "matches NAME. Repeatable. Plain names match "
                              "exactly. Shell globs are supported. Applied "
                              "after --include and --dir.")
+    parser.add_argument("--order", choices=["default", "fast", "alpha",
+                        "random", "reverse"], default="default",
+                        help="Test execution order. default: as discovered. "
+                             "fast: slow tests interleaved among shuffled "
+                             "fast ones for optimal pool utilization. "
+                             "alpha: sorted by test ID. "
+                             "random: fully shuffled. "
+                             "reverse: reverse alphabetical.")
     parser.add_argument("--format", choices=["text", "json", "junit"],
                         default="text",
                         help="Result report format (default: text). "
@@ -2002,6 +2011,45 @@ def main():
                       file=human)
 
     pool = None
+    # Reorder tests according to --test-order.
+    if args.order == "fast":
+        _sidecar_re = re.compile(r'[A-Z]+0[23]\d\d', re.IGNORECASE)
+
+        def _is_slow(t):
+            if _sidecar_re.match(t):
+                return True
+            if t.upper().startswith("F0"):
+                return True
+            if t.upper().startswith("P0"):
+                return True
+            if t.upper().startswith(("N0", "I0")):
+                return True
+            return False
+
+        slow = [t for t in tests if _is_slow(t)]
+        fast = [t for t in tests if not _is_slow(t)]
+        random.shuffle(slow)
+        random.shuffle(fast)
+        if slow:
+            step = max(1, len(fast) // (len(slow) + 1))
+            merged = []
+            si = 0
+            for i, t in enumerate(fast):
+                if si < len(slow) and i > 0 and i % step == 0:
+                    merged.append(slow[si])
+                    si += 1
+                merged.append(t)
+            merged.extend(slow[si:])
+            tests = merged
+        else:
+            tests = fast
+    elif args.order == "alpha":
+        tests.sort()
+    elif args.order == "random":
+        random.shuffle(tests)
+    elif args.order == "reverse":
+        tests.sort(reverse=True)
+
     try:
         if args.jobs > 1 and not args.console:
             pool = ThreadPoolExecutor(max_workers=args.jobs)
