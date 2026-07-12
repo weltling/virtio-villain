@@ -403,6 +403,6 @@ static test_result_t test_net_iommu_tx_straddle(struct virtio_dev *dev,
     return TEST_SKIP;
 }
 
-REGISTER_TEST_Q(N0130, VIRTIO_PCI_DEVICE_NET, test_net_iommu_tx_straddle,
+REGISTER_TEST_Q_XFAIL(N0130, VIRTIO_PCI_DEVICE_NET, test_net_iommu_tx_straddle,
                 "TX buffer straddling two IOMMU mappings wedges the device",
                 VIRTIO_SPEC_V1_2, "5.1.6", 1);

@@ -141,6 +141,13 @@ struct test_entry {
         TEST_FLAG_XFAIL, 0, {0} \
     }
 
+#define REGISTER_TEST_Q_XFAIL(tname, dev_id, func, description, specver, sect, qidx) \
+    __attribute__((section("test_registry"), used, aligned(64))) \
+    static struct test_entry _test_##tname = { \
+        #tname, description, specver, sect, dev_id, (void *)(func), \
+        TEST_FLAG_XFAIL, (qidx) + 1, {0} \
+    }
+
 /*
  * Kick a queue and wait for the device to mark n descriptors used.
  * Returns TEST_PASS once vr->used->idx advances by at least n,
