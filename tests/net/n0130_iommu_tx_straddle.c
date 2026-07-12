@@ -289,14 +289,17 @@ static test_result_t test_net_iommu_tx_straddle(struct virtio_dev *dev,
         TFAIL("could not renegotiate net with VIRTIO_F_ACCESS_PLATFORM");
 
     /*
-     * Two adjacent physical pages back a contiguous IOVA range through
-     * two separate MAP requests, so CH stores them as two independent
-     * mappings rather than one wide mapping.
+     * Two non contiguous physical pages back a contiguous IOVA range
+     * through two separate MAP requests, so CH stores them as two
+     * independent mappings rather than one wide mapping.  Allocate a
+     * throwaway page between them so the kernel page allocator cannot
+     * place them adjacently in GPA.
      */
     struct virtio_iommu_req_attach *a = vv_alloc_pages(1);
     struct virtio_iommu_req_map    *m1 = vv_alloc_pages(1);
     struct virtio_iommu_req_map    *m2 = vv_alloc_pages(1);
     uint8_t *page_a = vv_alloc_pages(1);
+    (void)vv_alloc_pages(1); /* gap to prevent physical contiguity */
     uint8_t *page_b = vv_alloc_pages(1);
     memset(a, 0, sizeof(*a));
     memset(m1, 0, sizeof(*m1));
