@@ -90,9 +90,9 @@ static void list_tests_tsv(void)
     int n = test_count();
     for (int i = 0; i < n; i++) {
         struct test_entry *t = test_get(i);
-        printf("%s\t%s\t%u.%u\t%s\n", t->name, t->desc,
+        printf("%s\t%s\t%u.%u\t%s\t0x%04x\t%u\n", t->name, t->desc,
                t->spec_version >> 8, t->spec_version & 0xff,
-               t->spec_section);
+               t->spec_section, t->device_id, t->flags);
     }
 }
 
