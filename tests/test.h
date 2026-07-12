@@ -13,10 +13,10 @@
 #include "../lib/vring_packed.h"
 
 /*
- * Diagnostic helpers. TFAIL/TWEDGED/TREJECT emit a single line with the
- * source location and a printf-style reason, then yield the result.
- * Use in place of bare `return TEST_FAIL;` so console logs identify
- * which assertion fired.
+ * Diagnostic helpers. TFAIL/TWEDGED/TREJECT/TSKIP emit a single line
+ * with the source location and a printf-style reason, then yield the
+ * result. Use in place of bare `return TEST_FAIL;` etc. so console
+ * logs identify which assertion fired.
  *
  * The "vv-*" prefixes deliberately differ from the "[FAIL]"/"[WEDGED]"/
  * "[REJECT]" verdict markers emitted by bin/init.c (which the host
@@ -40,6 +40,12 @@
     printf("vv-reject %s:%d: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__); \
     fflush(stdout); \
     return TEST_REJECT; \
+} while (0)
+
+#define TSKIP(fmt, ...) do { \
+    printf("vv-skip %s:%d: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__); \
+    fflush(stdout); \
+    return TEST_SKIP; \
 } while (0)
 
 typedef enum {
