@@ -313,7 +313,7 @@ static void shutdown(int failures)
      * standalone use (no host scraper), bail out via the slow path
      * after a generous timeout so the byte stream has time to drain.
      */
-    for (int i = 0; i < 200; i++)
+    for (int i = 0; i < 20; i++)
         usleep(50 * 1000);
 
     int fd = open("/dev/port", O_WRONLY);
