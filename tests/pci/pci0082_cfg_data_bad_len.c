@@ -55,6 +55,7 @@ static test_result_t test_pci_cfg_bad_len(struct virtio_dev *dev,
     TREJECT("no device response within timeout");
 }
 
-REGISTER_TEST(PCI0082, VIRTIO_PCI_DEVICE_BLK, test_pci_cfg_bad_len,
+REGISTER_TEST_FLAGS(PCI0082, VIRTIO_PCI_DEVICE_BLK, test_pci_cfg_bad_len,
               "PCI cfg data with invalid length field",
-              VIRTIO_SPEC_V1_2, "4.1.4.9");
+              VIRTIO_SPEC_V1_2, "4.1.4.9",
+              TEST_FLAG_NEEDS_CFG);

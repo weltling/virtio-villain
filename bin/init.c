@@ -435,8 +435,11 @@ int main(int argc, char **argv)
             uint32_t hi = cfg->device_feature;
             uint64_t features = ((uint64_t)hi << 32) | lo;
             uint16_t nq = cfg->num_queues;
-            printf("PROBE\t0x%04x\t0x%016llx\t%u\n",
-                   dev_ids[i], (unsigned long long)features, nq);
+            uint8_t has_isr = dev.isr ? 1 : 0;
+            uint8_t has_cfg_cap = dev.pci_cfg_cap_offset ? 1 : 0;
+            printf("PROBE\t0x%04x\t0x%016llx\t%u\t%u\t%u\n",
+                   dev_ids[i], (unsigned long long)features, nq,
+                   has_isr, has_cfg_cap);
         }
         shutdown(0);
     }

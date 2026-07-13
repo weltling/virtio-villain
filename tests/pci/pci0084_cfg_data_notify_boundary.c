@@ -76,7 +76,7 @@ static test_result_t test_pci_cfg_data_notify_boundary(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(PCI0084, VIRTIO_PCI_DEVICE_BLK,
-              test_pci_cfg_data_notify_boundary,
+REGISTER_TEST_FLAGS(PCI0084, VIRTIO_PCI_DEVICE_BLK, test_pci_cfg_data_notify_boundary,
               "PCI cfg data access spanning notify BAR boundary",
-              VIRTIO_SPEC_V1_2, "4.1.4.9");
+              VIRTIO_SPEC_V1_2, "4.1.4.9",
+              TEST_FLAG_NEEDS_CFG);

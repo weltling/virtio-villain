@@ -1950,6 +1950,7 @@ def main():
         available_devices = set()
         available_features = {}
         available_queues = {}
+        available_caps = {}
         try:
             result = subprocess.run(
                 probe_cmd, stdin=subprocess.DEVNULL,
@@ -1962,9 +1963,12 @@ def main():
                         dev_id = int(parts[1], 16)
                         features = int(parts[2], 16)
                         nq = int(parts[3])
+                        has_isr = int(parts[4]) if len(parts) >= 5 else 1
+                        has_cfg = int(parts[5]) if len(parts) >= 6 else 1
                         available_devices.add(dev_id)
                         available_features[dev_id] = features
                         available_queues[dev_id] = nq
+                        available_caps[dev_id] = (has_isr, has_cfg)
         except (subprocess.TimeoutExpired, OSError):
             pass
         finally:
@@ -1985,6 +1989,7 @@ def main():
                 if meta:
                     dev_id = meta["device_id"]
                     features = meta["required_features"]
+                    flags = meta["flags"]
                     minq = meta["min_queues"]
                     if dev_id and dev_id not in available_devices:
                         continue
@@ -1996,6 +2001,11 @@ def main():
                         nq = available_queues.get(dev_id, 0)
                         if nq < minq:
                             continue
+                    caps = available_caps.get(dev_id, (1, 1))
+                    if (flags & 8) and not caps[0]:  # NEEDS_ISR
+                        continue
+                    if (flags & 16) and not caps[1]:  # NEEDS_CFG
+                        continue
                 filtered.append(t)
             tests = filtered
             skipped = before - len(tests)

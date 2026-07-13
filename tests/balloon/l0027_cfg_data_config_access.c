@@ -82,7 +82,7 @@ static test_result_t test_balloon_cfg_data_config(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(L0027, VIRTIO_PCI_DEVICE_BALLOON,
-              test_balloon_cfg_data_config,
+REGISTER_TEST_FLAGS(L0027, VIRTIO_PCI_DEVICE_BALLOON, test_balloon_cfg_data_config,
               "Balloon config access via PCI cfg data capability",
-              VIRTIO_SPEC_V1_2, "4.1.4.9.2");
+              VIRTIO_SPEC_V1_2, "4.1.4.9.2",
+              TEST_FLAG_NEEDS_CFG);

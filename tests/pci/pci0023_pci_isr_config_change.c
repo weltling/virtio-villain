@@ -53,6 +53,7 @@ static test_result_t test_pci_isr_config_change(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(PCI0023, VIRTIO_PCI_DEVICE_BLK, test_pci_isr_config_change,
+REGISTER_TEST_FLAGS(PCI0023, VIRTIO_PCI_DEVICE_BLK, test_pci_isr_config_change,
               "ISR config-change bit not spuriously set on read",
-              VIRTIO_SPEC_V1_2, "4.1.4.5");
+              VIRTIO_SPEC_V1_2, "4.1.4.5",
+              TEST_FLAG_NEEDS_ISR);

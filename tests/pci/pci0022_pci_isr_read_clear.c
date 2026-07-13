@@ -66,6 +66,7 @@ static test_result_t test_pci_isr_read_clear(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(PCI0022, VIRTIO_PCI_DEVICE_BLK, test_pci_isr_read_clear,
+REGISTER_TEST_FLAGS(PCI0022, VIRTIO_PCI_DEVICE_BLK, test_pci_isr_read_clear,
               "ISR register read-to-clear semantics for queue bit",
-              VIRTIO_SPEC_V1_2, "4.1.4.5");
+              VIRTIO_SPEC_V1_2, "4.1.4.5",
+              TEST_FLAG_NEEDS_ISR);

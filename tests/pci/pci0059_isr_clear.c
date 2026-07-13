@@ -26,6 +26,7 @@ static test_result_t test_pci_isr_clear(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(PCI0059, 0, test_pci_isr_clear,
+REGISTER_TEST_FLAGS(PCI0059, 0, test_pci_isr_clear,
               "ISR status clears on read",
-              VIRTIO_SPEC_V1_2, "4.1.4.5");
+              VIRTIO_SPEC_V1_2, "4.1.4.5",
+              TEST_FLAG_NEEDS_ISR);

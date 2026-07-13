@@ -51,6 +51,7 @@ static test_result_t test_pci_cfg_bad_bar(struct virtio_dev *dev,
     TREJECT("no device response within timeout");
 }
 
-REGISTER_TEST(PCI0080, VIRTIO_PCI_DEVICE_BLK, test_pci_cfg_bad_bar,
+REGISTER_TEST_FLAGS(PCI0080, VIRTIO_PCI_DEVICE_BLK, test_pci_cfg_bad_bar,
               "PCI cfg data access with invalid BAR index",
-              VIRTIO_SPEC_V1_2, "4.1.4.9");
+              VIRTIO_SPEC_V1_2, "4.1.4.9",
+              TEST_FLAG_NEEDS_CFG);

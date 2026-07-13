@@ -49,6 +49,7 @@ static test_result_t test_pci_cfg_oob_offset(struct virtio_dev *dev,
     TREJECT("no device response within timeout");
 }
 
-REGISTER_TEST(PCI0081, VIRTIO_PCI_DEVICE_BLK, test_pci_cfg_oob_offset,
+REGISTER_TEST_FLAGS(PCI0081, VIRTIO_PCI_DEVICE_BLK, test_pci_cfg_oob_offset,
               "PCI cfg data access with offset beyond BAR",
-              VIRTIO_SPEC_V1_2, "4.1.4.9");
+              VIRTIO_SPEC_V1_2, "4.1.4.9",
+              TEST_FLAG_NEEDS_CFG);

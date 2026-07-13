@@ -62,6 +62,7 @@ static test_result_t test_isr_queue_bit_after_used(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(T0091, VIRTIO_PCI_DEVICE_BLK, test_isr_queue_bit_after_used,
+REGISTER_TEST_FLAGS(T0091, VIRTIO_PCI_DEVICE_BLK, test_isr_queue_bit_after_used,
               "ISR queue bit is set after used ring advances",
-              VIRTIO_SPEC_V1_2, "4.1.4.5");
+              VIRTIO_SPEC_V1_2, "4.1.4.5",
+              TEST_FLAG_NEEDS_ISR);

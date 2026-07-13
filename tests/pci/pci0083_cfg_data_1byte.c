@@ -52,6 +52,7 @@ static test_result_t test_pci_cfg_1byte(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(PCI0083, VIRTIO_PCI_DEVICE_BLK, test_pci_cfg_1byte,
+REGISTER_TEST_FLAGS(PCI0083, VIRTIO_PCI_DEVICE_BLK, test_pci_cfg_1byte,
               "PCI cfg data 1 byte read and write",
-              VIRTIO_SPEC_V1_2, "4.1.4.9");
+              VIRTIO_SPEC_V1_2, "4.1.4.9",
+              TEST_FLAG_NEEDS_CFG);

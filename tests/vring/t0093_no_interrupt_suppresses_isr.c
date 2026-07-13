@@ -66,6 +66,7 @@ static test_result_t test_no_interrupt_suppresses_isr(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(T0093, VIRTIO_PCI_DEVICE_BLK, test_no_interrupt_suppresses_isr,
+REGISTER_TEST_FLAGS(T0093, VIRTIO_PCI_DEVICE_BLK, test_no_interrupt_suppresses_isr,
               "NO_INTERRUPT avail flag keeps ISR queue bit clear",
-              VIRTIO_SPEC_V1_2, "2.7.7");
+              VIRTIO_SPEC_V1_2, "2.7.7",
+              TEST_FLAG_NEEDS_ISR);

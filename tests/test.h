@@ -72,15 +72,17 @@ typedef test_result_t (*test_packed_fn)(struct virtio_dev *dev,
 typedef test_result_t (*test_mmio_fn)(struct virtio_mmio_dev *dev);
 
 /* Test flags */
-#define TEST_FLAG_PACKED  1
-#define TEST_FLAG_MMIO    2
+#define TEST_FLAG_PACKED    1
+#define TEST_FLAG_MMIO      2
+#define TEST_FLAG_XFAIL     4
+#define TEST_FLAG_NEEDS_ISR 8
+#define TEST_FLAG_NEEDS_CFG 16
 /*
  * Expected-fail marker. A test with this flag inverts its verdict:
  * a non-PASS outcome (FAIL/REJECT/WEDGED) becomes XFAIL (counted as
  * success), and PASS becomes XPASS (counted as a failure, signaling
  * that the underlying bug is fixed and the marker should be removed).
  */
-#define TEST_FLAG_XFAIL   4
 
 #define VIRTIO_SPEC_VERSION(major, minor) (((major) << 8) | (minor))
 #define VIRTIO_SPEC_V1_2  VIRTIO_SPEC_VERSION(1, 2)
@@ -166,6 +168,14 @@ struct test_entry {
     static struct test_entry _test_##tname = { \
         #tname, description, specver, sect, dev_id, (void *)(func), \
         0, 0, (minq), (features), {0} \
+    }
+
+#define REGISTER_TEST_FLAGS(tname, dev_id, func, description, specver, \
+                            sect, fl) \
+    __attribute__((section("test_registry"), used, aligned(128))) \
+    static struct test_entry _test_##tname = { \
+        #tname, description, specver, sect, dev_id, (void *)(func), \
+        (fl), 0, 0, 0, {0} \
     }
 
 #define REGISTER_TEST_Q_REQUIRES(tname, dev_id, func, description, specver, \

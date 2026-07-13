@@ -61,6 +61,7 @@ static test_result_t test_isr_read_clears(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(T0092, VIRTIO_PCI_DEVICE_BLK, test_isr_read_clears,
+REGISTER_TEST_FLAGS(T0092, VIRTIO_PCI_DEVICE_BLK, test_isr_read_clears,
               "ISR read clears the queue bit",
-              VIRTIO_SPEC_V1_2, "4.1.4.5");
+              VIRTIO_SPEC_V1_2, "4.1.4.5",
+              TEST_FLAG_NEEDS_ISR);

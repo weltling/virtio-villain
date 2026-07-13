@@ -114,6 +114,7 @@ static test_result_t test_event_idx_suppress(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(S0055, VIRTIO_PCI_DEVICE_BLK, test_event_idx_suppress,
+REGISTER_TEST_FLAGS(S0055, VIRTIO_PCI_DEVICE_BLK, test_event_idx_suppress,
               "EVENT_IDX suppresses ISR below used_event then fires",
-              VIRTIO_SPEC_V1_2, "2.7.10");
+              VIRTIO_SPEC_V1_2, "2.7.10",
+              TEST_FLAG_NEEDS_ISR);

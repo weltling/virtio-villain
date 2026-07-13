@@ -67,6 +67,7 @@ static test_result_t test_clear_no_interrupt(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(T0097, VIRTIO_PCI_DEVICE_BLK, test_clear_no_interrupt,
+REGISTER_TEST_FLAGS(T0097, VIRTIO_PCI_DEVICE_BLK, test_clear_no_interrupt,
               "clearing NO_INTERRUPT lets next completion raise ISR",
-              VIRTIO_SPEC_V1_2, "2.7.7");
+              VIRTIO_SPEC_V1_2, "2.7.7",
+              TEST_FLAG_NEEDS_ISR);
