@@ -866,6 +866,16 @@ def test_unit_xml_safe_strips_illegal_chars():
     assert RUN_MOD._xml_safe("a\tb\nc\rd") == "a\tb\nc\rd"
 
 
+def test_unit_format_results_junit_no_keyerror():
+    """Ensure format_results_junit accesses only keys that exist in counts."""
+    doc = RUN_MOD.build_results_doc(
+        _sample_results(), _sample_info(),
+        backend_name="ch", vmm="/bin/ch")
+    # Must not raise KeyError for any verdict status.
+    xml = RUN_MOD.format_results_junit(doc)
+    assert "testsuite" in xml
+
+
 # ---------------------------------------------------------------------------
 # --no-api-socket flag plumbing.
 
