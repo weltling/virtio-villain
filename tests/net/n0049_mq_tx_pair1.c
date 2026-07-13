@@ -55,6 +55,7 @@ static test_result_t test_net_mq_tx_pair1(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &txvr, 3, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(N0049, VIRTIO_PCI_DEVICE_NET, test_net_mq_tx_pair1,
+REGISTER_TEST_REQUIRES(N0049, VIRTIO_PCI_DEVICE_NET, test_net_mq_tx_pair1,
               "Multiqueue TX on queue pair 1 (non-default pair)",
-              VIRTIO_SPEC_V1_2, "5.1.6.5");
+              VIRTIO_SPEC_V1_2, "5.1.6.5",
+              (1ULL << VIRTIO_NET_F_MQ), 0);

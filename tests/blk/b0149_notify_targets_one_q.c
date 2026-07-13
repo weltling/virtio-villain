@@ -110,6 +110,7 @@ static test_result_t test_blk_notify_targets_one_q(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(B0149, VIRTIO_PCI_DEVICE_BLK, test_blk_notify_targets_one_q,
+REGISTER_TEST_REQUIRES(B0149, VIRTIO_PCI_DEVICE_BLK, test_blk_notify_targets_one_q,
               "kick on queue 1 notify offset leaves queue 0 idle",
-              VIRTIO_SPEC_V1_2, "4.1.4.4");
+              VIRTIO_SPEC_V1_2, "4.1.4.4",
+              0, 2);

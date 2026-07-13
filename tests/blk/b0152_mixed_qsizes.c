@@ -102,6 +102,7 @@ static test_result_t test_blk_mixed_qsizes(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(B0152, VIRTIO_PCI_DEVICE_BLK, test_blk_mixed_qsizes,
+REGISTER_TEST_REQUIRES(B0152, VIRTIO_PCI_DEVICE_BLK, test_blk_mixed_qsizes,
               "queues with different ring sizes both serve reads",
-              VIRTIO_SPEC_V1_2, "4.1.4.3.2");
+              VIRTIO_SPEC_V1_2, "4.1.4.3.2",
+              0, 2);

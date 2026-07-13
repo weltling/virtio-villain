@@ -99,6 +99,7 @@ static test_result_t test_blk_cross_queue(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &q0, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(B0022, VIRTIO_PCI_DEVICE_BLK, test_blk_cross_queue,
+REGISTER_TEST_REQUIRES(B0022, VIRTIO_PCI_DEVICE_BLK, test_blk_cross_queue,
               "Two queues sharing same descriptor memory",
-              VIRTIO_SPEC_V1_2, "5.2.6");
+              VIRTIO_SPEC_V1_2, "5.2.6",
+              0, 2);

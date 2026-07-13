@@ -99,6 +99,7 @@ static test_result_t test_vsock_rapid_reopen(struct virtio_dev *dev,
     TREJECT("no device response within timeout");
 }
 
-REGISTER_TEST(V0038, VIRTIO_PCI_DEVICE_VSOCK, test_vsock_rapid_reopen,
+REGISTER_TEST_REQUIRES(V0038, VIRTIO_PCI_DEVICE_VSOCK, test_vsock_rapid_reopen,
               "Rapid CONNECT/SHUTDOWN/CONNECT on same port",
-              VIRTIO_SPEC_V1_2, "5.10.6.2");
+              VIRTIO_SPEC_V1_2, "5.10.6.2",
+              0, 2);

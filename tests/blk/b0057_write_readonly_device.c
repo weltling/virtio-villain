@@ -50,6 +50,7 @@ static test_result_t test_blk_write_readonly(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(B0057, VIRTIO_PCI_DEVICE_BLK, test_blk_write_readonly,
+REGISTER_TEST_REQUIRES(B0057, VIRTIO_PCI_DEVICE_BLK, test_blk_write_readonly,
               "WRITE to read-only device (VIRTIO_BLK_F_RO set)",
-              VIRTIO_SPEC_V1_2, "5.2.5");
+              VIRTIO_SPEC_V1_2, "5.2.5",
+              (1ULL << VIRTIO_BLK_F_RO), 0);

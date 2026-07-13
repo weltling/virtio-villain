@@ -41,6 +41,7 @@ static test_result_t test_vsock_all_zero_hdr(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &txvr, 1, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(V0041, VIRTIO_PCI_DEVICE_VSOCK, test_vsock_all_zero_hdr,
+REGISTER_TEST_REQUIRES(V0041, VIRTIO_PCI_DEVICE_VSOCK, test_vsock_all_zero_hdr,
               "TX vsock packet with all-zero header fields",
-              VIRTIO_SPEC_V1_2, "5.10.6");
+              VIRTIO_SPEC_V1_2, "5.10.6",
+              0, 2);

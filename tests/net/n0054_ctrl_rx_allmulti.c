@@ -59,6 +59,7 @@ static test_result_t test_net_ctrl_rx_allmulti(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &cvr, ctrl_q, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(N0054, VIRTIO_PCI_DEVICE_NET, test_net_ctrl_rx_allmulti,
+REGISTER_TEST_REQUIRES(N0054, VIRTIO_PCI_DEVICE_NET, test_net_ctrl_rx_allmulti,
               "CTRL_RX ALLMULTI toggle command",
-              VIRTIO_SPEC_V1_2, "5.1.6.5.1");
+              VIRTIO_SPEC_V1_2, "5.1.6.5.1",
+              (1ULL << VIRTIO_NET_F_CTRL_RX) | (1ULL << VIRTIO_NET_F_CTRL_VQ), 0);

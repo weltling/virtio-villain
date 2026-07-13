@@ -118,6 +118,7 @@ static test_result_t test_blk_per_q_used_ids(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(B0154, VIRTIO_PCI_DEVICE_BLK, test_blk_per_q_used_ids,
+REGISTER_TEST_REQUIRES(B0154, VIRTIO_PCI_DEVICE_BLK, test_blk_per_q_used_ids,
               "all submitted head ids appear once in own used ring",
-              VIRTIO_SPEC_V1_2, "2.7.8");
+              VIRTIO_SPEC_V1_2, "2.7.8",
+              0, 2);

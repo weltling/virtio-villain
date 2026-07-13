@@ -50,6 +50,7 @@ static test_result_t test_net_tx_ecn_no_feature(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &txvr, 1, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(N0055, VIRTIO_PCI_DEVICE_NET, test_net_tx_ecn_no_feature,
+REGISTER_TEST_REQUIRES(N0055, VIRTIO_PCI_DEVICE_NET, test_net_tx_ecn_no_feature,
               "TX GSO_TCPV4_ECN without HOST_ECN feature",
-              VIRTIO_SPEC_V1_2, "5.1.6.2");
+              VIRTIO_SPEC_V1_2, "5.1.6.2",
+              0, 2);

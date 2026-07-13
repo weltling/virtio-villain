@@ -119,6 +119,7 @@ static test_result_t test_blk_q_disable_resume(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(B0150, VIRTIO_PCI_DEVICE_BLK, test_blk_q_disable_resume,
+REGISTER_TEST_REQUIRES(B0150, VIRTIO_PCI_DEVICE_BLK, test_blk_q_disable_resume,
               "disable queue then re enable resumes parked request",
-              VIRTIO_SPEC_V1_2, "4.1.4.3.2");
+              VIRTIO_SPEC_V1_2, "4.1.4.3.2",
+              0, 2);

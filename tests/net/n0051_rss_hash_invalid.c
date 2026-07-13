@@ -61,6 +61,7 @@ static test_result_t test_net_rss_hash_invalid(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &txvr, 1, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(N0051, VIRTIO_PCI_DEVICE_NET, test_net_rss_hash_invalid,
+REGISTER_TEST_REQUIRES(N0051, VIRTIO_PCI_DEVICE_NET, test_net_rss_hash_invalid,
               "TX with invalid hash_report_type in extended header",
-              VIRTIO_SPEC_V1_2, "5.1.6.4");
+              VIRTIO_SPEC_V1_2, "5.1.6.4",
+              0, 2);

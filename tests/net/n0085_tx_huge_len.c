@@ -52,6 +52,7 @@ static test_result_t test_net_tx_huge_len(struct virtio_dev *dev,
     TREJECT("no device response within timeout");
 }
 
-REGISTER_TEST(N0085, VIRTIO_PCI_DEVICE_NET, test_net_tx_huge_len,
+REGISTER_TEST_REQUIRES(N0085, VIRTIO_PCI_DEVICE_NET, test_net_tx_huge_len,
               "TX descriptor with huge len over a small backing",
-              VIRTIO_SPEC_V1_2, "5.1.6.2");
+              VIRTIO_SPEC_V1_2, "5.1.6.2",
+              0, 2);

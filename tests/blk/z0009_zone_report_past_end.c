@@ -54,6 +54,7 @@ static test_result_t test_zone_report_past_end(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(Z0009, VIRTIO_PCI_DEVICE_BLK, test_zone_report_past_end,
+REGISTER_TEST_REQUIRES(Z0009, VIRTIO_PCI_DEVICE_BLK, test_zone_report_past_end,
               "Zone report with sector offset past last zone",
-              VIRTIO_SPEC_V1_2, "5.2.6.5");
+              VIRTIO_SPEC_V1_2, "5.2.6.5",
+              (1ULL << VIRTIO_BLK_F_ZONED), 0);

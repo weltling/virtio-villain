@@ -47,6 +47,7 @@ static test_result_t test_vsock_buf_alloc_max(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &txvr, 1, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(V0037, VIRTIO_PCI_DEVICE_VSOCK, test_vsock_buf_alloc_max,
+REGISTER_TEST_REQUIRES(V0037, VIRTIO_PCI_DEVICE_VSOCK, test_vsock_buf_alloc_max,
               "CONNECT with buf_alloc=UINT32_MAX",
-              VIRTIO_SPEC_V1_2, "5.10.6.2");
+              VIRTIO_SPEC_V1_2, "5.10.6.2",
+              0, 2);

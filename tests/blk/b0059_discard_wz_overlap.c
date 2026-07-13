@@ -102,6 +102,7 @@ static test_result_t test_blk_discard_wz_overlap(struct virtio_dev *dev,
     TREJECT("no device response within timeout");
 }
 
-REGISTER_TEST(B0059, VIRTIO_PCI_DEVICE_BLK, test_blk_discard_wz_overlap,
+REGISTER_TEST_REQUIRES(B0059, VIRTIO_PCI_DEVICE_BLK, test_blk_discard_wz_overlap,
               "Concurrent DISCARD and WRITE_ZEROES to same sectors",
-              VIRTIO_SPEC_V1_2, "5.2.6.2");
+              VIRTIO_SPEC_V1_2, "5.2.6.2",
+              (1ULL << VIRTIO_BLK_F_DISCARD) | (1ULL << VIRTIO_BLK_F_WRITE_ZEROES), 2);

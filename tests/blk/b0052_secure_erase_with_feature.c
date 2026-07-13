@@ -53,6 +53,7 @@ static test_result_t test_blk_secure_erase(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(B0052, VIRTIO_PCI_DEVICE_BLK, test_blk_secure_erase,
+REGISTER_TEST_REQUIRES(B0052, VIRTIO_PCI_DEVICE_BLK, test_blk_secure_erase,
               "Secure erase with VIRTIO_BLK_F_SECURE_ERASE negotiated",
-              VIRTIO_SPEC_V1_2, "5.2.6.2");
+              VIRTIO_SPEC_V1_2, "5.2.6.2",
+              (1ULL << VIRTIO_BLK_F_SECURE_ERASE), 0);

@@ -98,6 +98,7 @@ static test_result_t test_blk_only_q1_enabled(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(B0155, VIRTIO_PCI_DEVICE_BLK, test_blk_only_q1_enabled,
+REGISTER_TEST_REQUIRES(B0155, VIRTIO_PCI_DEVICE_BLK, test_blk_only_q1_enabled,
               "queue 1 serves I/O while queue 0 stays disabled",
-              VIRTIO_SPEC_V1_2, "4.1.4.3.2");
+              VIRTIO_SPEC_V1_2, "4.1.4.3.2",
+              0, 2);

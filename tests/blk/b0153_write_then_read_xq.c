@@ -117,6 +117,7 @@ static test_result_t test_blk_write_then_read_xq(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(B0153, VIRTIO_PCI_DEVICE_BLK, test_blk_write_then_read_xq,
+REGISTER_TEST_REQUIRES(B0153, VIRTIO_PCI_DEVICE_BLK, test_blk_write_then_read_xq,
               "write on q0 visible to read on q1 same sector",
-              VIRTIO_SPEC_V1_2, "5.2.6");
+              VIRTIO_SPEC_V1_2, "5.2.6",
+              0, 2);

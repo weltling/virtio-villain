@@ -50,6 +50,7 @@ static test_result_t test_vsock_fwd_cnt_rollover(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &txvr, 1, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(V0039, VIRTIO_PCI_DEVICE_VSOCK, test_vsock_fwd_cnt_rollover,
+REGISTER_TEST_REQUIRES(V0039, VIRTIO_PCI_DEVICE_VSOCK, test_vsock_fwd_cnt_rollover,
               "Data packet with fwd_cnt near UINT32_MAX rollover",
-              VIRTIO_SPEC_V1_2, "5.10.6.3");
+              VIRTIO_SPEC_V1_2, "5.10.6.3",
+              0, 2);

@@ -105,6 +105,7 @@ static test_result_t test_net_ctrl_promisc_during_tx(struct virtio_dev *dev,
     TREJECT("no device response within timeout");
 }
 
-REGISTER_TEST(N0050, VIRTIO_PCI_DEVICE_NET, test_net_ctrl_promisc_during_tx,
+REGISTER_TEST_REQUIRES(N0050, VIRTIO_PCI_DEVICE_NET, test_net_ctrl_promisc_during_tx,
               "CTRL_RX promisc toggle concurrent with TX traffic",
-              VIRTIO_SPEC_V1_2, "5.1.6.5");
+              VIRTIO_SPEC_V1_2, "5.1.6.5",
+              (1ULL << VIRTIO_NET_F_CTRL_RX) | (1ULL << VIRTIO_NET_F_CTRL_VQ), 0);

@@ -128,6 +128,7 @@ static test_result_t test_rtc_alarm_fire(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(RTC0018, VIRTIO_PCI_DEVICE_RTC, test_rtc_alarm_fire,
+REGISTER_TEST_REQUIRES(RTC0018, VIRTIO_PCI_DEVICE_RTC, test_rtc_alarm_fire,
               "alarm SET then NOTIF_ALARM delivered on alarmq",
-              VIRTIO_SPEC_V1_4, "RTC.5");
+              VIRTIO_SPEC_V1_4, "RTC.5",
+              0, 2);

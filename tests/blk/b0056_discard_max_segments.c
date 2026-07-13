@@ -74,6 +74,7 @@ static test_result_t test_blk_discard_max_segments(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(B0056, VIRTIO_PCI_DEVICE_BLK, test_blk_discard_max_segments,
+REGISTER_TEST_REQUIRES(B0056, VIRTIO_PCI_DEVICE_BLK, test_blk_discard_max_segments,
               "Discard with maximum allowed segment count",
-              VIRTIO_SPEC_V1_2, "5.2.6.2");
+              VIRTIO_SPEC_V1_2, "5.2.6.2",
+              (1ULL << VIRTIO_BLK_F_DISCARD), 0);

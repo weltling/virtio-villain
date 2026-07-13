@@ -64,6 +64,7 @@ static test_result_t test_ring_reset_other_active(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &vr1, 1, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(S0065, VIRTIO_PCI_DEVICE_BLK, test_ring_reset_other_active,
+REGISTER_TEST_REQUIRES(S0065, VIRTIO_PCI_DEVICE_BLK, test_ring_reset_other_active,
               "Reset queue 0 while queue 1 remains active",
-              VIRTIO_SPEC_V1_3, "2.2.1");
+              VIRTIO_SPEC_V1_3, "2.2.1",
+              0, 2);

@@ -61,6 +61,7 @@ static test_result_t test_net_mac_zero(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &cvr, ctrl_q, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(N0058, VIRTIO_PCI_DEVICE_NET, test_net_mac_zero,
+REGISTER_TEST_REQUIRES(N0058, VIRTIO_PCI_DEVICE_NET, test_net_mac_zero,
               "CTRL_MAC ADDR_SET with all-zeros MAC address",
-              VIRTIO_SPEC_V1_2, "5.1.6.5.4");
+              VIRTIO_SPEC_V1_2, "5.1.6.5.4",
+              (1ULL << VIRTIO_NET_F_CTRL_MAC_ADDR) | (1ULL << VIRTIO_NET_F_CTRL_VQ), 0);

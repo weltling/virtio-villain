@@ -96,6 +96,7 @@ static test_result_t test_zone_reset_during_append(struct virtio_dev *dev,
     TREJECT("no device response within timeout");
 }
 
-REGISTER_TEST(Z0008, VIRTIO_PCI_DEVICE_BLK, test_zone_reset_during_append,
+REGISTER_TEST_REQUIRES(Z0008, VIRTIO_PCI_DEVICE_BLK, test_zone_reset_during_append,
               "Zone reset issued while zone append is in-flight",
-              VIRTIO_SPEC_V1_2, "5.2.6.5");
+              VIRTIO_SPEC_V1_2, "5.2.6.5",
+              (1ULL << VIRTIO_BLK_F_ZONED), 2);

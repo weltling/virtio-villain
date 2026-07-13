@@ -125,6 +125,7 @@ static test_result_t test_fs_interrupt_inflight(struct virtio_dev *dev,
     TREJECT("no completion on either queue after INTERRUPT");
 }
 
-REGISTER_TEST_Q(F0019, VIRTIO_PCI_DEVICE_FS, test_fs_interrupt_inflight,
-                "FUSE INTERRUPT targeting inflight request",
-                VIRTIO_SPEC_V1_2, "5.11.6.1", 1);
+REGISTER_TEST_Q_REQUIRES(F0019, VIRTIO_PCI_DEVICE_FS, test_fs_interrupt_inflight,
+              "FUSE INTERRUPT targeting inflight request",
+              VIRTIO_SPEC_V1_2, "5.11.6.1", 1,
+              0, 2);

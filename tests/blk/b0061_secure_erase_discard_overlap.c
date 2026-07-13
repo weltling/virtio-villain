@@ -101,6 +101,7 @@ static test_result_t test_blk_secure_erase_discard(struct virtio_dev *dev,
     TREJECT("no device response within timeout");
 }
 
-REGISTER_TEST(B0061, VIRTIO_PCI_DEVICE_BLK, test_blk_secure_erase_discard,
+REGISTER_TEST_REQUIRES(B0061, VIRTIO_PCI_DEVICE_BLK, test_blk_secure_erase_discard,
               "Concurrent SECURE_ERASE and DISCARD to same sectors",
-              VIRTIO_SPEC_V1_2, "5.2.6.2");
+              VIRTIO_SPEC_V1_2, "5.2.6.2",
+              (1ULL << VIRTIO_BLK_F_DISCARD) | (1ULL << VIRTIO_BLK_F_SECURE_ERASE), 2);

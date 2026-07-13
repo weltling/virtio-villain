@@ -58,6 +58,7 @@ static test_result_t test_vsock_seqpacket_zero_len(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &txvr, 1, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(V0036, VIRTIO_PCI_DEVICE_VSOCK, test_vsock_seqpacket_zero_len,
+REGISTER_TEST_REQUIRES(V0036, VIRTIO_PCI_DEVICE_VSOCK, test_vsock_seqpacket_zero_len,
               "SEQPACKET zero-length record with EOR flag",
-              VIRTIO_SPEC_V1_2, "5.10.6.3");
+              VIRTIO_SPEC_V1_2, "5.10.6.3",
+              (1ULL << VIRTIO_VSOCK_F_SEQPACKET), 2);

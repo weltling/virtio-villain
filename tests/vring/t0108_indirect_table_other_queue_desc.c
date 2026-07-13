@@ -72,6 +72,7 @@ static test_result_t test_indirect_table_other_queue_desc(struct virtio_dev *dev
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(T0108, VIRTIO_PCI_DEVICE_BLK, test_indirect_table_other_queue_desc,
+REGISTER_TEST_REQUIRES(T0108, VIRTIO_PCI_DEVICE_BLK, test_indirect_table_other_queue_desc,
               "Indirect table located in another queue's descriptor page",
-              VIRTIO_SPEC_V1_2, "2.7.5.3");
+              VIRTIO_SPEC_V1_2, "2.7.5.3",
+              0, 2);

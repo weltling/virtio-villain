@@ -54,6 +54,7 @@ static test_result_t test_rtc_alarm_zero(struct virtio_dev *dev,
     return r;
 }
 
-REGISTER_TEST(RTC0020, VIRTIO_PCI_DEVICE_RTC, test_rtc_alarm_zero,
+REGISTER_TEST_REQUIRES(RTC0020, VIRTIO_PCI_DEVICE_RTC, test_rtc_alarm_zero,
               "SET_ALARM with time_ns equal to zero",
-              VIRTIO_SPEC_V1_4, "RTC.7");
+              VIRTIO_SPEC_V1_4, "RTC.7",
+              0, 2);

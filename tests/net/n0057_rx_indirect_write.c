@@ -56,6 +56,7 @@ static test_result_t test_net_rx_indirect_write(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(N0057, VIRTIO_PCI_DEVICE_NET, test_net_rx_indirect_write,
+REGISTER_TEST_REQUIRES(N0057, VIRTIO_PCI_DEVICE_NET, test_net_rx_indirect_write,
               "RX buffer with INDIRECT+WRITE flags combined",
-              VIRTIO_SPEC_V1_2, "5.1.6.4");
+              VIRTIO_SPEC_V1_2, "5.1.6.4",
+              (1ULL << VIRTIO_F_INDIRECT_DESC), 0);

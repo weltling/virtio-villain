@@ -24,6 +24,7 @@ static test_result_t test(struct virtio_dev *dev, struct vring *vr)
     return TEST_PASS;
 }
 
-REGISTER_TEST(I0088, VIRTIO_PCI_DEVICE_IOMMU, test,
+REGISTER_TEST_REQUIRES(I0088, VIRTIO_PCI_DEVICE_IOMMU, test,
               "Event queue exposed when PROBE offered",
-              VIRTIO_SPEC_V1_4, "5.13.5");
+              VIRTIO_SPEC_V1_4, "5.13.5",
+              0, 2);

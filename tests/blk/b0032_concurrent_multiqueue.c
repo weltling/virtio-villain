@@ -120,6 +120,7 @@ static test_result_t test_blk_concurrent_mq(struct virtio_dev *dev,
     TREJECT("no device response within timeout");
 }
 
-REGISTER_TEST(B0032, VIRTIO_PCI_DEVICE_BLK, test_blk_concurrent_mq,
+REGISTER_TEST_REQUIRES(B0032, VIRTIO_PCI_DEVICE_BLK, test_blk_concurrent_mq,
               "Concurrent requests on two queues",
-              VIRTIO_SPEC_V1_2, "5.2.6");
+              VIRTIO_SPEC_V1_2, "5.2.6",
+              0, 2);

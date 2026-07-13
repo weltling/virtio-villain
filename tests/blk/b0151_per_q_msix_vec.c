@@ -62,6 +62,7 @@ static test_result_t test_blk_per_q_msix_vec(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(B0151, VIRTIO_PCI_DEVICE_BLK, test_blk_per_q_msix_vec,
+REGISTER_TEST_REQUIRES(B0151, VIRTIO_PCI_DEVICE_BLK, test_blk_per_q_msix_vec,
               "queue_msix_vector stored independently per queue",
-              VIRTIO_SPEC_V1_2, "4.1.5.1");
+              VIRTIO_SPEC_V1_2, "4.1.5.1",
+              0, 2);

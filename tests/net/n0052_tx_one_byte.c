@@ -43,6 +43,7 @@ static test_result_t test_net_tx_one_byte(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &txvr, 1, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(N0052, VIRTIO_PCI_DEVICE_NET, test_net_tx_one_byte,
+REGISTER_TEST_REQUIRES(N0052, VIRTIO_PCI_DEVICE_NET, test_net_tx_one_byte,
               "TX with exactly 1 byte of payload (below min frame)",
-              VIRTIO_SPEC_V1_2, "5.1.6.2");
+              VIRTIO_SPEC_V1_2, "5.1.6.2",
+              0, 2);

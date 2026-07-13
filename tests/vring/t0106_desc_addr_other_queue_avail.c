@@ -55,6 +55,7 @@ static test_result_t test_desc_addr_other_queue_avail(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(T0106, VIRTIO_PCI_DEVICE_BLK, test_desc_addr_other_queue_avail,
+REGISTER_TEST_REQUIRES(T0106, VIRTIO_PCI_DEVICE_BLK, test_desc_addr_other_queue_avail,
               "Descriptor address pointing into another queue's avail ring",
-              VIRTIO_SPEC_V1_2, "2.7.5");
+              VIRTIO_SPEC_V1_2, "2.7.5",
+              0, 2);

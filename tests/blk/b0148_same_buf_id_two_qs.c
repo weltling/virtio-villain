@@ -99,6 +99,7 @@ static test_result_t test_blk_same_buf_id_two_qs(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(B0148, VIRTIO_PCI_DEVICE_BLK, test_blk_same_buf_id_two_qs,
+REGISTER_TEST_REQUIRES(B0148, VIRTIO_PCI_DEVICE_BLK, test_blk_same_buf_id_two_qs,
               "same head id on two queues completes independently",
-              VIRTIO_SPEC_V1_2, "2.7.5");
+              VIRTIO_SPEC_V1_2, "2.7.5",
+              0, 2);

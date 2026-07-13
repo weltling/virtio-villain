@@ -77,6 +77,7 @@ static test_result_t test_blk_config_wce_toggle(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(B0053, VIRTIO_PCI_DEVICE_BLK, test_blk_config_wce_toggle,
+REGISTER_TEST_REQUIRES(B0053, VIRTIO_PCI_DEVICE_BLK, test_blk_config_wce_toggle,
               "Toggle CONFIG_WCE writeback/writethrough mode",
-              VIRTIO_SPEC_V1_2, "5.2.4");
+              VIRTIO_SPEC_V1_2, "5.2.4",
+              (1ULL << VIRTIO_BLK_F_CONFIG_WCE), 0);

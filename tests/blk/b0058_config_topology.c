@@ -62,6 +62,7 @@ static test_result_t test_blk_config_topology(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(B0058, VIRTIO_PCI_DEVICE_BLK, test_blk_config_topology,
+REGISTER_TEST_REQUIRES(B0058, VIRTIO_PCI_DEVICE_BLK, test_blk_config_topology,
               "Read topology config fields (physical_block_exp, etc.)",
-              VIRTIO_SPEC_V1_2, "5.2.4");
+              VIRTIO_SPEC_V1_2, "5.2.4",
+              (1ULL << VIRTIO_BLK_F_TOPOLOGY), 0);

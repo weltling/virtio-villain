@@ -70,6 +70,7 @@ static test_result_t test_net_mrg_rxbuf_overflow(struct virtio_dev *dev,
     return r;
 }
 
-REGISTER_TEST(N0048, VIRTIO_PCI_DEVICE_NET, test_net_mrg_rxbuf_overflow,
+REGISTER_TEST_REQUIRES(N0048, VIRTIO_PCI_DEVICE_NET, test_net_mrg_rxbuf_overflow,
               "MRG_RXBUF TX larger than single posted RX buffer",
-              VIRTIO_SPEC_V1_2, "5.1.6.4");
+              VIRTIO_SPEC_V1_2, "5.1.6.4",
+              (1ULL << VIRTIO_NET_F_MRG_RXBUF), 2);
