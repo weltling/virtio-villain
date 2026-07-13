@@ -11,6 +11,7 @@
 #include "lib/util.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
 
 #include <string.h>
 #include <unistd.h>
@@ -49,6 +50,7 @@ static test_result_t test_rng_after_q_reset(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &vr2, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(RNG0017, VIRTIO_PCI_DEVICE_RNG, test_rng_after_q_reset,
+REGISTER_TEST_REQUIRES(RNG0017, VIRTIO_PCI_DEVICE_RNG, test_rng_after_q_reset,
               "Entropy request after individual queue reset",
-              VIRTIO_SPEC_V1_3, "2.6.1");
+              VIRTIO_SPEC_V1_3, "2.6.1",
+              (1ULL << VIRTIO_F_RING_RESET), 0);

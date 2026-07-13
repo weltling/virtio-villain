@@ -58,6 +58,7 @@ static test_result_t test_net_mq_during_reset(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST_Q(N0108, VIRTIO_PCI_DEVICE_NET, test_net_mq_during_reset,
+REGISTER_TEST_Q_REQUIRES(N0108, VIRTIO_PCI_DEVICE_NET, test_net_mq_during_reset,
                 "MQ VQ_PAIRS_SET while queue is in reset",
-                VIRTIO_SPEC_V1_3, "5.1.6.5.5", VV_QUEUE_LAST);
+                VIRTIO_SPEC_V1_3, "5.1.6.5.5", VV_QUEUE_LAST,
+                (1ULL << VIRTIO_F_RING_RESET) | (1ULL << VIRTIO_NET_F_MQ) | (1ULL << VIRTIO_NET_F_CTRL_VQ), 3);
