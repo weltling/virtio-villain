@@ -1357,6 +1357,38 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
     return [(test_names[0], status, output)]
 
 
+def _retry_wedged(batch_results, backend, kernel, timeout, verbose,
+                  disk_format, opts):
+    """Re-run WEDGED tests from a batch individually.
+
+    When a test crashes or wedges inside a batch, subsequent tests in
+    the same VM never run and appear as WEDGED. The first WEDGED test
+    is the real culprit and keeps its verdict. Tests after it are
+    re-run individually to get their real result.
+    """
+    wedged = [name for name, st, _ in batch_results if st == "WEDGED"]
+    if not wedged:
+        return batch_results
+    # Find the first WEDGED test. Everything before it has a real
+    # verdict. The first one stays WEDGED. Everything after it gets
+    # retried individually.
+    first_wedged_idx = None
+    for i, (name, st, _) in enumerate(batch_results):
+        if st == "WEDGED":
+            first_wedged_idx = i
+            break
+    final = list(batch_results[:first_wedged_idx + 1])
+    for name, st, out in batch_results[first_wedged_idx + 1:]:
+        if st == "WEDGED":
+            solo = run_test(backend, kernel, name, timeout, verbose,
+                            False, disk_format, opts)
+            final.extend(solo)
+        else:
+            final.append((name, st, out))
+            final.append((name, st, out))
+    return final
+
+
 # Maps test name prefix (leading uppercase letters) to the source
 # directory under tests/. Keep in sync with the layout in README.md.
 PREFIX_DIR = {
@@ -2258,6 +2290,12 @@ def main():
             try:
                 for future in as_completed(futures):
                     batch_results = future.result()
+                    if batch_size > 1:
+                        batch_results = _retry_wedged(
+                            batch_results, *_backend_for(
+                                batch_results[0][0]),
+                            args.timeout, args.verbose,
+                            args.disk_type, vm_opts)
                     for name, status, output in batch_results:
                         done += 1
                         with _print_lock:
@@ -2302,6 +2340,11 @@ def main():
                         args.timeout, args.verbose, args.console,
                         args.disk_type, vm_opts
                     )
+                    if batch_size > 1:
+                        batch_results = _retry_wedged(
+                            batch_results, *_backend_for(item[0]),
+                            args.timeout, args.verbose,
+                            args.disk_type, vm_opts)
                     for name, status, output in batch_results:
                         done += 1
                         _report(name, status, output)

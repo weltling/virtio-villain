@@ -907,6 +907,31 @@ def test_unit_parse_batch_results_single():
     assert r == {"RNG0001": "PASS"}
 
 
+def test_unit_retry_wedged_no_wedged():
+    batch = [("A", "PASS", ""), ("B", "REJECT", ""), ("C", "PASS", "")]
+    result = RUN_MOD._retry_wedged(batch, None, None, 10, 0, "raw", {})
+    assert result == batch
+
+
+def test_unit_retry_wedged_keeps_first_wedged():
+    batch = [
+        ("A", "PASS", "out"),
+        ("B", "WEDGED", "out"),
+        ("C", "WEDGED", "out"),
+    ]
+    # Mock run_test to return PASS for C when retried individually
+    original = RUN_MOD.run_test
+    RUN_MOD.run_test = lambda *a, **kw: [("C", "PASS", "retried")]
+    try:
+        result = RUN_MOD._retry_wedged(batch, None, None, 10, 0, "raw", {})
+        assert len(result) == 3
+        assert result[0] == ("A", "PASS", "out")
+        assert result[1] == ("B", "WEDGED", "out")  # first WEDGED kept
+        assert result[2] == ("C", "PASS", "retried")  # retried
+    finally:
+        RUN_MOD.run_test = original
+
+
 # ---------------------------------------------------------------------------
 # --no-api-socket flag plumbing.
 
