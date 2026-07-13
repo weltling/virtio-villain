@@ -2263,8 +2263,18 @@ def main():
     batch_size = args.batch
     if batch_size > 1:
         _sc_re = re.compile(r'[A-Z]+0[23]\d\d', re.IGNORECASE)
-        solo = [t for t in tests if _sc_re.match(t)]
-        batchable = [t for t in tests if not _sc_re.match(t)]
+
+        def _must_solo(t):
+            """Tests that must not be batched."""
+            if _sc_re.match(t):
+                return True
+            meta = _test_meta.get(t)
+            if meta and meta["flags"] & 4:  # TEST_FLAG_XFAIL
+                return True
+            return False
+
+        solo = [t for t in tests if _must_solo(t)]
+        batchable = [t for t in tests if not _must_solo(t)]
         work_items = []
         for i in range(0, len(batchable), batch_size):
             chunk = batchable[i:i + batch_size]
