@@ -47,6 +47,7 @@ static test_result_t test_net_link_status_stable(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(N0081, VIRTIO_PCI_DEVICE_NET, test_net_link_status_stable,
+REGISTER_TEST_REQUIRES(N0081, VIRTIO_PCI_DEVICE_NET, test_net_link_status_stable,
               "Net link_status reads stable when idle",
-              VIRTIO_SPEC_V1_2, "5.1.4");
+              VIRTIO_SPEC_V1_2, "5.1.4",
+              (1ULL << VIRTIO_NET_F_STATUS), 0);

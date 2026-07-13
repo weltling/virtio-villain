@@ -61,6 +61,7 @@ static test_result_t test(struct virtio_dev *dev, struct vring *vr)
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(I0095, VIRTIO_PCI_DEVICE_IOMMU, test,
+REGISTER_TEST_REQUIRES(I0095, VIRTIO_PCI_DEVICE_IOMMU, test,
               "MAP single page at input_range.start",
-              VIRTIO_SPEC_V1_4, "5.13.6.3");
+              VIRTIO_SPEC_V1_4, "5.13.6.3",
+              (1ULL << VIRTIO_IOMMU_F_INPUT_RANGE), 0);

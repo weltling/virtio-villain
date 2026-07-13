@@ -60,7 +60,7 @@ static test_result_t test_balloon_stats_split(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &sq, 2, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(L0030, VIRTIO_PCI_DEVICE_BALLOON,
-              test_balloon_stats_split,
+REGISTER_TEST_REQUIRES(L0030, VIRTIO_PCI_DEVICE_BALLOON, test_balloon_stats_split,
               "Stats buffer split across four chained descriptors",
-              VIRTIO_SPEC_V1_2, "5.5.6.1");
+              VIRTIO_SPEC_V1_2, "5.5.6.1",
+              (1ULL << VIRTIO_BALLOON_F_STATS_VQ), 3);

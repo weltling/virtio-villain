@@ -39,7 +39,7 @@ static test_result_t test_watchdog_indirect_zero(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(D0026, VIRTIO_PCI_DEVICE_WATCHDOG,
-              test_watchdog_indirect_zero,
+REGISTER_TEST_REQUIRES(D0026, VIRTIO_PCI_DEVICE_WATCHDOG, test_watchdog_indirect_zero,
               "Watchdog ping with zero length indirect table",
-              VIRTIO_SPEC_V1_2, "2.7.7");
+              VIRTIO_SPEC_V1_2, "2.7.7",
+              (1ULL << VIRTIO_F_INDIRECT_DESC), 0);

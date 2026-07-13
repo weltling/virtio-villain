@@ -54,6 +54,7 @@ static test_result_t test_balloon_page_report(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &rq, 3, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(L0023, VIRTIO_PCI_DEVICE_BALLOON, test_balloon_page_report,
+REGISTER_TEST_REQUIRES(L0023, VIRTIO_PCI_DEVICE_BALLOON, test_balloon_page_report,
               "Page report on reporting virtqueue",
-              VIRTIO_SPEC_V1_2, "5.5.6.4");
+              VIRTIO_SPEC_V1_2, "5.5.6.4",
+              (1ULL << VIRTIO_BALLOON_F_REPORTING), 0);

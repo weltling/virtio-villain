@@ -55,6 +55,7 @@ static test_result_t test_net_ctrl_mac_table_oversized(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &cvr, 2, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(N0053, VIRTIO_PCI_DEVICE_NET, test_net_ctrl_mac_table_oversized,
+REGISTER_TEST_REQUIRES(N0053, VIRTIO_PCI_DEVICE_NET, test_net_ctrl_mac_table_oversized,
               "CTRL_MAC TABLE_SET with oversized entry count",
-              VIRTIO_SPEC_V1_2, "5.1.6.5.4");
+              VIRTIO_SPEC_V1_2, "5.1.6.5.4",
+              0, 3);

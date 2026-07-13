@@ -46,6 +46,7 @@ static test_result_t test_vsock_event_queue(struct virtio_dev *dev,
     return r;
 }
 
-REGISTER_TEST(V0040, VIRTIO_PCI_DEVICE_VSOCK, test_vsock_event_queue,
+REGISTER_TEST_REQUIRES(V0040, VIRTIO_PCI_DEVICE_VSOCK, test_vsock_event_queue,
               "Post buffer on vsock event queue (queue 2)",
-              VIRTIO_SPEC_V1_2, "5.10.6.7");
+              VIRTIO_SPEC_V1_2, "5.10.6.7",
+              0, 3);

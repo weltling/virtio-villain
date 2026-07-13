@@ -48,7 +48,7 @@ static test_result_t test_balloon_stats_unknown_tag(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &svr, 2, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(L0032, VIRTIO_PCI_DEVICE_BALLOON,
-              test_balloon_stats_unknown_tag,
+REGISTER_TEST_REQUIRES(L0032, VIRTIO_PCI_DEVICE_BALLOON, test_balloon_stats_unknown_tag,
               "Balloon stats reply with all entries tagged 0xFFFF",
-              VIRTIO_SPEC_V1_2, "5.5.6.1");
+              VIRTIO_SPEC_V1_2, "5.5.6.1",
+              (1ULL << VIRTIO_BALLOON_F_STATS_VQ), 3);

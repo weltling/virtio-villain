@@ -64,6 +64,7 @@ static test_result_t test_blk_wce_config_generation(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(B0143, VIRTIO_PCI_DEVICE_BLK, test_blk_wce_config_generation,
+REGISTER_TEST_REQUIRES(B0143, VIRTIO_PCI_DEVICE_BLK, test_blk_wce_config_generation,
               "WCE write bumps config_generation",
-              VIRTIO_SPEC_V1_2, "4.1.4.3.1");
+              VIRTIO_SPEC_V1_2, "4.1.4.3.1",
+              (1ULL << VIRTIO_BLK_F_CONFIG_WCE), 0);

@@ -59,6 +59,7 @@ static test_result_t test(struct virtio_dev *dev, struct vring *vr)
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(I0091, VIRTIO_PCI_DEVICE_IOMMU, test,
+REGISTER_TEST_REQUIRES(I0091, VIRTIO_PCI_DEVICE_IOMMU, test,
               "MAP into a bypass mode domain",
-              VIRTIO_SPEC_V1_4, "5.13.6.1");
+              VIRTIO_SPEC_V1_4, "5.13.6.1",
+              (1ULL << VIRTIO_IOMMU_F_BYPASS), 0);

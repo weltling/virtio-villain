@@ -36,6 +36,7 @@ static test_result_t test(struct virtio_dev *dev, struct vring *vr)
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(V0072, VIRTIO_PCI_DEVICE_VSOCK, test,
+REGISTER_TEST_REQUIRES(V0072, VIRTIO_PCI_DEVICE_VSOCK, test,
               "DGRAM with zero credit fields",
-              VIRTIO_SPEC_V1_4, "5.10.6");
+              VIRTIO_SPEC_V1_4, "5.10.6",
+              (1ULL << VIRTIO_VSOCK_F_DGRAM), 0);

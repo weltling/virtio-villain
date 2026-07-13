@@ -45,6 +45,7 @@ static test_result_t test(struct virtio_dev *dev, struct vring *vr)
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(I0094, VIRTIO_PCI_DEVICE_IOMMU, test,
+REGISTER_TEST_REQUIRES(I0094, VIRTIO_PCI_DEVICE_IOMMU, test,
               "ATTACH with domain_id above domain_range.end",
-              VIRTIO_SPEC_V1_4, "5.13.3");
+              VIRTIO_SPEC_V1_4, "5.13.3",
+              (1ULL << VIRTIO_IOMMU_F_DOMAIN_RANGE), 0);

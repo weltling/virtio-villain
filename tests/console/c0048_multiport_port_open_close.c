@@ -47,6 +47,7 @@ static test_result_t test(struct virtio_dev *dev, struct vring *vr)
     return vv_kick_and_wait(dev, &cq, 2, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(C0048, VIRTIO_PCI_DEVICE_CONSOLE, test,
+REGISTER_TEST_REQUIRES(C0048, VIRTIO_PCI_DEVICE_CONSOLE, test,
               "MULTIPORT PORT_OPEN then PORT_CLOSE",
-              VIRTIO_SPEC_V1_4, "5.3.6.1");
+              VIRTIO_SPEC_V1_4, "5.3.6.1",
+              (1ULL << VIRTIO_CONSOLE_F_MULTIPORT), 0);

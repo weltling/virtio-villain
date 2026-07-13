@@ -32,6 +32,7 @@ static test_result_t test_mem_acpi_pxm(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(R0038, VIRTIO_PCI_DEVICE_MEM, test_mem_acpi_pxm,
+REGISTER_TEST_REQUIRES(R0038, VIRTIO_PCI_DEVICE_MEM, test_mem_acpi_pxm,
               "ACPI_PXM node_id is readable",
-              VIRTIO_SPEC_V1_4, "5.15.3");
+              VIRTIO_SPEC_V1_4, "5.15.3",
+              (1ULL << VIRTIO_MEM_F_ACPI_PXM), 0);

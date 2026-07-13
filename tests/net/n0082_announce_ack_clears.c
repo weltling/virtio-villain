@@ -71,6 +71,7 @@ static test_result_t test_net_announce_ack_clears(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(N0082, VIRTIO_PCI_DEVICE_NET, test_net_announce_ack_clears,
+REGISTER_TEST_REQUIRES(N0082, VIRTIO_PCI_DEVICE_NET, test_net_announce_ack_clears,
               "ANNOUNCE_ACK leaves announce bit clear",
-              VIRTIO_SPEC_V1_2, "5.1.6.6");
+              VIRTIO_SPEC_V1_2, "5.1.6.6",
+              (1ULL << VIRTIO_NET_F_GUEST_ANNOUNCE) | (1ULL << VIRTIO_NET_F_STATUS), 0);

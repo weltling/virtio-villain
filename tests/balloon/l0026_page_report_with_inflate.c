@@ -77,7 +77,7 @@ static test_result_t test_balloon_report_with_inflate(struct virtio_dev *dev,
     TREJECT("no device response within timeout");
 }
 
-REGISTER_TEST(L0026, VIRTIO_PCI_DEVICE_BALLOON,
-              test_balloon_report_with_inflate,
+REGISTER_TEST_REQUIRES(L0026, VIRTIO_PCI_DEVICE_BALLOON, test_balloon_report_with_inflate,
               "Page report concurrent with inflate",
-              VIRTIO_SPEC_V1_2, "5.5.6.4");
+              VIRTIO_SPEC_V1_2, "5.5.6.4",
+              (1ULL << VIRTIO_BALLOON_F_REPORTING), 0);

@@ -67,6 +67,7 @@ static test_result_t test_config_change_isr(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(S0043, VIRTIO_PCI_DEVICE_BLK, test_config_change_isr,
+REGISTER_TEST_REQUIRES(S0043, VIRTIO_PCI_DEVICE_BLK, test_config_change_isr,
               "Config change sets ISR config bit and bumps config_generation",
-              VIRTIO_SPEC_V1_2, "4.1.4.5");
+              VIRTIO_SPEC_V1_2, "4.1.4.5",
+              (1ULL << VIRTIO_BLK_F_CONFIG_WCE), 0);

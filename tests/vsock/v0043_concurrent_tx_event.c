@@ -76,6 +76,7 @@ static test_result_t test_vsock_concurrent_tx_event(struct virtio_dev *dev,
     TREJECT("no device response within timeout");
 }
 
-REGISTER_TEST(V0043, VIRTIO_PCI_DEVICE_VSOCK, test_vsock_concurrent_tx_event,
+REGISTER_TEST_REQUIRES(V0043, VIRTIO_PCI_DEVICE_VSOCK, test_vsock_concurrent_tx_event,
               "Concurrent TX and event queue operations",
-              VIRTIO_SPEC_V1_2, "5.10.6");
+              VIRTIO_SPEC_V1_2, "5.10.6",
+              0, 3);

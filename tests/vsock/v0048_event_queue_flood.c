@@ -89,6 +89,7 @@ static test_result_t test_vsock_event_flood(struct virtio_dev *dev,
     TREJECT("no device response within timeout");
 }
 
-REGISTER_TEST(V0048, VIRTIO_PCI_DEVICE_VSOCK, test_vsock_event_flood,
+REGISTER_TEST_REQUIRES(V0048, VIRTIO_PCI_DEVICE_VSOCK, test_vsock_event_flood,
               "Flood event queue with buffers and trigger events",
-              VIRTIO_SPEC_V1_2, "5.10.6.7");
+              VIRTIO_SPEC_V1_2, "5.10.6.7",
+              0, 3);

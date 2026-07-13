@@ -79,6 +79,7 @@ static test_result_t test_net_mac_set_readback(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(N0083, VIRTIO_PCI_DEVICE_NET, test_net_mac_set_readback,
+REGISTER_TEST_REQUIRES(N0083, VIRTIO_PCI_DEVICE_NET, test_net_mac_set_readback,
               "CTRL_MAC ADDR_SET updates mac field in config space",
-              VIRTIO_SPEC_V1_2, "5.1.6.5.2");
+              VIRTIO_SPEC_V1_2, "5.1.6.5.2",
+              (1ULL << VIRTIO_NET_F_CTRL_MAC_ADDR), 0);

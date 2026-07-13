@@ -67,6 +67,7 @@ static test_result_t test_vsock_dgram_type(struct virtio_dev *dev,
     TREJECT("no device response within timeout");
 }
 
-REGISTER_TEST(V0047, VIRTIO_PCI_DEVICE_VSOCK, test_vsock_dgram_type,
+REGISTER_TEST_REQUIRES(V0047, VIRTIO_PCI_DEVICE_VSOCK, test_vsock_dgram_type,
               "Send packet with type=VIRTIO_VSOCK_TYPE_DGRAM",
-              VIRTIO_SPEC_V1_2, "5.10.6");
+              VIRTIO_SPEC_V1_2, "5.10.6",
+              0, 3);

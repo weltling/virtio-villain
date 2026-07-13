@@ -24,6 +24,7 @@ static test_result_t test_mem_persistent_suspend(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(R0040, VIRTIO_PCI_DEVICE_MEM, test_mem_persistent_suspend,
+REGISTER_TEST_REQUIRES(R0040, VIRTIO_PCI_DEVICE_MEM, test_mem_persistent_suspend,
               "PERSISTENT_SUSPEND feature offered",
-              VIRTIO_SPEC_V1_4, "5.15.3");
+              VIRTIO_SPEC_V1_4, "5.15.3",
+              (1ULL << VIRTIO_MEM_F_PERSISTENT_SUSPEND), 0);

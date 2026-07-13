@@ -41,6 +41,7 @@ static test_result_t test_mem_unplugged_inacc(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(R0039, VIRTIO_PCI_DEVICE_MEM, test_mem_unplugged_inacc,
+REGISTER_TEST_REQUIRES(R0039, VIRTIO_PCI_DEVICE_MEM, test_mem_unplugged_inacc,
               "STATE query of unplugged inaccessible block",
-              VIRTIO_SPEC_V1_4, "5.15.3");
+              VIRTIO_SPEC_V1_4, "5.15.3",
+              (1ULL << VIRTIO_MEM_F_UNPLUGGED_INACCESSIBLE), 0);

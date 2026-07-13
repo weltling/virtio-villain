@@ -73,6 +73,7 @@ static test_result_t test_vsock_port_exhaustion(struct virtio_dev *dev,
     TREJECT("no device response within timeout");
 }
 
-REGISTER_TEST(V0045, VIRTIO_PCI_DEVICE_VSOCK, test_vsock_port_exhaustion,
+REGISTER_TEST_REQUIRES(V0045, VIRTIO_PCI_DEVICE_VSOCK, test_vsock_port_exhaustion,
               "Rapid connection requests to many ports without closing",
-              VIRTIO_SPEC_V1_2, "5.10.6");
+              VIRTIO_SPEC_V1_2, "5.10.6",
+              0, 3);

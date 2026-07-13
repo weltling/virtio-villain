@@ -111,6 +111,7 @@ static test_result_t test_net_ctrl_concurrent(struct virtio_dev *dev,
     TREJECT("no device response within timeout");
 }
 
-REGISTER_TEST(N0070, VIRTIO_PCI_DEVICE_NET, test_net_ctrl_concurrent,
+REGISTER_TEST_REQUIRES(N0070, VIRTIO_PCI_DEVICE_NET, test_net_ctrl_concurrent,
               "Control command concurrent with active RX and TX",
-              VIRTIO_SPEC_V1_2, "5.1.6.5");
+              VIRTIO_SPEC_V1_2, "5.1.6.5",
+              0, 3);

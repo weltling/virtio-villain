@@ -53,7 +53,7 @@ static test_result_t test_balloon_page_report_misaligned(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &rq, 3, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(L0029, VIRTIO_PCI_DEVICE_BALLOON,
-              test_balloon_page_report_misaligned,
+REGISTER_TEST_REQUIRES(L0029, VIRTIO_PCI_DEVICE_BALLOON, test_balloon_page_report_misaligned,
               "Page report descriptor with len not a 4096 multiple",
-              VIRTIO_SPEC_V1_2, "5.5.6.4");
+              VIRTIO_SPEC_V1_2, "5.5.6.4",
+              (1ULL << VIRTIO_BALLOON_F_REPORTING), 0);

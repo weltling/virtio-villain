@@ -39,6 +39,7 @@ static test_result_t test(struct virtio_dev *dev, struct vring *vr)
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST_Q(N0128, VIRTIO_PCI_DEVICE_NET, test,
+REGISTER_TEST_Q_REQUIRES(N0128, VIRTIO_PCI_DEVICE_NET, test,
                 "VLAN_DEL with VID that was never added",
-                VIRTIO_SPEC_V1_4, "5.1.4", VV_QUEUE_LAST);
+                VIRTIO_SPEC_V1_4, "5.1.4", VV_QUEUE_LAST,
+                (1ULL << VIRTIO_NET_F_CTRL_VLAN), 0);

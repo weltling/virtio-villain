@@ -78,6 +78,7 @@ static test_result_t test_vsock_backpressure(struct virtio_dev *dev,
     TREJECT("no device response within timeout");
 }
 
-REGISTER_TEST(V0046, VIRTIO_PCI_DEVICE_VSOCK, test_vsock_backpressure,
+REGISTER_TEST_REQUIRES(V0046, VIRTIO_PCI_DEVICE_VSOCK, test_vsock_backpressure,
               "Send data exceeding credit then one more packet",
-              VIRTIO_SPEC_V1_2, "5.10.6.3");
+              VIRTIO_SPEC_V1_2, "5.10.6.3",
+              0, 3);

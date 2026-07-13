@@ -59,6 +59,7 @@ static test_result_t test_net_rss_overflow(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &ctrlvr, 2, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(N0072, VIRTIO_PCI_DEVICE_NET, test_net_rss_overflow,
+REGISTER_TEST_REQUIRES(N0072, VIRTIO_PCI_DEVICE_NET, test_net_rss_overflow,
               "RSS indirection_table_mask beyond table size",
-              VIRTIO_SPEC_V1_2, "5.1.6.5.8");
+              VIRTIO_SPEC_V1_2, "5.1.6.5.8",
+              0, 3);

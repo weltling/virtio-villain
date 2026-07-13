@@ -39,6 +39,7 @@ static test_result_t test_pmem_discard(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(E0027, VIRTIO_PCI_DEVICE_PMEM, test_pmem_discard,
+REGISTER_TEST_REQUIRES(E0027, VIRTIO_PCI_DEVICE_PMEM, test_pmem_discard,
               "pmem DISCARD when feature is offered",
-              VIRTIO_SPEC_V1_4, "5.19.4");
+              VIRTIO_SPEC_V1_4, "5.19.4",
+              (1ULL << VIRTIO_PMEM_F_DISCARD), 0);

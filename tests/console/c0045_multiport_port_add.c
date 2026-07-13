@@ -44,6 +44,7 @@ static test_result_t test(struct virtio_dev *dev, struct vring *vr)
     return TEST_PASS;
 }
 
-REGISTER_TEST(C0045, VIRTIO_PCI_DEVICE_CONSOLE, test,
+REGISTER_TEST_REQUIRES(C0045, VIRTIO_PCI_DEVICE_CONSOLE, test,
               "MULTIPORT PORT_ADD receive buffer posted",
-              VIRTIO_SPEC_V1_4, "5.3.6.1");
+              VIRTIO_SPEC_V1_4, "5.3.6.1",
+              (1ULL << VIRTIO_CONSOLE_F_MULTIPORT), 0);

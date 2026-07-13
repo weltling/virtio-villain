@@ -45,6 +45,7 @@ static test_result_t test_balloon_stats_misaligned(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &stats_vr, 2, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(L0020, VIRTIO_PCI_DEVICE_BALLOON, test_balloon_stats_misaligned,
+REGISTER_TEST_REQUIRES(L0020, VIRTIO_PCI_DEVICE_BALLOON, test_balloon_stats_misaligned,
               "Stats vq descriptor with misaligned length",
-              VIRTIO_SPEC_V1_2, "5.5.6.1");
+              VIRTIO_SPEC_V1_2, "5.5.6.1",
+              (1ULL << VIRTIO_BALLOON_F_STATS_VQ), 3);

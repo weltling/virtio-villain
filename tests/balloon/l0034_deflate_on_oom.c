@@ -52,7 +52,7 @@ static test_result_t test_balloon_deflate_on_oom(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &dvr, 1, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(L0034, VIRTIO_PCI_DEVICE_BALLOON,
-              test_balloon_deflate_on_oom,
+REGISTER_TEST_REQUIRES(L0034, VIRTIO_PCI_DEVICE_BALLOON, test_balloon_deflate_on_oom,
               "Inflate then deflate with DEFLATE_ON_OOM negotiated",
-              VIRTIO_SPEC_V1_4, "5.5.4");
+              VIRTIO_SPEC_V1_4, "5.5.4",
+              (1ULL << VIRTIO_BALLOON_F_DEFLATE_ON_OOM), 0);

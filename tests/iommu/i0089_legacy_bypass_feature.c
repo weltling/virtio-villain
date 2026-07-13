@@ -23,6 +23,7 @@ static test_result_t test(struct virtio_dev *dev, struct vring *vr)
     return TEST_PASS;
 }
 
-REGISTER_TEST(I0089, VIRTIO_PCI_DEVICE_IOMMU, test,
+REGISTER_TEST_REQUIRES(I0089, VIRTIO_PCI_DEVICE_IOMMU, test,
               "BYPASS_CONFIG offered implies usable config",
-              VIRTIO_SPEC_V1_4, "5.13.3");
+              VIRTIO_SPEC_V1_4, "5.13.3",
+              (1ULL << VIRTIO_IOMMU_F_BYPASS_CONFIG), 0);
