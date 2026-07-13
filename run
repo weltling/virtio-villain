@@ -1628,7 +1628,7 @@ def format_results_junit(doc):
 
     counts = doc["counts"]
     failures = counts["fail"] + counts["wedged"] + counts["xpass"]
-    skipped = counts["skip"] + counts["xfail"] + counts["xwedged"]
+    skipped = counts["skip"] + counts["xfail"]
     attrs = {
         "name": "virtio-villain",
         "tests": str(doc["total"]),
