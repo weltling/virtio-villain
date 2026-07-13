@@ -57,7 +57,7 @@ typedef enum {
     /*
      * Synthetic verdicts emitted by init when a test was registered
      * with TEST_FLAG_XFAIL. Tests never return these directly; init
-     * remaps the test's PASS/FAIL/REJECT/WEDGED outcome.
+     * remaps the test's PASS/FAIL/WEDGED outcome.
      */
     TEST_XFAIL,
     TEST_XPASS
@@ -96,7 +96,9 @@ struct test_entry {
     void         *fn;
     uint8_t       flags;
     uint8_t       queue_idx;   /* 0 = default, 1+ = explicit queue (value-1), 0xFF = last */
-    char          _pad[14];
+    uint16_t      min_queues;  /* 0 = no requirement */
+    uint64_t      required_features; /* feature bits that must be offered */
+    char          _pad[58];
 };
 
 /* Use with REGISTER_TEST_Q to select the last queue (e.g. net controlq). */
@@ -105,33 +107,33 @@ struct test_entry {
 /*
  * Register a test case. The linker collects all entries into a
  * contiguous array via the "test_registry" section.
- * aligned(64) ensures consistent stride across translation units.
+ * aligned(128) ensures consistent stride across translation units.
  */
 #define REGISTER_TEST(tname, dev_id, func, description, specver, sect) \
-    __attribute__((section("test_registry"), used, aligned(64))) \
+    __attribute__((section("test_registry"), used, aligned(128))) \
     static struct test_entry _test_##tname = { \
-        #tname, description, specver, sect, dev_id, (void *)(func), 0, 0, {0} \
+        #tname, description, specver, sect, dev_id, (void *)(func), 0, 0, 0, 0, {0} \
     }
 
 #define REGISTER_TEST_Q(tname, dev_id, func, description, specver, sect, qidx) \
-    __attribute__((section("test_registry"), used, aligned(64))) \
+    __attribute__((section("test_registry"), used, aligned(128))) \
     static struct test_entry _test_##tname = { \
         #tname, description, specver, sect, dev_id, (void *)(func), 0, \
-        (qidx) + 1, {0} \
+        (qidx) + 1, 0, 0, {0} \
     }
 
 #define REGISTER_TEST_PACKED(tname, dev_id, func, description, specver, sect) \
-    __attribute__((section("test_registry"), used, aligned(64))) \
+    __attribute__((section("test_registry"), used, aligned(128))) \
     static struct test_entry _test_##tname = { \
         #tname, description, specver, sect, dev_id, (void *)(func), \
-        TEST_FLAG_PACKED, 0, {0} \
+        TEST_FLAG_PACKED, 0, 0, 0, {0} \
     }
 
 #define REGISTER_TEST_MMIO(tname, func, description, specver, sect) \
-    __attribute__((section("test_registry"), used, aligned(64))) \
+    __attribute__((section("test_registry"), used, aligned(128))) \
     static struct test_entry _test_##tname = { \
         #tname, description, specver, sect, 0, \
-        (void *)(func), TEST_FLAG_MMIO, 0, {0} \
+        (void *)(func), TEST_FLAG_MMIO, 0, 0, 0, {0} \
     }
 
 /*
@@ -141,17 +143,37 @@ struct test_entry {
  * stale).
  */
 #define REGISTER_TEST_XFAIL(tname, dev_id, func, description, specver, sect) \
-    __attribute__((section("test_registry"), used, aligned(64))) \
+    __attribute__((section("test_registry"), used, aligned(128))) \
     static struct test_entry _test_##tname = { \
         #tname, description, specver, sect, dev_id, (void *)(func), \
-        TEST_FLAG_XFAIL, 0, {0} \
+        TEST_FLAG_XFAIL, 0, 0, 0, {0} \
     }
 
 #define REGISTER_TEST_Q_XFAIL(tname, dev_id, func, description, specver, sect, qidx) \
-    __attribute__((section("test_registry"), used, aligned(64))) \
+    __attribute__((section("test_registry"), used, aligned(128))) \
     static struct test_entry _test_##tname = { \
         #tname, description, specver, sect, dev_id, (void *)(func), \
-        TEST_FLAG_XFAIL, (qidx) + 1, {0} \
+        TEST_FLAG_XFAIL, (qidx) + 1, 0, 0, {0} \
+    }
+
+/*
+ * Register a test with required feature bits and minimum queue count.
+ * The probe can pre-filter tests whose requirements are not met.
+ */
+#define REGISTER_TEST_REQUIRES(tname, dev_id, func, description, specver, \
+                               sect, features, minq) \
+    __attribute__((section("test_registry"), used, aligned(128))) \
+    static struct test_entry _test_##tname = { \
+        #tname, description, specver, sect, dev_id, (void *)(func), \
+        0, 0, (minq), (features), {0} \
+    }
+
+#define REGISTER_TEST_Q_REQUIRES(tname, dev_id, func, description, specver, \
+                                 sect, qidx, features, minq) \
+    __attribute__((section("test_registry"), used, aligned(128))) \
+    static struct test_entry _test_##tname = { \
+        #tname, description, specver, sect, dev_id, (void *)(func), \
+        0, (qidx) + 1, (minq), (features), {0} \
     }
 
 /*

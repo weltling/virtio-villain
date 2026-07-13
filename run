@@ -659,6 +659,8 @@ def get_test_list(init_binary=os.path.join("target", "init")):
             meta[tid] = {
                 "device_id": int(fields[4], 16),
                 "flags": int(fields[5]),
+                "required_features": int(fields[6], 16) if len(fields) >= 7 else 0,
+                "min_queues": int(fields[7]) if len(fields) >= 8 else 0,
             }
     return tests, info, meta
 
@@ -1626,7 +1628,7 @@ def format_results_junit(doc):
 
     counts = doc["counts"]
     failures = counts["fail"] + counts["wedged"] + counts["xpass"]
-    skipped = counts["skip"] + counts["xfail"]
+    skipped = counts["skip"] + counts["xfail"] + counts["xwedged"]
     attrs = {
         "name": "virtio-villain",
         "tests": str(doc["total"]),
@@ -1946,6 +1948,8 @@ def main():
         probe_cmd = backend.build_cmd(
             kernel, INITRAMFS, probe_disk, probe_cmdline, probe_opts)
         available_devices = set()
+        available_features = {}
+        available_queues = {}
         try:
             result = subprocess.run(
                 probe_cmd, stdin=subprocess.DEVNULL,
@@ -1954,9 +1958,13 @@ def main():
             for line in result.stdout.decode(errors="replace").splitlines():
                 if line.startswith("PROBE\t"):
                     parts = line.split("\t")
-                    if len(parts) >= 3:
+                    if len(parts) >= 4:
                         dev_id = int(parts[1], 16)
+                        features = int(parts[2], 16)
+                        nq = int(parts[3])
                         available_devices.add(dev_id)
+                        available_features[dev_id] = features
+                        available_queues[dev_id] = nq
         except (subprocess.TimeoutExpired, OSError):
             pass
         finally:
@@ -1973,16 +1981,27 @@ def main():
             before = len(tests)
             filtered = []
             for t in tests:
-                prefix = _test_prefix(t)
-                req_dev = PREFIX_DEVICE_ID.get(prefix)
-                if req_dev and req_dev not in available_devices:
-                    continue
+                meta = _test_meta.get(t)
+                if meta:
+                    dev_id = meta["device_id"]
+                    features = meta["required_features"]
+                    minq = meta["min_queues"]
+                    if dev_id and dev_id not in available_devices:
+                        continue
+                    if features:
+                        offered = available_features.get(dev_id, 0)
+                        if (features & offered) != features:
+                            continue
+                    if minq:
+                        nq = available_queues.get(dev_id, 0)
+                        if nq < minq:
+                            continue
                 filtered.append(t)
             tests = filtered
             skipped = before - len(tests)
             if skipped:
                 print(f"Note: {skipped} test(s) skipped "
-                      f"(device not available)", file=human)
+                      f"(device or feature not available)", file=human)
 
     print(f"Running {len(tests)} test(s) against {args.vmm} ({backend.name})\n",
           file=human)

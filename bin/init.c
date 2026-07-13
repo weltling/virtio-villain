@@ -90,9 +90,12 @@ static void list_tests_tsv(void)
     int n = test_count();
     for (int i = 0; i < n; i++) {
         struct test_entry *t = test_get(i);
-        printf("%s\t%s\t%u.%u\t%s\t0x%04x\t%u\n", t->name, t->desc,
+        printf("%s\t%s\t%u.%u\t%s\t0x%04x\t%u\t0x%016llx\t%u\n",
+               t->name, t->desc,
                t->spec_version >> 8, t->spec_version & 0xff,
-               t->spec_section, t->device_id, t->flags);
+               t->spec_section, t->device_id, t->flags,
+               (unsigned long long)t->required_features,
+               t->min_queues);
     }
 }
 
@@ -112,13 +115,11 @@ static const char *result_str(test_result_t r)
 
 /*
  * Apply TEST_FLAG_XFAIL remapping. A test registered with XFAIL
- * documents a known VMM bug: a FAIL outcome is expected and becomes
- * XFAIL, while an unexpected PASS becomes XPASS so the stale marker
- * is noticed and removed. REJECT, WEDGED and SKIP are left alone:
- * they signal that the test did not actually exercise the bug, and
- * silently folding them into XFAIL would hide unrelated regressions.
- * Tests that flag a "device stayed silent" path as the documented
- * bug must therefore translate that path to TEST_FAIL themselves.
+ * documents a known VMM bug: FAIL and WEDGED outcomes are expected
+ * and become XFAIL, while an unexpected PASS becomes XPASS so the
+ * stale marker is noticed and removed. REJECT and SKIP are left
+ * alone: they signal that the test did not actually exercise the
+ * bug.
  */
 static test_result_t apply_xfail(struct test_entry *t, test_result_t r)
 {
