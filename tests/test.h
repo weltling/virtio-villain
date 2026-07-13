@@ -126,7 +126,7 @@ struct test_entry {
     __attribute__((section("test_registry"), used, aligned(128))) \
     static struct test_entry _test_##tname = { \
         #tname, description, specver, sect, dev_id, (void *)(func), \
-        TEST_FLAG_PACKED, 0, 0, 0, {0} \
+        TEST_FLAG_PACKED, 0, 0, (1ULL << VIRTIO_F_RING_PACKED), {0} \
     }
 
 #define REGISTER_TEST_MMIO(tname, func, description, specver, sect) \
