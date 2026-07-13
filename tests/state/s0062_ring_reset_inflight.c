@@ -64,6 +64,7 @@ static test_result_t test_ring_reset_inflight(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(S0062, VIRTIO_PCI_DEVICE_BLK, test_ring_reset_inflight,
+REGISTER_TEST_REQUIRES(S0062, VIRTIO_PCI_DEVICE_BLK, test_ring_reset_inflight,
               "RING_RESET with inflight descriptors",
-              VIRTIO_SPEC_V1_3, "2.2.1");
+              VIRTIO_SPEC_V1_3, "2.2.1",
+              (1ULL << VIRTIO_F_RING_RESET), 0);

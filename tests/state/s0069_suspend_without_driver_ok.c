@@ -52,6 +52,7 @@ static test_result_t test_suspend_no_driver_ok(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(S0069, VIRTIO_PCI_DEVICE_BLK, test_suspend_no_driver_ok,
+REGISTER_TEST_REQUIRES(S0069, VIRTIO_PCI_DEVICE_BLK, test_suspend_no_driver_ok,
               "Set SUSPEND bit without DRIVER_OK",
-              VIRTIO_SPEC_V1_3, "3.2");
+              VIRTIO_SPEC_V1_3, "3.2",
+              (1ULL << VIRTIO_F_SUSPEND), 0);

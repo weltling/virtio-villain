@@ -54,6 +54,7 @@ static test_result_t test_suspend_cfg_deferred(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(S0073, VIRTIO_PCI_DEVICE_BLK, test_suspend_cfg_deferred,
+REGISTER_TEST_REQUIRES(S0073, VIRTIO_PCI_DEVICE_BLK, test_suspend_cfg_deferred,
               "No config change notification while suspended",
-              VIRTIO_SPEC_V1_3, "3.2");
+              VIRTIO_SPEC_V1_3, "3.2",
+              (1ULL << VIRTIO_F_SUSPEND), 0);

@@ -86,6 +86,7 @@ static test_result_t test_ring_reset_new_size(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &vr2, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(S0066, VIRTIO_PCI_DEVICE_BLK, test_ring_reset_new_size,
+REGISTER_TEST_REQUIRES(S0066, VIRTIO_PCI_DEVICE_BLK, test_ring_reset_new_size,
               "Re-enable queue with different size after RING_RESET",
-              VIRTIO_SPEC_V1_3, "2.2.1");
+              VIRTIO_SPEC_V1_3, "2.2.1",
+              (1ULL << VIRTIO_F_RING_RESET), 0);

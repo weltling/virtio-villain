@@ -52,6 +52,7 @@ static test_result_t test_suspend_needs_reset(struct virtio_dev *dev,
     TFAIL("unexpected fallthrough");
 }
 
-REGISTER_TEST(S0074, VIRTIO_PCI_DEVICE_BLK, test_suspend_needs_reset,
+REGISTER_TEST_REQUIRES(S0074, VIRTIO_PCI_DEVICE_BLK, test_suspend_needs_reset,
               "Suspend either succeeds or sets DEVICE_NEEDS_RESET",
-              VIRTIO_SPEC_V1_3, "3.2");
+              VIRTIO_SPEC_V1_3, "3.2",
+              (1ULL << VIRTIO_F_SUSPEND), 0);

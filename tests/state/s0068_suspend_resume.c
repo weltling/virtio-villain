@@ -71,6 +71,7 @@ static test_result_t test_suspend_resume(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(S0068, VIRTIO_PCI_DEVICE_BLK, test_suspend_resume,
+REGISTER_TEST_REQUIRES(S0068, VIRTIO_PCI_DEVICE_BLK, test_suspend_resume,
               "Suspend then resume device and verify I/O works",
-              VIRTIO_SPEC_V1_3, "3.2");
+              VIRTIO_SPEC_V1_3, "3.2",
+              (1ULL << VIRTIO_F_SUSPEND), 0);

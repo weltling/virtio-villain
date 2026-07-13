@@ -63,6 +63,7 @@ static test_result_t test_ring_reset_reenable(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &vr2, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(S0061, VIRTIO_PCI_DEVICE_BLK, test_ring_reset_reenable,
+REGISTER_TEST_REQUIRES(S0061, VIRTIO_PCI_DEVICE_BLK, test_ring_reset_reenable,
               "Re-enable queue after RING_RESET with fresh config",
-              VIRTIO_SPEC_V1_3, "2.2.1");
+              VIRTIO_SPEC_V1_3, "2.2.1",
+              (1ULL << VIRTIO_F_RING_RESET), 0);

@@ -87,6 +87,7 @@ static test_result_t test_desc_access_platform_no_iommu(struct virtio_dev *dev,
     return vv_kick_expect_reject(dev, &tvr, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(T0079, VIRTIO_PCI_DEVICE_BLK, test_desc_access_platform_no_iommu,
+REGISTER_TEST_REQUIRES(T0079, VIRTIO_PCI_DEVICE_BLK, test_desc_access_platform_no_iommu,
               "ACCESS_PLATFORM negotiated but no IOMMU translation provided",
-              VIRTIO_SPEC_V1_2, "2.7.2");
+              VIRTIO_SPEC_V1_2, "2.7.2",
+              (1ULL << VIRTIO_F_ACCESS_PLATFORM), 0);
