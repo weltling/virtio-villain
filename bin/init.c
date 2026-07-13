@@ -444,18 +444,33 @@ int main(int argc, char **argv)
         shutdown(0);
     }
 
-    /* Run a single named test */
-    struct test_entry *t = test_find(test_name);
-    if (!t) {
-        printf("Unknown test: %s\n", test_name);
-        _exit(1);
+    /*
+     * Run one or more named tests. Multiple names are comma separated
+     * on the kernel command line: vv.test=A,B,C. Each test gets a
+     * full device reset cycle between runs.
+     */
+    int failures = 0;
+    char *names = strdup(test_name);
+    char *saveptr = NULL;
+    char *tok = strtok_r(names, ",", &saveptr);
+    while (tok) {
+        struct test_entry *t = test_find(tok);
+        if (!t) {
+            printf("Unknown test: %s\n", tok);
+            failures++;
+            tok = strtok_r(NULL, ",", &saveptr);
+            continue;
+        }
+        int fail;
+        if (t->flags & TEST_FLAG_MMIO)
+            fail = run_test_mmio(t);
+        else if (t->flags & TEST_FLAG_PACKED)
+            fail = run_test_packed(t);
+        else
+            fail = run_test(t);
+        failures += fail;
+        tok = strtok_r(NULL, ",", &saveptr);
     }
-    int fail;
-    if (t->flags & TEST_FLAG_MMIO)
-        fail = run_test_mmio(t);
-    else if (t->flags & TEST_FLAG_PACKED)
-        fail = run_test_packed(t);
-    else
-        fail = run_test(t);
-    shutdown(fail);
+    free(names);
+    shutdown(failures);
 }

@@ -877,6 +877,37 @@ def test_unit_format_results_junit_no_keyerror():
 
 
 # ---------------------------------------------------------------------------
+# Batch result parsing.
+
+def test_unit_parse_batch_results_all_found():
+    output = "[PASS] RNG0001\n[FAIL] RNG0002\n[SKIP] RNG0003\n"
+    r = RUN_MOD._parse_batch_results(output, ["RNG0001", "RNG0002", "RNG0003"])
+    assert r == {"RNG0001": "PASS", "RNG0002": "FAIL", "RNG0003": "SKIP"}
+
+
+def test_unit_parse_batch_results_missing_is_wedged():
+    output = "[PASS] RNG0001\n"
+    r = RUN_MOD._parse_batch_results(output, ["RNG0001", "RNG0002"])
+    assert r["RNG0001"] == "PASS"
+    assert r["RNG0002"] == "WEDGED"
+
+
+def test_unit_parse_batch_results_ch_noise():
+    output = ("cloud-hypervisor: some log line\n"
+              "[PASS] RNG0001\n"
+              "cloud-hypervisor: another line\n"
+              "[REJECT] B0005\n")
+    r = RUN_MOD._parse_batch_results(output, ["RNG0001", "B0005"])
+    assert r == {"RNG0001": "PASS", "B0005": "REJECT"}
+
+
+def test_unit_parse_batch_results_single():
+    output = "[PASS] RNG0001\n"
+    r = RUN_MOD._parse_batch_results(output, ["RNG0001"])
+    assert r == {"RNG0001": "PASS"}
+
+
+# ---------------------------------------------------------------------------
 # --no-api-socket flag plumbing.
 
 def test_no_api_socket_flag_in_command():

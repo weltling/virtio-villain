@@ -765,6 +765,25 @@ def _parse_result(output, returncode):
     return "WEDGED"
 
 
+def _parse_batch_results(output, test_names):
+    """Parse VM output for multiple verdict lines.
+
+    Returns a dict mapping test name to (status, output). Tests not
+    found in the output are marked WEDGED (the VM died before
+    reaching them).
+    """
+    cleaned = re.sub(r"cloud-hypervisor:[^\n]*\n", "", output)
+    found = {}
+    for m in re.finditer(
+            r"\[(XPASS|XFAIL|FAIL|REJECT|WEDGED|SKIP|PASS)\]\s+(\S+)",
+            cleaned):
+        found[m.group(2)] = m.group(1)
+    results = {}
+    for name in test_names:
+        results[name] = found.get(name, "WEDGED")
+    return results
+
+
 def _find_virtiofsd():
     """Locate a virtiofsd binary on the host. Returns path or None.
 
@@ -998,7 +1017,20 @@ def _load_sidecar(path):
 
 def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
              disk_format="raw", opts=None):
-    """Run a single test in a fresh VM. Returns (test_name, status, output)."""
+    """Run one or more tests in a fresh VM.
+
+    test_name is a single test ID string or a list of IDs. When a
+    list is given, the tests are submitted as a comma separated
+    batch and each gets its own verdict line in the output. Sidecar
+    scripts are only supported for single test runs.
+
+    Returns a list of (name, status, output) tuples.
+    """
+    if isinstance(test_name, str):
+        test_names = [test_name]
+    else:
+        test_names = list(test_name)
+    batch = len(test_names) > 1
     suffix = {"raw": ".raw", "qcow2": ".qcow2", "vhd": ".vhd",
               "vhdx": ".vhdx"}[disk_format]
     disk_path = tempfile.mktemp(suffix=suffix)
@@ -1013,11 +1045,9 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
         cmd += [disk_path, str(DISK_SIZE)]
         subprocess.run(cmd, check=True, capture_output=True)
 
-    # Optional per test sidecar. It may declare launch requirements via
-    # vmm_config() (extra VMM opts and guest kernel initcalls to skip)
-    # and/or a run(ctx) host actor. Load it once here and reuse the
-    # module for the host actor thread further down.
-    sidecar_path = _find_sidecar(test_name)
+    # Optional per test sidecar (single test only). It may declare launch
+    # requirements via vmm_config() and/or a run(ctx) host actor.
+    sidecar_path = _find_sidecar(test_names[0]) if not batch else None
     sidecar_mod = _load_sidecar(sidecar_path) if sidecar_path else None
     sidecar_cfg = {}
     if sidecar_mod is not None and hasattr(sidecar_mod, "vmm_config"):
@@ -1050,7 +1080,7 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
     skip_initcalls += list(sidecar_cfg.get("skip_initcalls", []))
     cmdline = (f"console={backend.console_device} "
                f"initcall_blacklist={','.join(skip_initcalls)} "
-               f"vv.test={test_name}")
+               f"vv.test={','.join(test_names)}")
     # Create pmem backing file
     pmem_path = disk_path.rsplit(".", 1)[0] + ".pmem"
     with open(pmem_path, "wb") as f:
@@ -1073,7 +1103,7 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
     fs_proc = None
     fs_socket = None
     fs_sharedir = None
-    if test_name.upper().startswith("F"):
+    if test_names[0].upper().startswith("F"):
         fs_daemon = _find_virtiofsd()
         if fs_daemon:
             fs_socket = disk_path.rsplit(".", 1)[0] + ".fsd"
@@ -1138,7 +1168,7 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
         _register_proc(proc)
         chunks = []
         if sidecar_mod is not None and hasattr(sidecar_mod, "run"):
-            sidecar_tmpdir = tempfile.mkdtemp(prefix=f"vv-sc-{test_name}.")
+            sidecar_tmpdir = tempfile.mkdtemp(prefix=f"vv-sc-{test_names[0]}.")
             sidecar_log_lines = []
 
             def _sc_log(msg):
@@ -1148,7 +1178,7 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
                     print(line)
 
             ctx = _Ctx(
-                test_id=test_name,
+                test_id=test_names[0],
                 backend=backend,
                 vmm_pid=proc.pid,
                 tmpdir=sidecar_tmpdir,
@@ -1168,7 +1198,7 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
                     sidecar_state["err"] = (e, _tb.format_exc())
 
             sidecar_thread = threading.Thread(
-                target=_sc_run, name=f"sidecar-{test_name}", daemon=True)
+                target=_sc_run, name=f"sidecar-{test_names[0]}", daemon=True)
             sidecar_thread.start()
         timer_fired = [False]
 
@@ -1197,7 +1227,16 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
                 # markers split across CH's own writes.
                 tail_start = max(scan_from - 16, 0)
                 tail = joined[tail_start:]
-                if marker_re.search(vmm_noise_re.sub(b"", tail)):
+                cleaned_tail = vmm_noise_re.sub(b"", tail)
+                if batch:
+                    # In batch mode, count how many verdict markers
+                    # we have seen so far. Kill only after all tests
+                    # in the batch have reported.
+                    found = len(marker_re.findall(cleaned_tail))
+                    if found >= len(test_names):
+                        marker_seen = True
+                        _kill_proc(proc)
+                elif marker_re.search(cleaned_tail):
                     marker_seen = True
                     if console:
                         proc.kill()
@@ -1312,7 +1351,10 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
         except FileNotFoundError:
             pass
 
-    return test_name, status, output
+    if batch:
+        verdicts = _parse_batch_results(output, test_names)
+        return [(n, verdicts[n], output) for n in test_names]
+    return [(test_names[0], status, output)]
 
 
 # Maps test name prefix (leading uppercase letters) to the source
@@ -1775,6 +1817,11 @@ def main():
                              "alpha: sorted by test ID. "
                              "random: fully shuffled. "
                              "reverse: reverse alphabetical.")
+    parser.add_argument("--batch", type=int, default=0, metavar="N",
+                        help="Run N tests per VM boot. Tests are grouped "
+                             "by device type and submitted as a comma "
+                             "separated list. 0 (default) disables batching. "
+                             "Sidecar tests are never batched.")
     parser.add_argument("--format", choices=["text", "json", "junit"],
                         default="text",
                         help="Result report format (default: text). "
@@ -2179,25 +2226,43 @@ def main():
     elif args.order == "reverse":
         tests.sort(reverse=True)
 
+    # Group tests into batches. Sidecar tests (02xx/03xx) are never
+    # batched because they need per test host actors and VM config.
+    batch_size = args.batch
+    if batch_size > 1:
+        _sc_re = re.compile(r'[A-Z]+0[23]\d\d', re.IGNORECASE)
+        solo = [t for t in tests if _sc_re.match(t)]
+        batchable = [t for t in tests if not _sc_re.match(t)]
+        work_items = []
+        for i in range(0, len(batchable), batch_size):
+            chunk = batchable[i:i + batch_size]
+            work_items.append(chunk)
+        for t in solo:
+            work_items.append([t])
+    else:
+        work_items = [[t] for t in tests]
+
     try:
         if args.jobs > 1 and not args.console:
             pool = ThreadPoolExecutor(max_workers=args.jobs)
             futures = {
                 pool.submit(
-                    run_test, *_backend_for(t),
-                    t, args.timeout, args.verbose, False,
+                    run_test, *_backend_for(item[0]),
+                    item if len(item) > 1 else item[0],
+                    args.timeout, args.verbose, False,
                     args.disk_type, vm_opts
-                ): t for t in tests
+                ): item for item in work_items
             }
             done = 0
             _progress(done, len(tests), "starting...")
             try:
                 for future in as_completed(futures):
-                    name, status, output = future.result()
-                    done += 1
-                    with _print_lock:
-                        _report(name, status, output)
-                        _progress(done, len(tests))
+                    batch_results = future.result()
+                    for name, status, output in batch_results:
+                        done += 1
+                        with _print_lock:
+                            _report(name, status, output)
+                            _progress(done, len(tests))
             except KeyboardInterrupt:
                 _clear_progress()
                 print("\n\nInterrupted. Killing live VMMs...")
@@ -2228,14 +2293,19 @@ def main():
                         pass
         else:
             try:
-                for i, test_name in enumerate(tests):
-                    _progress(i, len(tests), test_name)
-                    name, status, output = run_test(
-                        *_backend_for(test_name), test_name, args.timeout,
-                        args.verbose, args.console, args.disk_type, vm_opts
+                done = 0
+                for item in work_items:
+                    _progress(done, len(tests), item[0])
+                    batch_results = run_test(
+                        *_backend_for(item[0]),
+                        item if len(item) > 1 else item[0],
+                        args.timeout, args.verbose, args.console,
+                        args.disk_type, vm_opts
                     )
-                    _report(name, status, output)
-                    _progress(i + 1, len(tests))
+                    for name, status, output in batch_results:
+                        done += 1
+                        _report(name, status, output)
+                        _progress(done, len(tests))
             except KeyboardInterrupt:
                 _clear_progress()
                 print("\n\nInterrupted. Killing live VMMs...")
