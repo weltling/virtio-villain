@@ -58,8 +58,8 @@ static void test_struct_sizes(void)
     CHECK(sizeof(struct vring_used_elem) == 8,
           "vring_used_elem size = %zu (want 8)", sizeof(struct vring_used_elem));
 
-    CHECK(sizeof(struct test_entry) == 64,
-          "test_entry size = %zu (want 64)", sizeof(struct test_entry));
+    CHECK(sizeof(struct test_entry) == 128,
+          "test_entry size = %zu (want 128)", sizeof(struct test_entry));
 }
 
 /* --- Raw ring manipulation --- */
