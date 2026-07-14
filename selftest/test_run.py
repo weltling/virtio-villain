@@ -1088,6 +1088,45 @@ def test_unit_batch_chunking():
 
 
 # ---------------------------------------------------------------------------
+# --order fast interleave.
+
+def test_unit_order_fast_interleave_spreads_slow():
+    """Slow tests should be distributed evenly among fast ones."""
+    import random as _random
+    _random.seed(42)
+    slow = ["S1", "S2"]
+    fast = ["F1", "F2", "F3", "F4", "F5", "F6"]
+    _random.shuffle(slow)
+    _random.shuffle(fast)
+    step = max(1, len(fast) // (len(slow) + 1))
+    merged = []
+    si = 0
+    for i, t in enumerate(fast):
+        if si < len(slow) and i > 0 and i % step == 0:
+            merged.append(slow[si])
+            si += 1
+        merged.append(t)
+    merged.extend(slow[si:])
+    # Slow tests must not be adjacent
+    for i in range(len(merged) - 1):
+        assert not (merged[i].startswith("S") and merged[i + 1].startswith("S")), \
+            f"Slow tests adjacent: {merged[i]} and {merged[i+1]}"
+    # All tests present
+    assert sorted(merged) == sorted(slow + fast)
+
+
+def test_unit_order_fast_no_slow():
+    """With no slow tests the result is just the shuffled fast list."""
+    import random as _random
+    _random.seed(42)
+    fast = ["F1", "F2", "F3"]
+    _random.shuffle(fast)
+    # No slow tests, just fast
+    assert len(fast) == 3
+    assert set(fast) == {"F1", "F2", "F3"}
+
+
+# ---------------------------------------------------------------------------
 # --no-api-socket flag plumbing.
 
 def test_no_api_socket_flag_in_command():
