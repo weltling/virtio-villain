@@ -273,7 +273,7 @@ static test_result_t test_net_iommu_tx_straddle(struct virtio_dev *dev,
     struct virtio_dev iommu;
     struct vring ivr, ievt;
     if (iommu_bringup(&iommu, &ivr, &ievt) < 0)
-        return TEST_SKIP; /* net not behind a vIOMMU on this backing */
+        TSKIP("no vIOMMU device found on this backing");
 
     /*
      * Route net DMA through the vIOMMU by renegotiating with
@@ -284,7 +284,7 @@ static test_result_t test_net_iommu_tx_straddle(struct virtio_dev *dev,
     struct vring rxvr;
     int nr = net_reactivate_access_platform(dev, &rxvr, vr);
     if (nr > 0)
-        return TEST_SKIP; /* net does not offer access platform */
+        TSKIP("net device does not offer VIRTIO_F_ACCESS_PLATFORM");
     if (nr < 0)
         TFAIL("could not renegotiate net with VIRTIO_F_ACCESS_PLATFORM");
 
@@ -400,10 +400,7 @@ static test_result_t test_net_iommu_tx_straddle(struct virtio_dev *dev,
      * The unmapped IOVA did not wedge, so the net endpoint is not behind
      * the vIOMMU and the straddle path was never exercised.
      */
-    printf("N0130: net endpoint not behind vIOMMU (identity translation); "
-           "topology not exercised\n");
-    fflush(stdout);
-    return TEST_SKIP;
+    TSKIP("net endpoint not behind vIOMMU, identity translation");
 }
 
 REGISTER_TEST_Q_XFAIL(N0130, VIRTIO_PCI_DEVICE_NET, test_net_iommu_tx_straddle,
