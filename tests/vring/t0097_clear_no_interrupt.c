@@ -14,6 +14,8 @@
 #include "lib/virtio_pci.h"
 #include "lib/virtio_spec.h"
 
+#include <unistd.h>
+
 #include <string.h>
 
 static int submit_read(struct virtio_dev *dev, struct vring *vr,
@@ -56,6 +58,7 @@ static test_result_t test_clear_no_interrupt(struct virtio_dev *dev,
     /* Clear the bit, submit again, ISR queue bit must be set */
     vr->avail->flags = 0;
     __sync_synchronize();
+    usleep(1000); /* let device observe the cleared flag */
     if (submit_read(dev, vr, 3, 1) < 0)
         TFAIL("submit_read(dev, vr, 3, 1) < 0");
 
