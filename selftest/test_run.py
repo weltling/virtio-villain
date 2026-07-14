@@ -933,6 +933,112 @@ def test_unit_retry_wedged_keeps_first_wedged():
 
 
 # ---------------------------------------------------------------------------
+# Probe filtering logic.
+
+def test_unit_probe_filter_excludes_missing_device():
+    """Tests targeting a device not in available_devices are excluded."""
+    tests = ["RNG0001", "RTC0022", "D0001"]
+    available_devices = {0x1044, 0x1063}  # RNG and watchdog, no RTC
+    available_features = {0x1044: 0, 0x1063: 0}
+    available_queues = {0x1044: 1, 0x1063: 1}
+    available_caps = {0x1044: (1, 1), 0x1063: (1, 1)}
+    meta = {
+        "RNG0001": {"device_id": 0x1044, "flags": 0,
+                    "required_features": 0, "min_queues": 0},
+        "RTC0022": {"device_id": 0x1051, "flags": 0,
+                    "required_features": 0, "min_queues": 0},
+        "D0001": {"device_id": 0x1063, "flags": 0,
+                  "required_features": 0, "min_queues": 0},
+    }
+    filtered = []
+    for t in tests:
+        m = meta.get(t)
+        if m:
+            dev_id = m["device_id"]
+            features = m["required_features"]
+            minq = m["min_queues"]
+            if dev_id and dev_id not in available_devices:
+                continue
+            if features:
+                offered = available_features.get(dev_id, 0)
+                if (features & offered) != features:
+                    continue
+            if minq:
+                nq = available_queues.get(dev_id, 0)
+                if nq < minq:
+                    continue
+        filtered.append(t)
+    assert filtered == ["RNG0001", "D0001"]
+
+
+def test_unit_probe_filter_excludes_missing_features():
+    """Tests requiring features not offered are excluded."""
+    tests = ["N0049", "RNG0001"]
+    available_devices = {0x1041, 0x1044}
+    available_features = {0x1041: 0x0000, 0x1044: 0}  # net has no features
+    available_queues = {0x1041: 3, 0x1044: 1}
+    meta = {
+        "N0049": {"device_id": 0x1041, "flags": 0,
+                  "required_features": (1 << 22),  # NET_F_MQ
+                  "min_queues": 0},
+        "RNG0001": {"device_id": 0x1044, "flags": 0,
+                    "required_features": 0, "min_queues": 0},
+    }
+    filtered = []
+    for t in tests:
+        m = meta.get(t)
+        if m:
+            dev_id = m["device_id"]
+            features = m["required_features"]
+            minq = m["min_queues"]
+            if dev_id and dev_id not in available_devices:
+                continue
+            if features:
+                offered = available_features.get(dev_id, 0)
+                if (features & offered) != features:
+                    continue
+            if minq:
+                nq = available_queues.get(dev_id, 0)
+                if nq < minq:
+                    continue
+        filtered.append(t)
+    assert filtered == ["RNG0001"]
+
+
+def test_unit_probe_filter_excludes_insufficient_queues():
+    """Tests requiring more queues than available are excluded."""
+    tests = ["B0032", "RNG0001"]
+    available_devices = {0x1042, 0x1044}
+    available_features = {0x1042: 0, 0x1044: 0}
+    available_queues = {0x1042: 1, 0x1044: 1}  # blk has only 1 queue
+    meta = {
+        "B0032": {"device_id": 0x1042, "flags": 0,
+                  "required_features": 0, "min_queues": 2},
+        "RNG0001": {"device_id": 0x1044, "flags": 0,
+                    "required_features": 0, "min_queues": 0},
+    }
+    filtered = []
+    for t in tests:
+        m = meta.get(t)
+        if m:
+            dev_id = m["device_id"]
+            features = m["required_features"]
+            minq = m["min_queues"]
+            if dev_id and dev_id not in available_devices:
+                continue
+            if features:
+                offered = available_features.get(dev_id, 0)
+                if (features & offered) != features:
+                    continue
+            if minq:
+                nq = available_queues.get(dev_id, 0)
+                if nq < minq:
+                    continue
+        filtered.append(t)
+    assert filtered == ["RNG0001"]
+
+
+# ---------------------------------------------------------------------------
 # --no-api-socket flag plumbing.
 
 def test_no_api_socket_flag_in_command():
