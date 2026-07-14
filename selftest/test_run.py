@@ -1039,6 +1039,55 @@ def test_unit_probe_filter_excludes_insufficient_queues():
 
 
 # ---------------------------------------------------------------------------
+# Batch grouping.
+
+def test_unit_batch_grouping_sidecars_solo():
+    """Sidecar tests (02xx) must not be batched."""
+    import re as _re
+    tests = ["B0001", "B0200", "RNG0001", "D0200", "T0022"]
+    _sc_re = _re.compile(r'[A-Z]+0[23]\d\d', _re.IGNORECASE)
+    solo = [t for t in tests if _sc_re.match(t)]
+    batchable = [t for t in tests if not _sc_re.match(t)]
+    assert solo == ["B0200", "D0200"]
+    assert batchable == ["B0001", "RNG0001", "T0022"]
+
+
+def test_unit_batch_grouping_xfail_solo():
+    """XFAIL tests must not be batched."""
+    import re as _re
+    tests = ["B0001", "N0130", "RNG0001"]
+    _sc_re = _re.compile(r'[A-Z]+0[23]\d\d', _re.IGNORECASE)
+    meta = {
+        "B0001": {"flags": 0},
+        "N0130": {"flags": 4},  # TEST_FLAG_XFAIL
+        "RNG0001": {"flags": 0},
+    }
+
+    def _must_solo(t):
+        if _sc_re.match(t):
+            return True
+        m = meta.get(t)
+        if m and m["flags"] & 4:
+            return True
+        return False
+
+    solo = [t for t in tests if _must_solo(t)]
+    batchable = [t for t in tests if not _must_solo(t)]
+    assert solo == ["N0130"]
+    assert batchable == ["B0001", "RNG0001"]
+
+
+def test_unit_batch_chunking():
+    """Batchable tests are split into chunks of N."""
+    batchable = ["A", "B", "C", "D", "E"]
+    batch_size = 2
+    work_items = []
+    for i in range(0, len(batchable), batch_size):
+        work_items.append(batchable[i:i + batch_size])
+    assert work_items == [["A", "B"], ["C", "D"], ["E"]]
+
+
+# ---------------------------------------------------------------------------
 # --no-api-socket flag plumbing.
 
 def test_no_api_socket_flag_in_command():
