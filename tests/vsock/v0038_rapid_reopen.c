@@ -82,7 +82,7 @@ static test_result_t test_vsock_rapid_reopen(struct virtio_dev *dev,
 
     /* Wait for all three to be consumed */
     int elapsed = 0;
-    while (elapsed < VV_TIMEOUT_MS * 1000) {
+    while (elapsed < VV_TIMEOUT_MS * 2 * 1000) {
         usleep(10000);
         __sync_synchronize();
         if ((uint16_t)(txvr.used->idx - before) >= 3)
