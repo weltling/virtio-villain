@@ -13,8 +13,14 @@ import tempfile
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(SCRIPT_DIR)
+INIT_BINARY = os.path.join(ROOT_DIR, "target", "init")
 RUN = os.path.join(ROOT_DIR, "run")
 MOCK_VMM = os.path.join(SCRIPT_DIR, "mock-vmm")
+
+
+class SkipTest(Exception):
+    """Raised to skip a test that cannot run in the current environment."""
+
 
 # The runner needs a symlink named cloud-hypervisor to detect the backend.
 MOCK_LINK = os.path.join(SCRIPT_DIR, "cloud-hypervisor")
@@ -941,7 +947,6 @@ def test_unit_probe_filter_excludes_missing_device():
     available_devices = {0x1044, 0x1063}  # RNG and watchdog, no RTC
     available_features = {0x1044: 0, 0x1063: 0}
     available_queues = {0x1044: 1, 0x1063: 1}
-    available_caps = {0x1044: (1, 1), 0x1063: (1, 1)}
     meta = {
         "RNG0001": {"device_id": 0x1044, "flags": 0,
                     "required_features": 0, "min_queues": 0},
@@ -1131,6 +1136,8 @@ def test_unit_order_fast_no_slow():
 
 def test_unit_get_test_list_parses_meta():
     """get_test_list returns meta with device_id, flags, features, minq."""
+    if not os.path.exists(INIT_BINARY):
+        raise SkipTest("target/init not built")
     tests, info, meta = RUN_MOD.get_test_list()
     assert len(tests) > 0
     # Every test with meta should have all four fields
@@ -1143,6 +1150,8 @@ def test_unit_get_test_list_parses_meta():
 
 def test_unit_get_test_list_packed_has_ring_packed():
     """Packed tests should have VIRTIO_F_RING_PACKED in required_features."""
+    if not os.path.exists(INIT_BINARY):
+        raise SkipTest("target/init not built")
     tests, info, meta = RUN_MOD.get_test_list()
     packed = [t for t in tests if t.startswith("P0")]
     assert len(packed) > 0
@@ -1896,13 +1905,18 @@ def main():
     c_fail = "\033[31m" if use_color else ""
     c_reset = "\033[0m" if use_color else ""
     tests = [v for k, v in globals().items() if k.startswith("test_")]
+    c_skip = "\033[33m" if use_color else ""
     passed = 0
     failed = 0
+    skipped = 0
     for t in tests:
         try:
             t()
             print(f"  {c_pass}[PASS]{c_reset} {t.__name__}")
             passed += 1
+        except SkipTest as e:
+            print(f"  {c_skip}[SKIP]{c_reset} {t.__name__}: {e}")
+            skipped += 1
         except AssertionError as e:
             print(f"  {c_fail}[FAIL]{c_reset} {t.__name__}: {e}")
             failed += 1
@@ -1910,8 +1924,10 @@ def main():
             print(f"  {c_fail}[FAIL]{c_reset} {t.__name__}: "
                   f"{type(e).__name__}: {e}")
             failed += 1
+    total = passed + failed + skipped
     tag = c_pass if failed == 0 else c_fail
-    print(f"\n{tag}selftest/run: {passed}/{passed + failed} passed{c_reset}")
+    skip_msg = f", {skipped} skipped" if skipped else ""
+    print(f"\n{tag}selftest/run: {passed}/{total} passed{skip_msg}{c_reset}")
     return 0 if failed == 0 else 1
 
 
