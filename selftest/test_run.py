@@ -1127,6 +1127,33 @@ def test_unit_order_fast_no_slow():
 
 
 # ---------------------------------------------------------------------------
+# get_test_list meta parsing.
+
+def test_unit_get_test_list_parses_meta():
+    """get_test_list returns meta with device_id, flags, features, minq."""
+    tests, info, meta = RUN_MOD.get_test_list()
+    assert len(tests) > 0
+    # Every test with meta should have all four fields
+    for tid, m in meta.items():
+        assert "device_id" in m, f"{tid} missing device_id"
+        assert "flags" in m, f"{tid} missing flags"
+        assert "required_features" in m, f"{tid} missing required_features"
+        assert "min_queues" in m, f"{tid} missing min_queues"
+
+
+def test_unit_get_test_list_packed_has_ring_packed():
+    """Packed tests should have VIRTIO_F_RING_PACKED in required_features."""
+    tests, info, meta = RUN_MOD.get_test_list()
+    packed = [t for t in tests if t.startswith("P0")]
+    assert len(packed) > 0
+    for t in packed:
+        m = meta.get(t)
+        if m and m["flags"] & 1:  # TEST_FLAG_PACKED
+            assert m["required_features"] & (1 << 34), \
+                f"{t} is packed but lacks VIRTIO_F_RING_PACKED"
+
+
+# ---------------------------------------------------------------------------
 # --no-api-socket flag plumbing.
 
 def test_no_api_socket_flag_in_command():
