@@ -41,6 +41,17 @@ static test_result_t test(struct virtio_dev *dev, struct vring *vr)
     vring_raw_set_avail_idx(&tvr, 1);
 
     test_result_t r = vv_kick_expect_reject(dev, &tvr, VV_TIMEOUT_MS);
+    /*
+     * Expected: device does NOT consume the buffer.
+     * - REJECT: used ring stayed, device alive. Correct.
+     * - WEDGED: device reset itself (status=0). Also correct:
+     *   kicking without DRIVER_OK is illegal, device may reset.
+     * - PASS: device consumed the buffer. Spec violation.
+     */
+    if (r == TEST_PASS)
+        TFAIL("device consumed buffer before DRIVER_OK");
+    /* Both REJECT and WEDGED mean the device refused. */
+    r = TEST_PASS;
     /* Now bring up DRIVER_OK for a clean exit. */
     cfg->device_status |= VIRTIO_STATUS_DRIVER_OK;
     __sync_synchronize();
