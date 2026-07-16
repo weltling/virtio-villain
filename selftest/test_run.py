@@ -1024,6 +1024,55 @@ def test_unit_batch_timeout_preserves_printed_verdicts():
     assert verdicts["T0003"] == "WEDGED"
 
 
+def test_unit_merge_streams_no_stderr():
+    f = RUN_MOD._merge_streams
+    assert f("out", []) == "out"
+    assert f("out", [b""]) == "out"
+
+
+def test_unit_merge_streams_appends_stderr():
+    f = RUN_MOD._merge_streams
+    assert f("out", [b"log1\n", b"log2\n"]) == "out\nlog1\nlog2\n"
+
+
+class _StderrNoiseBackend:
+    """Fake backend that reports one test on stdout and puts a second,
+    conflicting verdict marker on stderr.
+
+    Mimics a VMM that writes its own log lines to stderr while the
+    guest prints its marker on stdout. stdout carries only T0001, so
+    there is no batch kill race; the process exits on its own.
+    """
+    name = "fake"
+    console_device = "ttyS0"
+    mmio_transport = False
+
+    def build_cmd(self, kernel, initramfs, disk_path, cmdline, opts=None):
+        return ["sh", "-c",
+                "printf '[PASS] T0002\\n' >&2; "
+                "printf '[PASS] T0001\\n'"]
+
+
+def test_unit_stderr_does_not_corrupt_verdicts():
+    """Verdicts come from stdout only; stderr markers are ignored.
+
+    stdout reports T0001, stderr carries a [PASS] T0002 marker. Only
+    T0001 is parsed as PASS; T0002 stays WEDGED because its marker is
+    on stderr. The stderr content is still present in the combined
+    output for logging and triage. Guards the regression where stderr
+    was merged into stdout, letting a log line reach the parser and
+    corrupt or fabricate a verdict.
+    """
+    results = RUN_MOD.run_test(
+        _StderrNoiseBackend(), "kernel", ["T0001", "T0002"],
+        10, 0, False, "raw", {})
+    verdicts = {n: s for n, s, _ in results}
+    assert verdicts["T0001"] == "PASS"
+    assert verdicts["T0002"] == "WEDGED"
+    combined = results[0][2]
+    assert "[PASS] T0002" in combined
+
+
 # ---------------------------------------------------------------------------
 # Probe filtering logic.
 
