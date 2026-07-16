@@ -1031,6 +1031,12 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
     else:
         test_names = list(test_name)
     batch = len(test_names) > 1
+    # A batch runs every test in one VM, so the timeout budget scales
+    # with the number of tests. A single per test timeout routinely
+    # trips under heavy parallelism and kills the VM mid batch, wedging
+    # the tests that had not run yet. A single test keeps its own
+    # budget since the factor is one.
+    effective_timeout = timeout * len(test_names)
     suffix = {"raw": ".raw", "qcow2": ".qcow2", "vhd": ".vhd",
               "vhdx": ".vhdx"}[disk_format]
     disk_path = tempfile.mktemp(suffix=suffix)
@@ -1208,7 +1214,7 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
                 proc.kill()
             else:
                 _kill_proc(proc)
-        timer = threading.Timer(timeout, _on_timeout)
+        timer = threading.Timer(effective_timeout, _on_timeout)
         timer.start()
         scan_from = 0
         marker_seen = False
@@ -1249,7 +1255,7 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
         if old_sigint is not None:
             signal.signal(signal.SIGINT, old_sigint)
         if timed_out:
-            raise subprocess.TimeoutExpired(cmd, timeout)
+            raise subprocess.TimeoutExpired(cmd, effective_timeout)
         output = b"".join(chunks).decode(errors="replace")
         status = _parse_result(output, proc.returncode)
     except subprocess.TimeoutExpired:
@@ -1263,7 +1269,7 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
         # that never printed a marker stay WEDGED; append a timeout note
         # for the single test case where the run itself is the failure.
         partial = b"".join(chunks).decode(errors="replace")
-        output = partial + f"\n[vv] TIMEOUT after {timeout}s\n"
+        output = partial + f"\n[vv] TIMEOUT after {effective_timeout}s\n"
         status = "FAIL"
     except KeyboardInterrupt:
         if proc:
@@ -1369,29 +1375,41 @@ def _retry_wedged(batch_results, backend, kernel, timeout, verbose,
     """Re-run WEDGED tests from a batch individually.
 
     When a test crashes or wedges inside a batch, subsequent tests in
-    the same VM never run and appear as WEDGED. The first WEDGED test
-    is the real culprit and keeps its verdict. Tests after it are
-    re-run individually to get their real result.
+    the same VM never run and appear as WEDGED. A genuine crash has a
+    culprit: the first WEDGED test is the one that was running when the
+    VM died, so it keeps its verdict and the tests after it are re-run
+    individually.
+
+    A batch that was killed by the timeout has no culprit. The first
+    WEDGED test is just where the clock ran out, not a test that
+    misbehaved, so it must be re-run individually too. Otherwise a
+    benign test that happened to be live at the deadline reports a
+    spurious WEDGED on every loaded run.
     """
     wedged = [name for name, st, _ in batch_results if st == "WEDGED"]
     if not wedged:
         return batch_results
+    # The whole batch shares one captured output. run_test appends a
+    # timeout note when the VM was killed by the deadline rather than by
+    # a test crashing it.
+    batch_output = batch_results[0][2] if batch_results else ""
+    timed_out = "[vv] TIMEOUT after" in batch_output
     # Find the first WEDGED test. Everything before it has a real
-    # verdict. The first one stays WEDGED. Everything after it gets
-    # retried individually.
+    # verdict. On a crash the first one stays WEDGED as the culprit; on
+    # a timeout it is retried like the rest.
     first_wedged_idx = None
     for i, (name, st, _) in enumerate(batch_results):
         if st == "WEDGED":
             first_wedged_idx = i
             break
-    final = list(batch_results[:first_wedged_idx + 1])
-    for name, st, out in batch_results[first_wedged_idx + 1:]:
+    keep_upto = first_wedged_idx if timed_out else first_wedged_idx + 1
+    final = list(batch_results[:keep_upto])
+    for name, st, out in batch_results[keep_upto:]:
         if st == "WEDGED":
             solo = run_test(backend, kernel, name, timeout, verbose,
                             False, disk_format, opts)
             final.extend(solo)
         else:
-            final.append((name, st, out))
             final.append((name, st, out))
     return final
 

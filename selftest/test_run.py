@@ -938,6 +938,58 @@ def test_unit_retry_wedged_keeps_first_wedged():
         RUN_MOD.run_test = original
 
 
+def test_unit_retry_wedged_timeout_retries_first():
+    """On a batch timeout the first WEDGED test has no culprit.
+
+    A timeout note in the shared output means the VM was killed by the
+    deadline, not by a test crashing it, so the first WEDGED test must
+    be retried too rather than kept as a spurious WEDGED.
+    """
+    note = "[vv] TIMEOUT after 240s"
+    batch = [
+        ("A", "PASS", note),
+        ("B", "WEDGED", note),
+        ("C", "WEDGED", note),
+    ]
+    calls = []
+    original = RUN_MOD.run_test
+
+    def _fake(backend, kernel, name, *a, **kw):
+        calls.append(name)
+        return [(name, "PASS", "retried")]
+
+    RUN_MOD.run_test = _fake
+    try:
+        result = RUN_MOD._retry_wedged(batch, None, None, 10, 0, "raw", {})
+        verdicts = {n: s for n, s, _ in result}
+        assert verdicts["A"] == "PASS"
+        assert verdicts["B"] == "PASS"  # first WEDGED retried on timeout
+        assert verdicts["C"] == "PASS"
+        assert calls == ["B", "C"]  # both wedged tests retried
+    finally:
+        RUN_MOD.run_test = original
+
+
+def test_unit_retry_wedged_no_duplicate_after_first():
+    """A reported test after the first WEDGED appears once, not twice.
+
+    Guards the regression where the crash branch appended a non WEDGED
+    result twice, double counting it in the summary.
+    """
+    batch = [
+        ("A", "WEDGED", "out"),  # crash culprit, no timeout note
+        ("B", "PASS", "out"),    # reported after the culprit
+    ]
+    original = RUN_MOD.run_test
+    RUN_MOD.run_test = lambda *a, **kw: [("X", "PASS", "retried")]
+    try:
+        result = RUN_MOD._retry_wedged(batch, None, None, 10, 0, "raw", {})
+        names = [n for n, _, _ in result]
+        assert names == ["A", "B"]  # B not duplicated
+    finally:
+        RUN_MOD.run_test = original
+
+
 class _TimeoutBackend:
     """Fake backend whose VM prints two verdicts then hangs.
 
@@ -965,7 +1017,7 @@ def test_unit_batch_timeout_preserves_printed_verdicts():
     """
     results = RUN_MOD.run_test(
         _TimeoutBackend(), "kernel", ["T0001", "T0002", "T0003"],
-        2, 0, False, "raw", {})
+        1, 0, False, "raw", {})
     verdicts = {name: st for name, st, _ in results}
     assert verdicts["T0001"] == "PASS"
     assert verdicts["T0002"] == "PASS"
