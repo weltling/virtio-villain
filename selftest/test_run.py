@@ -938,6 +938,40 @@ def test_unit_retry_wedged_keeps_first_wedged():
         RUN_MOD.run_test = original
 
 
+class _TimeoutBackend:
+    """Fake backend whose VM prints two verdicts then hangs.
+
+    Used to drive run_test into the batch timeout path without a real
+    VMM. The first two named tests report; the run then blocks so the
+    per test timer fires.
+    """
+    name = "fake"
+    console_device = "ttyS0"
+    mmio_transport = False
+
+    def build_cmd(self, kernel, initramfs, disk_path, cmdline, opts=None):
+        return ["sh", "-c",
+                "printf '[PASS] T0001\\n[PASS] T0002\\n'; sleep 30"]
+
+
+def test_unit_batch_timeout_preserves_printed_verdicts():
+    """A batch that times out must not erase already printed verdicts.
+
+    Only tests that never printed a marker before the timeout are
+    WEDGED. This guards the regression where the timeout handler
+    replaced the captured output with a bare TIMEOUT string, marking
+    the whole batch WEDGED and leaving one spurious WEDGED per batch
+    after the individual retry.
+    """
+    results = RUN_MOD.run_test(
+        _TimeoutBackend(), "kernel", ["T0001", "T0002", "T0003"],
+        2, 0, False, "raw", {})
+    verdicts = {name: st for name, st, _ in results}
+    assert verdicts["T0001"] == "PASS"
+    assert verdicts["T0002"] == "PASS"
+    assert verdicts["T0003"] == "WEDGED"
+
+
 # ---------------------------------------------------------------------------
 # Probe filtering logic.
 
