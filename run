@@ -1015,6 +1015,23 @@ def _load_sidecar(path):
     return mod
 
 
+def _merge_streams(stdout_text, err_chunks):
+    """Combine the clean marker stream with the VMM log stream.
+
+    The VMM writes verdict markers on its stdout and its own log lines
+    on stderr. They are captured on separate pipes so a log line never
+    splices into a marker. Append the log stream after the guest output
+    for logging and triage rather than interleaving it, so markers stay
+    intact for parsing while the VMM logs remain available.
+    """
+    if not err_chunks:
+        return stdout_text
+    err_text = b"".join(err_chunks).decode(errors="replace")
+    if not err_text:
+        return stdout_text
+    return stdout_text + "\n" + err_text
+
+
 def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
              disk_format="raw", opts=None):
     """Run one or more tests in a fresh VM.
@@ -1159,7 +1176,18 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
     sidecar_log_lines = []
     output_lock = threading.Lock()
     output = ""
+    parse_text = ""
     status = "FAIL"
+    # The VMM writes the guest serial, which carries the verdict
+    # markers, to its stdout, and its own log lines to stderr. Merging
+    # the two into one pipe lets a log line splice into a marker at a
+    # byte boundary and corrupt it, which surfaces as a spurious WEDGED
+    # for whichever test provoked a VMM log at verdict time. Keep stderr
+    # on its own pipe for the non console path so the marker stream
+    # stays clean, and drain it in a thread. Console mode stays merged
+    # for live interactive viewing.
+    err_chunks = []
+    err_thread = None
     try:
         old_sigint = None
         if console:
@@ -1168,10 +1196,21 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
             cmd,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
+            stderr=(subprocess.STDOUT if console else subprocess.PIPE),
             start_new_session=not console,
         )
         _register_proc(proc)
+        if not console and proc.stderr is not None:
+            def _drain_stderr(stream, sink):
+                try:
+                    for eb in iter(lambda: stream.read1(4096), b""):
+                        sink.append(eb)
+                except (OSError, ValueError):
+                    pass
+            err_thread = threading.Thread(
+                target=_drain_stderr, args=(proc.stderr, err_chunks),
+                name=f"stderr-{test_names[0]}", daemon=True)
+            err_thread.start()
         chunks = []
         if sidecar_mod is not None and hasattr(sidecar_mod, "run"):
             sidecar_tmpdir = tempfile.mkdtemp(prefix=f"vv-sc-{test_names[0]}.")
@@ -1256,20 +1295,26 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
             signal.signal(signal.SIGINT, old_sigint)
         if timed_out:
             raise subprocess.TimeoutExpired(cmd, effective_timeout)
-        output = b"".join(chunks).decode(errors="replace")
-        status = _parse_result(output, proc.returncode)
+        if err_thread is not None:
+            err_thread.join(timeout=5)
+        parse_text = b"".join(chunks).decode(errors="replace")
+        status = _parse_result(parse_text, proc.returncode)
+        output = _merge_streams(parse_text, err_chunks)
     except subprocess.TimeoutExpired:
         if proc:
             proc.kill()
             proc.wait()
+        if err_thread is not None:
+            err_thread.join(timeout=5)
         # Keep everything the VM already printed. A batch runs many
         # tests in one VM, so discarding the captured output here would
         # erase the verdicts of tests that already reported and mark the
         # whole batch WEDGED. Preserve the real output so only the tests
         # that never printed a marker stay WEDGED; append a timeout note
         # for the single test case where the run itself is the failure.
-        partial = b"".join(chunks).decode(errors="replace")
-        output = partial + f"\n[vv] TIMEOUT after {effective_timeout}s\n"
+        parse_text = b"".join(chunks).decode(errors="replace") + \
+            f"\n[vv] TIMEOUT after {effective_timeout}s\n"
+        output = _merge_streams(parse_text, err_chunks)
         status = "FAIL"
     except KeyboardInterrupt:
         if proc:
@@ -1308,6 +1353,8 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
                     pass
         if proc:
             _unregister_proc(proc)
+        if err_thread is not None and err_thread.is_alive():
+            err_thread.join(timeout=5)
         sidecar_stop.set()
         if sidecar_thread is not None:
             sidecar_thread.join(timeout=5.0)
@@ -1365,7 +1412,7 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
             pass
 
     if batch:
-        verdicts = _parse_batch_results(output, test_names)
+        verdicts = _parse_batch_results(parse_text, test_names)
         return [(n, verdicts[n], output) for n in test_names]
     return [(test_names[0], status, output)]
 
