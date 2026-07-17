@@ -18,20 +18,15 @@
 static test_result_t test_net_ctrl_mq_pairs_max(struct virtio_dev *dev,
                                                 struct vring *vr)
 {
-    (void)vr;
-    /*
-     * The control queue is queue 2 for net devices (after RX=0, TX=1).
-     * We're passed the TX queue (queue 1), so we need queue 2.
-     * Since init.c sets up all queues, we can reference queue 2.
-     */
-    volatile struct virtio_pci_common_cfg *cfg = dev->common;
-    uint16_t nq = cfg->num_queues;
-
-    /* Net device: num_queues = 2*N+1 (RX+TX pairs + ctrl) */
-    if (nq < 5) /* need at least 2 pairs + ctrl = 5 queues */
+    if (!virtio_pci_feature_offered(dev, VIRTIO_NET_F_CTRL_VQ) ||
+        !virtio_pci_feature_offered(dev, VIRTIO_NET_F_MQ))
         return TEST_SKIP;
 
+    volatile struct virtio_pci_common_cfg *cfg = dev->common;
+    uint16_t nq = cfg->num_queues;
     uint16_t max_pairs = (nq - 1) / 2;
+    if (max_pairs < 1)
+        return TEST_SKIP;
 
     struct virtio_net_ctrl_hdr *ctrl = vv_alloc_pages(1);
     uint16_t *pairs = vv_alloc_pages(1);
@@ -46,26 +41,21 @@ static test_result_t test_net_ctrl_mq_pairs_max(struct virtio_dev *dev,
     uint64_t pairs_phys = vv_virt_to_phys(pairs);
     uint64_t ack_phys = vv_virt_to_phys(ack);
 
-    /* Control virtqueue is queue index 2 (for 1 pair) or nq-1 */
-    uint16_t ctrl_q = nq - 1;
-
-    struct vring cvr;
-    vring_alloc(&cvr, 16);
-    vring_attach(dev, &cvr, ctrl_q);
-
-    vring_raw_set_desc(&cvr, 0, ctrl_phys, sizeof(*ctrl),
+    vring_raw_set_desc(vr, 0, ctrl_phys, sizeof(*ctrl),
                        VRING_DESC_F_NEXT, 1);
-    vring_raw_set_desc(&cvr, 1, pairs_phys, sizeof(*pairs),
+    vring_raw_set_desc(vr, 1, pairs_phys, sizeof(*pairs),
                        VRING_DESC_F_NEXT, 2);
-    vring_raw_set_desc(&cvr, 2, ack_phys, 1,
+    vring_raw_set_desc(vr, 2, ack_phys, 1,
                        VRING_DESC_F_WRITE, 0);
 
-    vring_raw_set_avail(&cvr, 0, 0);
-    vring_raw_set_avail_idx(&cvr, 1);
+    vring_raw_set_avail(vr, 0, 0);
+    vring_raw_set_avail_idx(vr, 1);
 
-    return vv_kick_and_wait(dev, &cvr, ctrl_q, VV_TIMEOUT_MS);
+    return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(N0038, VIRTIO_PCI_DEVICE_NET, test_net_ctrl_mq_pairs_max,
+REGISTER_TEST_Q_REQUIRES(N0038, VIRTIO_PCI_DEVICE_NET, test_net_ctrl_mq_pairs_max,
               "CTRL_MQ SET_QUEUES with pairs == max_virtqueue_pairs",
-              VIRTIO_SPEC_V1_2, "5.1.6.5.6");
+              VIRTIO_SPEC_V1_2, "5.1.6.5.6", VV_QUEUE_LAST,
+              (1ULL << VIRTIO_NET_F_CTRL_VQ) |
+              (1ULL << VIRTIO_NET_F_MQ), 0);
