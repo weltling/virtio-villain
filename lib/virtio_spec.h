@@ -177,6 +177,7 @@ struct virtio_blk_zone_report_hdr_wide {
 #define VIRTIO_NET_F_HASH_REPORT         57
 #define VIRTIO_NET_F_GUEST_HDRLEN        59
 #define VIRTIO_NET_F_RSS                 60
+#define VIRTIO_NET_F_SPEED_DUPLEX        63
 
 /* Control virtqueue command classes (spec 5.1.6.5). */
 #define VIRTIO_NET_CTRL_RX               0
