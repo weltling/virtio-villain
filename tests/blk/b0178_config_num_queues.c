@@ -3,7 +3,7 @@
  * B0178: read num_queues config when VIRTIO_BLK_F_MQ negotiated.
  *
  * Spec 5.2.4: When VIRTIO_BLK_F_MQ is negotiated the config contains
- * num_queues at offset 36. It must match the device's actual queue
+ * num_queues at offset 34. It must match the device's actual queue
  * count (>= 1) and agree with common_cfg.num_queues.
  */
 #include "tests/test.h"
@@ -14,8 +14,8 @@
 
 #include <unistd.h>
 
-/* num_queues at offset 36 in blk device config */
-#define BLK_CFG_NUM_QUEUES_OFFSET 36
+/* num_queues at offset 34 in blk device config */
+#define BLK_CFG_NUM_QUEUES_OFFSET 34
 
 static test_result_t test_blk_config_num_queues(struct virtio_dev *dev,
                                                 struct vring *vr)
