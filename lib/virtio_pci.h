@@ -64,6 +64,8 @@ struct virtio_pci_common_cfg {
     uint64_t queue_used;
     uint16_t queue_notify_data;
     uint16_t queue_reset;
+    uint16_t admin_queue_index;
+    uint16_t admin_queue_num;
 } __attribute__((packed));
 
 /* ISR status register bits (spec 4.1.4.5) */
