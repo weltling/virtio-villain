@@ -49,7 +49,8 @@ def _bump_maxmem(mem_str):
     return f"{target}K"
 
 
-INITRAMFS = os.path.join("target", "initramfs.cpio.gz")
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+INITRAMFS = os.path.join(_SCRIPT_DIR, "target", "initramfs.cpio.gz")
 DISK_SIZE = 16 * 1024 * 1024  # 16 MiB
 DISK_FORMATS = ("raw", "qcow2", "vhd", "vhdx")
 KERNEL_BASE_URL = "https://github.com/cloud-hypervisor/linux/releases/latest/download"
@@ -58,7 +59,6 @@ KERNEL_NAMES = {
     "aarch64": "Image-arm64",
 }
 DEFAULT_VMM_TRACE_FILE = "/tmp/vmm-trace.log"
-_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 # --- Host system configuration (opt-in via --apply-sysconfig) ----------
@@ -629,7 +629,7 @@ def fetch_kernel():
     return cache_path
 
 
-def get_test_list(init_binary=os.path.join("target", "init")):
+def get_test_list(init_binary=os.path.join(_SCRIPT_DIR, "target", "init")):
     """Get available tests by running target/init --list-tsv on the host.
 
     Returns (list of test IDs, dict mapping ID to (desc, ver, section),
