@@ -1273,7 +1273,7 @@ def test_unit_get_test_list_parses_meta():
     """get_test_list returns meta with device_id, flags, features, minq."""
     if not os.path.exists(INIT_BINARY):
         raise SkipTest("target/init not built")
-    tests, info, meta = RUN_MOD.get_test_list()
+    tests, info, meta = RUN_MOD.get_test_list(init_binary=INIT_BINARY)
     assert len(tests) > 0
     # Every test with meta should have all four fields
     for tid, m in meta.items():
@@ -1287,7 +1287,7 @@ def test_unit_get_test_list_packed_has_ring_packed():
     """Packed tests should have VIRTIO_F_RING_PACKED in required_features."""
     if not os.path.exists(INIT_BINARY):
         raise SkipTest("target/init not built")
-    tests, info, meta = RUN_MOD.get_test_list()
+    tests, info, meta = RUN_MOD.get_test_list(init_binary=INIT_BINARY)
     packed = [t for t in tests if t.startswith("P0")]
     assert len(packed) > 0
     for t in packed:
