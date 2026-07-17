@@ -118,6 +118,20 @@ int virtio_pci_init(struct virtio_dev *dev);
  */
 int virtio_pci_init_features(struct virtio_dev *dev, uint64_t wanted);
 
+/*
+ * Return non-zero if the device offers the given feature bit. Handles
+ * the low and high feature words via device_feature_select.
+ */
+static inline int virtio_pci_feature_offered(struct virtio_dev *dev,
+                                             unsigned bit)
+{
+    volatile struct virtio_pci_common_cfg *cfg = dev->common;
+
+    cfg->device_feature_select = bit >> 5;
+    __sync_synchronize();
+    return (cfg->device_feature >> (bit & 31)) & 1u;
+}
+
 /* Reset device (set status to 0). */
 void virtio_pci_reset(struct virtio_dev *dev);
 

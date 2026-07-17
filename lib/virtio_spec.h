@@ -172,6 +172,7 @@ struct virtio_blk_zone_report_hdr_wide {
 #define VIRTIO_NET_F_MQ                  22
 #define VIRTIO_NET_F_CTRL_MAC_ADDR       23
 #define VIRTIO_NET_F_DEVICE_STATS        50
+#define VIRTIO_NET_F_NOTF_COAL           53
 #define VIRTIO_NET_F_HOST_USO            56
 #define VIRTIO_NET_F_HASH_REPORT         57
 #define VIRTIO_NET_F_GUEST_HDRLEN        59
