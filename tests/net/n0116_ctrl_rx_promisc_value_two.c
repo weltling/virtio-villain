@@ -38,7 +38,7 @@ static test_result_t test_net_ctrl_rx_promisc_two(struct virtio_dev *dev,
     vring_raw_set_desc(vr, 0, ctrl_phys, sizeof(*ctrl),
                        VRING_DESC_F_NEXT, 1);
     vring_raw_set_desc(vr, 1, ctrl_phys + sizeof(*ctrl), 1,
-                       VRING_DESC_F_NEXT, VV_QUEUE_LAST);
+                       VRING_DESC_F_NEXT, 2);
     vring_raw_set_desc(vr, 2, status_phys, 1,
                        VRING_DESC_F_WRITE, 0);
 

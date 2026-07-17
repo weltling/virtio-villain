@@ -18,6 +18,10 @@
 static test_result_t test_net_mq_too_many_pairs(struct virtio_dev *dev,
                                                 struct vring *vr)
 {
+    if (!virtio_pci_feature_offered(dev, VIRTIO_NET_F_CTRL_VQ) ||
+        !virtio_pci_feature_offered(dev, VIRTIO_NET_F_MQ))
+        return TEST_SKIP;
+
     struct virtio_net_ctrl_hdr *ctrl = vv_alloc_pages(1);
     uint16_t *pairs = (uint16_t *)((uint8_t *)ctrl + sizeof(*ctrl));
     uint8_t *status = vv_alloc_pages(1);
@@ -33,7 +37,7 @@ static test_result_t test_net_mq_too_many_pairs(struct virtio_dev *dev,
     vring_raw_set_desc(vr, 0, ctrl_phys, sizeof(*ctrl),
                        VRING_DESC_F_NEXT, 1);
     vring_raw_set_desc(vr, 1, ctrl_phys + sizeof(*ctrl), sizeof(uint16_t),
-                       VRING_DESC_F_NEXT, VV_QUEUE_LAST);
+                       VRING_DESC_F_NEXT, 2);
     vring_raw_set_desc(vr, 2, status_phys, 1,
                        VRING_DESC_F_WRITE, 0);
 
@@ -43,6 +47,8 @@ static test_result_t test_net_mq_too_many_pairs(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST_Q(N0014, VIRTIO_PCI_DEVICE_NET, test_net_mq_too_many_pairs,
+REGISTER_TEST_Q_REQUIRES(N0014, VIRTIO_PCI_DEVICE_NET, test_net_mq_too_many_pairs,
               "MQ VQ_PAIRS_SET exceeding max pairs",
-              VIRTIO_SPEC_V1_2, "5.1.6.5", VV_QUEUE_LAST);
+              VIRTIO_SPEC_V1_2, "5.1.6.5", VV_QUEUE_LAST,
+              (1ULL << VIRTIO_NET_F_CTRL_VQ) |
+              (1ULL << VIRTIO_NET_F_MQ), 0);

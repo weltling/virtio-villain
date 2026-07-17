@@ -17,6 +17,9 @@ static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {
     volatile struct virtio_pci_common_cfg *cfg = dev->common;
 
+    if (!virtio_pci_feature_offered(dev, VIRTIO_NET_F_CTRL_VQ))
+        return TEST_SKIP;
+
     cfg->device_feature_select = 1;
     __sync_synchronize();
     if (cfg->device_feature & (1U << (VIRTIO_NET_F_RSS - 32)))
@@ -41,6 +44,7 @@ static test_result_t test(struct virtio_dev *dev, struct vring *vr)
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST_Q(N0127, VIRTIO_PCI_DEVICE_NET, test,
+REGISTER_TEST_Q_REQUIRES(N0127, VIRTIO_PCI_DEVICE_NET, test,
                 "RSS config ctrl message without RSS feature",
-                VIRTIO_SPEC_V1_4, "5.1.4", VV_QUEUE_LAST);
+                VIRTIO_SPEC_V1_4, "5.1.4", VV_QUEUE_LAST,
+                (1ULL << VIRTIO_NET_F_CTRL_VQ), 0);

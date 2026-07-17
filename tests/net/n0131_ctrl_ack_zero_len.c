@@ -19,6 +19,9 @@
 static test_result_t test_net_ctrl_ack_zero_len(struct virtio_dev *dev,
                                                 struct vring *vr)
 {
+    if (!virtio_pci_feature_offered(dev, VIRTIO_NET_F_CTRL_VQ))
+        return TEST_SKIP;
+
     struct virtio_net_ctrl_hdr *hdr = vv_alloc_pages(1);
     uint8_t *data = vv_alloc_pages(1);
     uint8_t *ack = vv_alloc_pages(1);
@@ -46,6 +49,7 @@ static test_result_t test_net_ctrl_ack_zero_len(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST_Q(N0131, VIRTIO_PCI_DEVICE_NET, test_net_ctrl_ack_zero_len,
+REGISTER_TEST_Q_REQUIRES(N0131, VIRTIO_PCI_DEVICE_NET, test_net_ctrl_ack_zero_len,
               "CTRL command with zero length ack descriptor",
-              VIRTIO_SPEC_V1_2, "5.1.6.5", VV_QUEUE_LAST);
+              VIRTIO_SPEC_V1_2, "5.1.6.5", VV_QUEUE_LAST,
+              (1ULL << VIRTIO_NET_F_CTRL_VQ), 0);

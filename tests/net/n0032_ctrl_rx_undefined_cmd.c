@@ -18,6 +18,10 @@
 static test_result_t test_net_ctrl_rx_bad_cmd(struct virtio_dev *dev,
                                               struct vring *vr)
 {
+    if (!virtio_pci_feature_offered(dev, VIRTIO_NET_F_CTRL_VQ) ||
+        !virtio_pci_feature_offered(dev, VIRTIO_NET_F_CTRL_RX))
+        return TEST_SKIP;
+
     struct virtio_net_ctrl_hdr *hdr = vv_alloc_pages(1);
     uint8_t *ack = vv_alloc_pages(1);
 
@@ -39,6 +43,8 @@ static test_result_t test_net_ctrl_rx_bad_cmd(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST_Q(N0032, VIRTIO_PCI_DEVICE_NET, test_net_ctrl_rx_bad_cmd,
+REGISTER_TEST_Q_REQUIRES(N0032, VIRTIO_PCI_DEVICE_NET, test_net_ctrl_rx_bad_cmd,
               "CTRL_RX with undefined command ID (0xFF)",
-              VIRTIO_SPEC_V1_2, "5.1.6.5.1", VV_QUEUE_LAST);
+              VIRTIO_SPEC_V1_2, "5.1.6.5.1", VV_QUEUE_LAST,
+              (1ULL << VIRTIO_NET_F_CTRL_VQ) |
+              (1ULL << VIRTIO_NET_F_CTRL_RX), 0);

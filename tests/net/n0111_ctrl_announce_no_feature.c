@@ -19,6 +19,9 @@
 static test_result_t test_net_announce_no_feature(struct virtio_dev *dev,
                                                   struct vring *vr)
 {
+    if (!virtio_pci_feature_offered(dev, VIRTIO_NET_F_CTRL_VQ))
+        return TEST_SKIP;
+
     uint8_t *page = vv_alloc_pages(1);
     memset(page, 0, 4096);
 
@@ -40,9 +43,10 @@ static test_result_t test_net_announce_no_feature(struct virtio_dev *dev,
     vring_raw_set_avail(vr, 0, 0);
     vring_raw_set_avail_idx(vr, 1);
 
-    return vv_kick_and_wait(dev, vr, VV_QUEUE_LAST, VV_TIMEOUT_MS);
+    return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST_Q(N0111, VIRTIO_PCI_DEVICE_NET, test_net_announce_no_feature,
+REGISTER_TEST_Q_REQUIRES(N0111, VIRTIO_PCI_DEVICE_NET, test_net_announce_no_feature,
                 "CTRL_ANNOUNCE without guest announce feature",
-                VIRTIO_SPEC_V1_2, "5.1.6.5.2", VV_QUEUE_LAST);
+                VIRTIO_SPEC_V1_2, "5.1.6.5.2", VV_QUEUE_LAST,
+                (1ULL << VIRTIO_NET_F_CTRL_VQ), 0);
