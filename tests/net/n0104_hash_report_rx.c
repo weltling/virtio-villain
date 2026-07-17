@@ -19,6 +19,9 @@
 static test_result_t test_net_hash_report_rx(struct virtio_dev *dev,
                                              struct vring *vr)
 {
+    if (!virtio_pci_feature_offered(dev, VIRTIO_NET_F_HASH_REPORT))
+        return TEST_SKIP;
+
     uint8_t *buf = vv_alloc_pages(1);
     memset(buf, 0, 4096);
 
@@ -34,6 +37,7 @@ static test_result_t test_net_hash_report_rx(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST_Q(N0104, VIRTIO_PCI_DEVICE_NET, test_net_hash_report_rx,
+REGISTER_TEST_Q_REQUIRES(N0104, VIRTIO_PCI_DEVICE_NET, test_net_hash_report_rx,
                 "RX buffer with hash report header space",
-                VIRTIO_SPEC_V1_3, "5.1.6.4", 0);
+                VIRTIO_SPEC_V1_3, "5.1.6.4", 0,
+                (1ULL << VIRTIO_NET_F_HASH_REPORT), 0);
