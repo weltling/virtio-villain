@@ -107,7 +107,7 @@ struct iommu_config {
 
 /* Full device configuration layout (spec 5.13.4). */
 struct virtio_iommu_config {
-    uint32_t page_size_mask;
+    uint64_t page_size_mask;
     struct {
         uint64_t start;
         uint64_t end;

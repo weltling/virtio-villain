@@ -2,11 +2,14 @@
 /*
  * I0103: IOMMU probe validate response status and properties.
  *
- * Spec 5.13.6.5: PROBE returns S_OK and the properties area
- * contains TLV entries. Verify: (1) tail.status is S_OK, and
- * (2) the first property byte is either a valid type code
- * (RESV_MEM=1, etc.) or NONE=0 (empty properties). The device
- * must not leave the properties area unmodified.
+ * Spec 5.13.6.5: a PROBE request has a fixed device-readable part
+ * (head, endpoint, reserved[64]) followed by a device-writable
+ * properties area of probe_size bytes and the tail. probe_size is
+ * device specific and read from the device config (spec 5.13.4);
+ * the tail therefore sits at offset probe_size within the writable
+ * buffer, not at a fixed offset. Verify: (1) tail.status is S_OK,
+ * (2) the device wrote into the properties area, and (3) the first
+ * property type code is NONE (empty) or RESV_MEM.
  */
 #include "tests/test.h"
 #include "lib/util.h"
@@ -20,26 +23,50 @@
 #define VIRTIO_IOMMU_PROBE_T_NONE     0
 #define VIRTIO_IOMMU_PROBE_T_RESV_MEM 1
 
+/* Fixed device-readable prefix: head(4) + endpoint(4) + reserved[64]. */
+#define PROBE_HEADER_LEN 72
+
 static test_result_t test_iommu_probe_validate(struct virtio_dev *dev,
                                                struct vring *vr)
 {
-    struct virtio_iommu_req_probe *req = vv_alloc_pages(1);
-    memset(req, 0, sizeof(*req));
+    if (dev->device_cfg == NULL)
+        return TEST_SKIP;
 
-    req->head.type = VIRTIO_IOMMU_T_PROBE;
-    req->endpoint = 0;
-    /* Fill properties with canary so we can detect writes */
-    memset(req->properties, 0xFE, sizeof(req->properties));
-    req->tail.status = 0xFF;
+    volatile struct virtio_iommu_config *cfg =
+        (volatile struct virtio_iommu_config *)dev->device_cfg;
+    uint32_t probe_size = cfg->probe_size;
+    if (probe_size == 0)
+        return TEST_SKIP; /* device exposes no properties area */
 
-    uint64_t req_phys = vv_virt_to_phys(req);
-    size_t in_len = (size_t)((uint8_t *)&req->properties - (uint8_t *)req);
-    size_t out_len = sizeof(req->properties) + sizeof(req->tail);
-    uint64_t out_phys = req_phys + in_len;
+    /*
+     * Request buffer laid out per spec 5.13.6.5:
+     *   [0 .. 72)                head, endpoint, reserved   (readable)
+     *   [72 .. 72 + probe_size)  properties                 (writable)
+     *   [72 + probe_size .. +4)  tail                       (writable)
+     */
+    uint8_t *buf = vv_alloc_pages((PROBE_HEADER_LEN + probe_size +
+                                   sizeof(struct virtio_iommu_req_tail) +
+                                   4095) / 4096);
+    memset(buf, 0, PROBE_HEADER_LEN);
 
-    vring_raw_set_desc(vr, 0, req_phys, in_len,
+    struct virtio_iommu_req_head *head = (struct virtio_iommu_req_head *)buf;
+    head->type = VIRTIO_IOMMU_T_PROBE;
+    *(uint32_t *)(buf + sizeof(*head)) = 0; /* endpoint 0 */
+
+    uint8_t *props = buf + PROBE_HEADER_LEN;
+    struct virtio_iommu_req_tail *tail =
+        (struct virtio_iommu_req_tail *)(props + probe_size);
+
+    /* Canary so we can detect that the device wrote the properties. */
+    memset(props, 0xFE, probe_size);
+    tail->status = 0xFF;
+
+    uint64_t buf_phys = vv_virt_to_phys(buf);
+    size_t out_len = probe_size + sizeof(*tail);
+
+    vring_raw_set_desc(vr, 0, buf_phys, PROBE_HEADER_LEN,
                        VRING_DESC_F_NEXT, 1);
-    vring_raw_set_desc(vr, 1, out_phys, out_len,
+    vring_raw_set_desc(vr, 1, buf_phys + PROBE_HEADER_LEN, out_len,
                        VRING_DESC_F_WRITE, 0);
 
     vring_raw_set_avail(vr, 0, 0);
@@ -49,26 +76,21 @@ static test_result_t test_iommu_probe_validate(struct virtio_dev *dev,
     if (r != TEST_PASS)
         return r;
 
-    /* Verify status */
-    if (req->tail.status != 0)
-        TFAIL("probe status %u, expected 0 (S_OK)", req->tail.status);
+    if (tail->status != VIRTIO_IOMMU_S_OK)
+        TFAIL("probe status %u, expected 0 (S_OK)", tail->status);
 
-    /* Verify properties were written (not all 0xFE canary) */
     int all_canary = 1;
-    for (size_t i = 0; i < sizeof(req->properties); i++) {
-        if (req->properties[i] != 0xFE) {
+    for (uint32_t i = 0; i < probe_size; i++) {
+        if (props[i] != 0xFE) {
             all_canary = 0;
             break;
         }
     }
-
-    /* If the device has no properties, it writes type=0 (NONE) at start */
     if (all_canary)
         TFAIL("properties area unchanged (all 0xFE canary)");
 
-    /* First two bytes are type (le16); must be NONE or RESV_MEM */
-    uint16_t first_type = req->properties[0] |
-                          ((uint16_t)req->properties[1] << 8);
+    /* First two bytes are the property type (le16). */
+    uint16_t first_type = props[0] | ((uint16_t)props[1] << 8);
     if (first_type != VIRTIO_IOMMU_PROBE_T_NONE &&
         first_type != VIRTIO_IOMMU_PROBE_T_RESV_MEM)
         TFAIL("first property type %u unexpected", first_type);
