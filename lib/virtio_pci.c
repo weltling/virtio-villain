@@ -124,7 +124,7 @@ int virtio_pci_find(uint16_t device_id, struct virtio_dev *dev)
     return virtio_pci_attach(device_id, dev);
 }
 
-int virtio_pci_init(struct virtio_dev *dev)
+int virtio_pci_init_features(struct virtio_dev *dev, uint64_t wanted)
 {
     volatile struct virtio_pci_common_cfg *cfg = dev->common;
 
@@ -151,11 +151,24 @@ int virtio_pci_init(struct virtio_dev *dev)
     cfg->device_status |= VIRTIO_STATUS_DRIVER;
     __sync_synchronize();
 
-    /* Negotiate zero features */
+    /*
+     * Negotiate the requested feature bits, restricted to what the
+     * device actually offers. A test that needs a feature the device
+     * does not offer will observe its absence and skip.
+     */
+    cfg->device_feature_select = 0;
+    __sync_synchronize();
+    uint32_t lo = cfg->device_feature;
+    cfg->device_feature_select = 1;
+    __sync_synchronize();
+    uint32_t hi = cfg->device_feature;
+    uint64_t offered = ((uint64_t)hi << 32) | lo;
+    uint64_t neg = wanted & offered;
+
     cfg->driver_feature_select = 0;
-    cfg->driver_feature = 0;
+    cfg->driver_feature = (uint32_t)(neg & 0xFFFFFFFFU);
     cfg->driver_feature_select = 1;
-    cfg->driver_feature = 0;
+    cfg->driver_feature = (uint32_t)(neg >> 32);
     cfg->device_status |= VIRTIO_STATUS_FEATURES_OK;
     __sync_synchronize();
 
@@ -171,6 +184,11 @@ int virtio_pci_init(struct virtio_dev *dev)
         usleep(1000);
     }
     return -1;
+}
+
+int virtio_pci_init(struct virtio_dev *dev)
+{
+    return virtio_pci_init_features(dev, 0);
 }
 
 void virtio_pci_reset(struct virtio_dev *dev)

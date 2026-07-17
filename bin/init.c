@@ -39,6 +39,21 @@ static uint16_t queue_size_for(struct virtio_dev *dev, uint16_t q)
     return QUEUE_SIZE;
 }
 
+/*
+ * Feature bits a test wants negotiated. When a test declares required
+ * features, also negotiate VIRTIO_F_VERSION_1: a modern device such as
+ * Cloud Hypervisor needs it for feature-dependent facilities like the
+ * control virtqueue to operate. Bits the device does not offer are
+ * dropped by virtio_pci_init_features. Tests with no requirement keep
+ * the historical zero-feature negotiation.
+ */
+static uint64_t features_to_negotiate(struct test_entry *t)
+{
+    if (t->required_features == 0)
+        return 0;
+    return t->required_features | (1ULL << 32);
+}
+
 static int term_width(void)
 {
     struct winsize ws;
@@ -151,7 +166,7 @@ static int run_test(struct test_entry *t)
         return 0;
     }
 
-    if (virtio_pci_init(&dev) < 0) {
+    if (virtio_pci_init_features(&dev, features_to_negotiate(t)) < 0) {
         printf("[FAIL] %s (device init failed)\n", t->name);
         return 1;
     }

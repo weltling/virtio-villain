@@ -112,6 +112,12 @@ int virtio_pci_attach(uint16_t device_id, struct virtio_dev *dev);
  */
 int virtio_pci_init(struct virtio_dev *dev);
 
+/*
+ * Like virtio_pci_init, but negotiates the requested feature bits
+ * (restricted to those the device offers) instead of zero.
+ */
+int virtio_pci_init_features(struct virtio_dev *dev, uint64_t wanted);
+
 /* Reset device (set status to 0). */
 void virtio_pci_reset(struct virtio_dev *dev);
 
