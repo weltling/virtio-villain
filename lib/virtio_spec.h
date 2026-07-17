@@ -79,6 +79,11 @@
 #define VIRTIO_BLK_F_LIFETIME        15
 #define VIRTIO_BLK_F_SECURE_ERASE    16
 #define VIRTIO_BLK_F_ZONED           17
+#define VIRTIO_BLK_F_REQ_FLAGS       18
+#define VIRTIO_BLK_F_REQ_FLAGS_OUT_FUA 19
+
+/* Request flags bitfield (spec 5.2.6, valid when REQ_FLAGS negotiated). */
+#define VIRTIO_BLK_REQ_FLAG_OUT_FUA  0  /* bit index, VIRTIO_BLK_T_OUT only */
 
 /* Status codes (spec 5.2.6). */
 #define VIRTIO_BLK_S_OK              0
