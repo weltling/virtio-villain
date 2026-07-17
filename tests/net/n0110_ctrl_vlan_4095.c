@@ -19,6 +19,10 @@
 static test_result_t test_net_vlan_4095(struct virtio_dev *dev,
                                         struct vring *vr)
 {
+    if (!virtio_pci_feature_offered(dev, VIRTIO_NET_F_CTRL_VQ) ||
+        !virtio_pci_feature_offered(dev, VIRTIO_NET_F_CTRL_VLAN))
+        return TEST_SKIP;
+
     uint8_t *page = vv_alloc_pages(1);
     memset(page, 0, 4096);
 
@@ -47,6 +51,8 @@ static test_result_t test_net_vlan_4095(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, vr, VV_QUEUE_LAST, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST_Q(N0110, VIRTIO_PCI_DEVICE_NET, test_net_vlan_4095,
+REGISTER_TEST_Q_REQUIRES(N0110, VIRTIO_PCI_DEVICE_NET, test_net_vlan_4095,
                 "CTRL_VLAN_ADD with reserved VLAN ID 4095",
-                VIRTIO_SPEC_V1_2, "5.1.6.5.4", VV_QUEUE_LAST);
+                VIRTIO_SPEC_V1_2, "5.1.6.5.4", VV_QUEUE_LAST,
+                (1ULL << VIRTIO_NET_F_CTRL_VQ) |
+                (1ULL << VIRTIO_NET_F_CTRL_VLAN), 0);

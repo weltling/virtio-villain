@@ -18,6 +18,10 @@
 static test_result_t test_net_rss_reset_queue(struct virtio_dev *dev,
                                               struct vring *vr)
 {
+    if (!virtio_pci_feature_offered(dev, VIRTIO_NET_F_CTRL_VQ) ||
+        !virtio_pci_feature_offered(dev, VIRTIO_NET_F_RSS))
+        return TEST_SKIP;
+
     volatile struct virtio_pci_common_cfg *cfg = dev->common;
 
     /* Reset queue 0 (RX) first via queue_enable = 0 */
@@ -60,6 +64,8 @@ static test_result_t test_net_rss_reset_queue(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST_Q(N0107, VIRTIO_PCI_DEVICE_NET, test_net_rss_reset_queue,
+REGISTER_TEST_Q_REQUIRES(N0107, VIRTIO_PCI_DEVICE_NET, test_net_rss_reset_queue,
                 "RSS steer to queue that has been reset",
-                VIRTIO_SPEC_V1_3, "5.1.6.5.4", VV_QUEUE_LAST);
+                VIRTIO_SPEC_V1_3, "5.1.6.5.4", VV_QUEUE_LAST,
+                (1ULL << VIRTIO_NET_F_CTRL_VQ) |
+                (1ULL << VIRTIO_NET_F_RSS), 0);

@@ -18,6 +18,10 @@
 static test_result_t test_net_ctrl_rx_allmulti(struct virtio_dev *dev,
                                               struct vring *vr)
 {
+    if (!virtio_pci_feature_offered(dev, VIRTIO_NET_F_CTRL_VQ) ||
+        !virtio_pci_feature_offered(dev, VIRTIO_NET_F_CTRL_RX))
+        return TEST_SKIP;
+
     struct vring ctrl_vr;
     vring_alloc(&ctrl_vr, 64);
     vring_attach(dev, &ctrl_vr, 2);
@@ -49,6 +53,8 @@ static test_result_t test_net_ctrl_rx_allmulti(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &ctrl_vr, 2, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(N0074, VIRTIO_PCI_DEVICE_NET, test_net_ctrl_rx_allmulti,
+REGISTER_TEST_REQUIRES(N0074, VIRTIO_PCI_DEVICE_NET, test_net_ctrl_rx_allmulti,
               "Control VQ: enable all-multicast mode",
-              VIRTIO_SPEC_V1_2, "5.1.6.5.1");
+              VIRTIO_SPEC_V1_2, "5.1.6.5.1",
+              (1ULL << VIRTIO_NET_F_CTRL_VQ) |
+              (1ULL << VIRTIO_NET_F_CTRL_RX), 0);

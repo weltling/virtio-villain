@@ -19,6 +19,10 @@
 static test_result_t test_net_ctrl_mac_table_set(struct virtio_dev *dev,
                                                  struct vring *vr)
 {
+    if (!virtio_pci_feature_offered(dev, VIRTIO_NET_F_CTRL_VQ) ||
+        !virtio_pci_feature_offered(dev, VIRTIO_NET_F_CTRL_RX))
+        return TEST_SKIP;
+
     struct vring ctrl_vr;
     vring_alloc(&ctrl_vr, 64);
     vring_attach(dev, &ctrl_vr, 2);
@@ -70,6 +74,8 @@ static test_result_t test_net_ctrl_mac_table_set(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &ctrl_vr, 2, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(N0075, VIRTIO_PCI_DEVICE_NET, test_net_ctrl_mac_table_set,
+REGISTER_TEST_REQUIRES(N0075, VIRTIO_PCI_DEVICE_NET, test_net_ctrl_mac_table_set,
               "Control VQ: set MAC filtering table",
-              VIRTIO_SPEC_V1_2, "5.1.6.5.2");
+              VIRTIO_SPEC_V1_2, "5.1.6.5.2",
+              (1ULL << VIRTIO_NET_F_CTRL_VQ) |
+              (1ULL << VIRTIO_NET_F_CTRL_RX), 0);

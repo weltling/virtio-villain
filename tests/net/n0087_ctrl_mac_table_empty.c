@@ -18,6 +18,10 @@
 static test_result_t test_net_ctrl_mac_table_empty(struct virtio_dev *dev,
                                                    struct vring *vr)
 {
+    if (!virtio_pci_feature_offered(dev, VIRTIO_NET_F_CTRL_VQ) ||
+        !virtio_pci_feature_offered(dev, VIRTIO_NET_F_CTRL_RX))
+        return TEST_SKIP;
+
     uint8_t *page = vv_alloc_pages(1);
     struct virtio_net_ctrl_hdr *hdr = (void *)page;
     uint32_t *uni_count = (uint32_t *)(page + sizeof(*hdr));
@@ -47,6 +51,8 @@ static test_result_t test_net_ctrl_mac_table_empty(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST_Q(N0087, VIRTIO_PCI_DEVICE_NET, test_net_ctrl_mac_table_empty,
+REGISTER_TEST_Q_REQUIRES(N0087, VIRTIO_PCI_DEVICE_NET, test_net_ctrl_mac_table_empty,
                 "CTRL_MAC_TABLE_SET with empty unicast and multicast",
-                VIRTIO_SPEC_V1_2, "5.1.6.5", VV_QUEUE_LAST);
+                VIRTIO_SPEC_V1_2, "5.1.6.5", VV_QUEUE_LAST,
+                (1ULL << VIRTIO_NET_F_CTRL_VQ) |
+                (1ULL << VIRTIO_NET_F_CTRL_RX), 0);

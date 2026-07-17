@@ -17,6 +17,10 @@
 static test_result_t test_net_notf_coal_vq_get(struct virtio_dev *dev,
                                                struct vring *vr)
 {
+    if (!virtio_pci_feature_offered(dev, VIRTIO_NET_F_CTRL_VQ) ||
+        !virtio_pci_feature_offered(dev, VIRTIO_NET_F_NOTF_COAL))
+        return TEST_SKIP;
+
     struct virtio_net_ctrl_hdr *ctrl = vv_alloc_pages(1);
     struct virtio_net_ctrl_coal_vq_get_req *req =
         (struct virtio_net_ctrl_coal_vq_get_req *)((uint8_t *)ctrl + sizeof(*ctrl));
@@ -52,6 +56,8 @@ static test_result_t test_net_notf_coal_vq_get(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST_Q(N0095, VIRTIO_PCI_DEVICE_NET, test_net_notf_coal_vq_get,
+REGISTER_TEST_Q_REQUIRES(N0095, VIRTIO_PCI_DEVICE_NET, test_net_notf_coal_vq_get,
               "NOTF_COAL VQ_GET readback",
-              VIRTIO_SPEC_V1_3, "5.1.6.5", VV_QUEUE_LAST);
+              VIRTIO_SPEC_V1_3, "5.1.6.5", VV_QUEUE_LAST,
+              (1ULL << VIRTIO_NET_F_CTRL_VQ) |
+              (1ULL << VIRTIO_NET_F_NOTF_COAL), 0);

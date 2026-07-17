@@ -18,6 +18,10 @@
 static test_result_t test_net_ctrl_rx_nomulti(struct virtio_dev *dev,
                                               struct vring *vr)
 {
+    if (!virtio_pci_feature_offered(dev, VIRTIO_NET_F_CTRL_VQ) ||
+        !virtio_pci_feature_offered(dev, VIRTIO_NET_F_CTRL_RX))
+        return TEST_SKIP;
+
     struct virtio_net_ctrl_hdr *ctrl = vv_alloc_pages(1);
     uint8_t *on_off = (uint8_t *)ctrl + sizeof(*ctrl);
     uint8_t *status = vv_alloc_pages(1);
@@ -43,6 +47,8 @@ static test_result_t test_net_ctrl_rx_nomulti(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST_Q(N0106, VIRTIO_PCI_DEVICE_NET, test_net_ctrl_rx_nomulti,
+REGISTER_TEST_Q_REQUIRES(N0106, VIRTIO_PCI_DEVICE_NET, test_net_ctrl_rx_nomulti,
                 "CTRL_RX NOMULTI via extended RX filter",
-                VIRTIO_SPEC_V1_3, "5.1.6.5.1", VV_QUEUE_LAST);
+                VIRTIO_SPEC_V1_3, "5.1.6.5.1", VV_QUEUE_LAST,
+                (1ULL << VIRTIO_NET_F_CTRL_VQ) |
+                (1ULL << VIRTIO_NET_F_CTRL_RX), 0);

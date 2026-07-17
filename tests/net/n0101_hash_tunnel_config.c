@@ -19,6 +19,10 @@
 static test_result_t test_net_hash_tunnel(struct virtio_dev *dev,
                                           struct vring *vr)
 {
+    if (!virtio_pci_feature_offered(dev, VIRTIO_NET_F_CTRL_VQ) ||
+        !virtio_pci_feature_offered(dev, VIRTIO_NET_F_HASH_REPORT))
+        return TEST_SKIP;
+
     struct virtio_net_ctrl_hdr *ctrl = vv_alloc_pages(1);
     struct virtio_net_hash_config *hcfg =
         (struct virtio_net_hash_config *)((uint8_t *)ctrl + sizeof(*ctrl));
@@ -49,6 +53,8 @@ static test_result_t test_net_hash_tunnel(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST_Q(N0101, VIRTIO_PCI_DEVICE_NET, test_net_hash_tunnel,
+REGISTER_TEST_Q_REQUIRES(N0101, VIRTIO_PCI_DEVICE_NET, test_net_hash_tunnel,
                 "Hash config for tunnel inner headers",
-                VIRTIO_SPEC_V1_3, "5.1.6.5.4", VV_QUEUE_LAST);
+                VIRTIO_SPEC_V1_3, "5.1.6.5.4", VV_QUEUE_LAST,
+                (1ULL << VIRTIO_NET_F_CTRL_VQ) |
+                (1ULL << VIRTIO_NET_F_HASH_REPORT), 0);

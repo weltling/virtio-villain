@@ -21,6 +21,10 @@
 static test_result_t test_net_mac_set_broadcast(struct virtio_dev *dev,
                                                 struct vring *vr)
 {
+    if (!virtio_pci_feature_offered(dev, VIRTIO_NET_F_CTRL_VQ) ||
+        !virtio_pci_feature_offered(dev, VIRTIO_NET_F_CTRL_MAC_ADDR))
+        return TEST_SKIP;
+
     (void)vr;
 
     struct vring cvr;
@@ -48,6 +52,8 @@ static test_result_t test_net_mac_set_broadcast(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &cvr, VV_QUEUE_LAST, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(N0118, VIRTIO_PCI_DEVICE_NET, test_net_mac_set_broadcast,
+REGISTER_TEST_REQUIRES(N0118, VIRTIO_PCI_DEVICE_NET, test_net_mac_set_broadcast,
               "CTRL_MAC_ADDR_SET with broadcast MAC",
-              VIRTIO_SPEC_V1_2, "5.1.6.5.1");
+              VIRTIO_SPEC_V1_2, "5.1.6.5.1",
+              (1ULL << VIRTIO_NET_F_CTRL_VQ) |
+              (1ULL << VIRTIO_NET_F_CTRL_MAC_ADDR), 0);
