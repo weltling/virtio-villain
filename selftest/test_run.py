@@ -1062,6 +1062,23 @@ def test_unit_merge_streams_appends_stderr():
     assert f("out", [b"log1\n", b"log2\n"]) == "out\nlog1\nlog2\n"
 
 
+def test_unit_desc_column_width_caps_at_longest():
+    """A wide terminal caps the description column at the longest desc."""
+    # cols 200, other columns take 35, longest description is 40.
+    assert RUN_MOD._desc_column_width(200, 40, 35) == 40
+
+
+def test_unit_desc_column_width_limited_by_terminal():
+    """A narrow terminal shrinks the column below the longest desc."""
+    # cols 60, fixed 35 leaves 25, which is below the longest desc 40.
+    assert RUN_MOD._desc_column_width(60, 40, 35) == 25
+
+
+def test_unit_desc_column_width_floor():
+    """A very narrow terminal still leaves a minimum column."""
+    assert RUN_MOD._desc_column_width(30, 40, 35) == 10
+
+
 class _StderrNoiseBackend:
     """Fake backend that reports one test on stdout and puts a second,
     conflicting verdict marker on stderr.

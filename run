@@ -1868,6 +1868,17 @@ def _normalize_mem(value):
     return value.strip().upper()
 
 
+def _desc_column_width(cols, longest_desc, fixed):
+    """Width of the description column in the result table.
+
+    Capped at the longest description in the run so a wide terminal does
+    not pad each line with a long run of spaces before the version and
+    section columns, and floored at 10 so a narrow terminal still shows
+    something. fixed is the width taken by the other columns.
+    """
+    return max(10, min(cols - fixed, longest_desc))
+
+
 def main():
     print_banner(sys.stderr)
     parser = argparse.ArgumentParser(description="virtio-villain test runner")
@@ -2277,6 +2288,13 @@ def main():
     _RESET = "\033[0m"
     _DIM = "\033[2m"
 
+    # Longest description among the tests in this run. The result table
+    # pads the description column to this width so it stays aligned
+    # without stretching to the full terminal width.
+    _desc_col = max(
+        (len(test_info.get(t, ("", "", ""))[0]) for t in tests),
+        default=10)
+
     def _color_status(status):
         if not is_tty:
             return f"[{status}]"
@@ -2304,9 +2322,10 @@ def main():
             cols = 80
         # Layout: TAG(8) SP NAME(5) SP DESC SP VER(4) SP SEC(12)
         fixed = tag_fixed + 1 + name_w + 1 + 1 + ver_w + 1 + sec_w
-        desc_max = cols - fixed
-        if desc_max < 10:
-            desc_max = 10
+        # Cap the description column at the longest description in the
+        # run so a wide terminal does not pad every line with a long run
+        # of spaces before the version and section columns.
+        desc_max = _desc_column_width(cols, _desc_col, fixed)
         desc, ver, sec = test_info.get(name, ("", "", ""))
         if len(desc) > desc_max:
             desc = desc[:desc_max - 1] + "~"
