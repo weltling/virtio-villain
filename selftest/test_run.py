@@ -1024,6 +1024,33 @@ def test_unit_batch_timeout_preserves_printed_verdicts():
     assert verdicts["T0003"] == "WEDGED"
 
 
+def test_unit_batch_idle_watchdog_bounds_hang():
+    """A hang mid batch trips one timeout after the last verdict.
+
+    The batch budget is timeout * ntests, but the idle watchdog resets
+    on each printed verdict, so a stalled test is killed about one
+    timeout after the previous test reported rather than after the whole
+    scaled budget. Without the watchdog this run would block for the
+    full effective_timeout.
+    """
+    import time as _time
+    timeout = 2
+    tests = ["T0001", "T0002", "T0003", "T0004"]
+    effective = timeout * len(tests)
+    start = _time.monotonic()
+    results = RUN_MOD.run_test(
+        _TimeoutBackend(), "kernel", tests, timeout, 0, False, "raw", {})
+    elapsed = _time.monotonic() - start
+    assert elapsed < effective - timeout, (
+        f"idle watchdog did not bound the hang: {elapsed:.1f}s "
+        f"(budget {effective}s)")
+    verdicts = {name: st for name, st, _ in results}
+    assert verdicts["T0001"] == "PASS"
+    assert verdicts["T0002"] == "PASS"
+    assert verdicts["T0003"] == "WEDGED"
+    assert verdicts["T0004"] == "WEDGED"
+
+
 def test_unit_merge_streams_no_stderr():
     f = RUN_MOD._merge_streams
     assert f("out", []) == "out"

@@ -1069,10 +1069,10 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
     else:
         test_names = list(test_name)
     batch = len(test_names) > 1
-    # A batch runs every test in one VM, so the timeout budget scales
-    # with the number of tests. A single per test timeout routinely
-    # trips under heavy parallelism and kills the VM mid batch, wedging
-    # the tests that had not run yet. A single test keeps its own
+    # A batch runs every test in one VM. effective_timeout is the
+    # absolute budget for the whole batch, while an idle watchdog (see
+    # the read loop) bounds any single hung test to about one per test
+    # timeout by resetting on each verdict. A single test keeps its own
     # budget since the factor is one.
     effective_timeout = timeout * len(test_names)
     suffix = {"raw": ".raw", "qcow2": ".qcow2", "vhd": ".vhd",
@@ -1267,6 +1267,9 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
                 target=_sc_run, name=f"sidecar-{test_names[0]}", daemon=True)
             sidecar_thread.start()
         timer_fired = [False]
+        timer_lock = threading.Lock()
+        current_timer = [None]
+        start_mono = time.monotonic()
 
         def _on_timeout():
             timer_fired[0] = True
@@ -1274,10 +1277,30 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
                 proc.kill()
             else:
                 _kill_proc(proc)
-        timer = threading.Timer(effective_timeout, _on_timeout)
-        timer.start()
-        scan_from = 0
+
+        def _arm_watchdog():
+            # Idle watchdog. Fire when no new verdict appears within one
+            # per test timeout, but never run past the absolute batch
+            # budget. Resetting on progress bounds a single hung test to
+            # about one timeout instead of the whole scaled budget, so a
+            # stalled test in a large batch no longer holds the VM for
+            # the full effective_timeout.
+            with timer_lock:
+                if current_timer[0] is not None:
+                    current_timer[0].cancel()
+                remaining = effective_timeout - (time.monotonic() - start_mono)
+                window = min(timeout, remaining)
+                if window <= 0:
+                    _on_timeout()
+                    return
+                t = threading.Timer(window, _on_timeout)
+                t.daemon = True
+                current_timer[0] = t
+                t.start()
+
+        _arm_watchdog()
         marker_seen = False
+        markers_found = 0
         for chunk in iter(lambda: proc.stdout.read1(4096), b""):
             if console:
                 sys.stdout.buffer.write(chunk)
@@ -1287,35 +1310,36 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
             if not marker_seen:
                 with output_lock:
                     joined = b"".join(chunks)
-                # Search only the unscanned tail, with a small overlap
-                # to catch a marker straddling a chunk boundary. Strip
-                # any interleaved VMM log lines so we still recognise
-                # markers split across CH's own writes.
-                tail_start = max(scan_from - 16, 0)
-                tail = joined[tail_start:]
-                cleaned_tail = vmm_noise_re.sub(b"", tail)
+                # Strip interleaved VMM log lines so markers split across
+                # CH's own writes are still recognised, then count the
+                # verdicts seen so far across the whole stream.
+                cleaned = vmm_noise_re.sub(b"", joined)
+                total = len(marker_re.findall(cleaned))
+                if total > markers_found:
+                    # A test just reported. Reset the idle watchdog so
+                    # only a real stall trips it.
+                    markers_found = total
+                    _arm_watchdog()
                 if batch:
-                    # In batch mode, count how many verdict markers
-                    # we have seen so far. Kill only after all tests
-                    # in the batch have reported.
-                    found = len(marker_re.findall(cleaned_tail))
-                    if found >= len(test_names):
+                    # Kill only after every test in the batch reported.
+                    if markers_found >= len(test_names):
                         marker_seen = True
                         _kill_proc(proc)
-                elif marker_re.search(cleaned_tail):
+                elif markers_found >= 1:
                     marker_seen = True
                     if console:
                         proc.kill()
                     else:
                         _kill_proc(proc)
-                scan_from = len(joined)
         proc.wait()
-        timer.cancel()
+        with timer_lock:
+            if current_timer[0] is not None:
+                current_timer[0].cancel()
         timed_out = not marker_seen and timer_fired[0]
         if old_sigint is not None:
             signal.signal(signal.SIGINT, old_sigint)
         if timed_out:
-            raise subprocess.TimeoutExpired(cmd, effective_timeout)
+            raise subprocess.TimeoutExpired(cmd, timeout)
         if err_thread is not None:
             err_thread.join(timeout=5)
         parse_text = b"".join(chunks).decode(errors="replace")
@@ -1334,7 +1358,7 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
         # that never printed a marker stay WEDGED; append a timeout note
         # for the single test case where the run itself is the failure.
         parse_text = b"".join(chunks).decode(errors="replace") + \
-            f"\n[vv] TIMEOUT after {effective_timeout}s\n"
+            f"\n[vv] TIMEOUT after {timeout}s with no progress\n"
         output = _merge_streams(parse_text, err_chunks)
         status = "FAIL"
     except KeyboardInterrupt:
