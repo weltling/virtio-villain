@@ -326,6 +326,7 @@ def enable_sysconfigs(vmm_path=None):
     atexit.register(revert_ptrace_cap, vmm_path, cap_orig)
 
     def _on_signal(signum, _frame):
+        _kill_all_live_procs()
         revert_sysconfigs(restore)
         revert_ptrace_cap(vmm_path, cap_orig)
         # Restore default disposition and re raise so the process dies
@@ -700,6 +701,26 @@ def _kill_all_live_procs():
         try:
             p.wait(timeout=2)
         except subprocess.TimeoutExpired:
+            pass
+
+
+def _install_termination_as_interrupt():
+    """Route SIGTERM and SIGHUP through the KeyboardInterrupt cleanup.
+
+    `timeout` sends SIGTERM and a closed controlling terminal sends
+    SIGHUP. Under their default disposition the process dies without
+    unwinding the stack, so the run loop cleanup that SIGKILLs tracked
+    VMMs is skipped and in-flight VMs are left reparented to init.
+    Raising KeyboardInterrupt makes both signals take the existing
+    interrupt path that reaps every tracked VMM before exit.
+    """
+    def _raise_interrupt(_signum, _frame):
+        raise KeyboardInterrupt
+
+    for sig in (signal.SIGTERM, signal.SIGHUP):
+        try:
+            signal.signal(sig, _raise_interrupt)
+        except (ValueError, OSError):
             pass
 
 
@@ -1939,6 +1960,8 @@ def main():
     parser.add_argument("tests", nargs="*",
                         help="Test IDs to run (default: all)")
     args = parser.parse_args()
+
+    _install_termination_as_interrupt()
 
     if args.apply_sysconfig:
         enable_sysconfigs(args.vmm)

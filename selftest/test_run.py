@@ -2030,6 +2030,35 @@ def test_revert_ptrace_cap_noop_when_unchanged():
 
 
 # ---------------------------------------------------------------------------
+# Termination cleanup: SIGTERM/SIGHUP must reap tracked VMMs.
+#
+# `timeout` sends SIGTERM. Without a handler the process dies without
+# unwinding and the run loop's SIGKILL sweep never runs, orphaning any
+# in-flight VM. _install_termination_as_interrupt routes those signals
+# through the KeyboardInterrupt path that already reaps them.
+
+def test_unit_install_termination_as_interrupt_sets_handlers():
+    """SIGTERM and SIGHUP get handlers that raise KeyboardInterrupt."""
+    import signal as _signal
+    installed = {}
+    orig = RUN_MOD.signal.signal
+    RUN_MOD.signal.signal = lambda sig, h: installed.__setitem__(sig, h)
+    try:
+        RUN_MOD._install_termination_as_interrupt()
+    finally:
+        RUN_MOD.signal.signal = orig
+    assert _signal.SIGTERM in installed
+    assert _signal.SIGHUP in installed
+    for sig in (_signal.SIGTERM, _signal.SIGHUP):
+        try:
+            installed[sig](sig, None)
+        except KeyboardInterrupt:
+            continue
+        raise AssertionError(
+            f"handler for {sig} must raise KeyboardInterrupt")
+
+
+# ---------------------------------------------------------------------------
 
 def main():
     setup()
