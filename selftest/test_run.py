@@ -2103,6 +2103,219 @@ def test_unit_install_termination_as_interrupt_sets_handlers():
 
 
 # ---------------------------------------------------------------------------
+# Spec section traceability guard.
+#
+# Every REGISTER_TEST cites a spec version and a section string. This guard
+# validates those citations against selftest/spec_sections.txt, the
+# version-keyed map of virtio device chapters extracted from the OASIS spec
+# source. It catches the defect class where a wrong chapter number sneaks
+# into a new registration: a device dir citing another device's chapter, a
+# non-numeric placeholder, a nonexistent chapter, or an admin test tagged to
+# a version without admin virtqueues.
+
+SPEC_MAP_FILE = os.path.join(SCRIPT_DIR, "spec_sections.txt")
+TESTS_DIR = os.path.join(ROOT_DIR, "tests")
+
+# Directories that are not device types. Their tests drive a device to
+# exercise a generic transport or virtqueue clause, so a chapter 5 citation
+# in these dirs is legitimate and not checked against a device chapter.
+_NON_DEVICE_DIRS = {"vring", "packed", "pci", "mmio", "state", "admin"}
+
+
+def load_spec_map(path=SPEC_MAP_FILE):
+    """Parse spec_sections.txt into (devices, rules).
+
+    devices: key -> {version: "5.x" or None}
+    rules:   version -> {"admin": bool, "max_chapter": int}
+    The device-table column layout is read from the "# id key V1_x ..."
+    header, so extra columns (id) and added version columns need no code
+    change. "key" is the virtio-villain test directory name.
+    """
+    import re as _re
+    devices = {}
+    rules = {}
+    key_idx = None
+    ver_cols = None
+    with open(path) as fh:
+        for raw in fh:
+            line = raw.rstrip("\n")
+            stripped = line.strip()
+            if key_idx is None and stripped.startswith("#"):
+                toks = stripped.lstrip("#").split()
+                vcols = [(i, t) for i, t in enumerate(toks)
+                         if _re.fullmatch(r"V\d_\d", t)]
+                if "key" in toks and vcols:
+                    key_idx = toks.index("key")
+                    ver_cols = vcols
+                    continue
+            if not stripped or stripped.startswith("#"):
+                continue
+            code = stripped.split("#", 1)[0].strip()
+            if not code:
+                continue
+            fields = code.split()
+            if fields[0].startswith("@"):
+                rules[fields[0][1:]] = {
+                    "admin": fields[1].lower() == "yes",
+                    "max_chapter": int(fields[2]),
+                }
+            else:
+                devices[fields[key_idx]] = {
+                    t: (None if fields[i] == "-" else fields[i])
+                    for i, t in ver_cols
+                }
+    if key_idx is None:
+        raise ValueError(f"{path}: missing '# id key V1_x ...' header row")
+    return devices, rules
+
+
+def spec_section_violation(dirname, version, section, devices, rules):
+    """Return a violation reason for one registration, or None if valid.
+
+    version is the short form, e.g. "V1_2".
+    """
+    rule = rules.get(version)
+    if rule is None:
+        return f"unknown spec version {version}"
+
+    dev = devices.get(dirname)
+    no_chapter = dev is not None and dev.get(version) is None
+
+    # 0. "-" is the sentinel for a device that has no chapter in this
+    # version (e.g. watchdog). Valid only for such a device.
+    if section == "-":
+        if no_chapter:
+            return None
+        return f"section '-' used but {dirname} has a chapter in {version}"
+
+    # 1. Section must be numeric (a real chapter number).
+    head = section.split(".", 1)[0]
+    if not head.isdigit():
+        return f"non-numeric section '{section}'"
+    chapter = int(head)
+
+    # 2. Chapter must exist in this version.
+    if chapter < 1 or chapter > rule["max_chapter"]:
+        return (f"chapter {chapter} out of range 1..{rule['max_chapter']} "
+                f"for {version} (section '{section}')")
+
+    # 3. Admin virtqueue tests require a version that has admin.
+    if dirname == "admin" and not rule["admin"]:
+        return f"admin test tagged {version} which has no admin virtqueues"
+
+    # 4. Device chapter (5.x) must match this dir's chapter.
+    if dev is not None and section.startswith("5."):
+        expected = dev.get(version)
+        if expected is None:
+            return (f"{dirname} has no device chapter in {version} "
+                    f"but cites '{section}'")
+        parts = section.split(".")
+        got = parts[0] + "." + (parts[1] if len(parts) > 1 else "")
+        if got != expected:
+            return (f"{dirname} cites '{section}' but its chapter in "
+                    f"{version} is {expected}")
+    return None
+
+
+def iter_registrations(tests_dir=TESTS_DIR):
+    """Yield (test_id, dirname, version, section, file) for every test.
+
+    Parses the REGISTER_TEST* macros directly from source so the guard
+    needs no build.
+    """
+    import re as _re
+    macro = _re.compile(
+        r"REGISTER_TEST\w*\s*\(([^;]*?)\)\s*;", _re.DOTALL)
+    ver_sec = _re.compile(
+        r"(?:VIRTIO_SPEC_)?(V1_\d)\s*,\s*\"([^\"]*)\"")
+    ident = _re.compile(r"\s*(\w+)")
+    for root, _dirs, files in os.walk(tests_dir):
+        for fn in files:
+            if not fn.endswith(".c"):
+                continue
+            path = os.path.join(root, fn)
+            dirname = os.path.basename(root)
+            with open(path) as fh:
+                text = fh.read()
+            for m in macro.finditer(text):
+                body = m.group(1)
+                vs = ver_sec.search(body)
+                if not vs:
+                    continue
+                name = ident.match(body)
+                tid = name.group(1) if name else "?"
+                yield tid, dirname, vs.group(1), vs.group(2), path
+
+
+def test_spec_sections_consistent():
+    """Every REGISTER_TEST section agrees with the spec section map."""
+    devices, rules = load_spec_map()
+    problems = []
+    for tid, dirname, version, section, path in iter_registrations():
+        reason = spec_section_violation(dirname, version, section,
+                                        devices, rules)
+        if reason:
+            rel = os.path.relpath(path, ROOT_DIR)
+            problems.append(f"{tid} [{rel}]: {reason}")
+    assert not problems, (
+        "spec section defects:\n  " + "\n  ".join(sorted(problems)))
+
+
+def test_unit_load_spec_map_shapes():
+    devices, rules = load_spec_map()
+    assert devices["mem"]["V1_2"] == "5.15"
+    assert devices["pmem"]["V1_4"] == "5.19"
+    assert devices["rtc"]["V1_2"] is None
+    assert devices["rtc"]["V1_4"] == "5.23"
+    assert devices["watchdog"]["V1_4"] is None
+    assert rules["V1_2"]["admin"] is False
+    assert rules["V1_3"]["admin"] is True
+    assert rules["V1_2"]["max_chapter"] == 7
+
+
+def test_unit_spec_violation_device_chapter_mismatch():
+    devices, rules = load_spec_map()
+    # mem cited as 5.14 (sound) is wrong; 5.15 is right.
+    assert spec_section_violation(
+        "mem", "V1_2", "5.14.6.2", devices, rules)
+    assert spec_section_violation(
+        "mem", "V1_2", "5.15.6.2", devices, rules) is None
+
+
+def test_unit_spec_violation_non_numeric_and_bad_chapter():
+    devices, rules = load_spec_map()
+    assert spec_section_violation("rtc", "V1_4", "RTC.5", devices, rules)
+    assert spec_section_violation("admin", "V1_3", "9.4", devices, rules)
+
+
+def test_unit_spec_violation_admin_version_gate():
+    devices, rules = load_spec_map()
+    # A chapter 2 admin section is invalid when tagged to v1.2.
+    assert spec_section_violation("admin", "V1_2", "2.13", devices, rules)
+    assert spec_section_violation("admin", "V1_3", "2.13", devices, rules) is None
+
+
+def test_unit_spec_violation_no_chapter_device():
+    devices, rules = load_spec_map()
+    # watchdog has no device chapter, so any 5.x is a defect, but a
+    # generic virtqueue citation is fine.
+    assert spec_section_violation("watchdog", "V1_2", "5.16", devices, rules)
+    assert spec_section_violation(
+        "watchdog", "V1_2", "2.7.5", devices, rules) is None
+    # "-" is the accepted no-chapter sentinel for watchdog.
+    assert spec_section_violation(
+        "watchdog", "V1_2", "-", devices, rules) is None
+    # but a real device must not use the sentinel.
+    assert spec_section_violation("mem", "V1_2", "-", devices, rules)
+
+
+def test_unit_spec_violation_non_device_dir_allows_5x():
+    devices, rules = load_spec_map()
+    # vring drives the block device, so citing 5.2.6 is legitimate.
+    assert spec_section_violation("vring", "V1_2", "5.2.6", devices, rules) is None
+
+
+# ---------------------------------------------------------------------------
 
 def main():
     setup()

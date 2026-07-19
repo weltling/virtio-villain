@@ -1,0 +1,82 @@
+# virtio device registry and spec section map for the traceability guard.
+#
+# Source of truth: the OASIS virtio-spec content.tex Device Types table
+# (device id -> name) and the \input order that assigns chapter 5 numbers.
+# Verified against tags v1.2-cs01, v1.3-wd02 and v1.4-cs01.
+#
+# This lists EVERY device id in the registry for every supported version,
+# not only the ones virtio-villain tests. Most ids have no normative
+# chapter; their chapter columns are "-". A device id present only from a
+# later version still gets a row (its chapter is "-" until it gains one).
+#
+# Numeric chapters are 1..7 (Introduction, Basic Facilities, General
+# Initialization, Virtio Transport Options, Device Types, Reserved Feature
+# Bits, Conformance). Appendices are lettered, so no numeric chapter >= 8
+# exists; that is the max_chapter rule at the bottom.
+#
+# Columns:
+#   id    virtio device id (decimal)
+#   key   virtio-villain test directory name, or a slug if untested
+#   V1_x  the device's chapter in that version, or "-" for none
+# The trailing comment gives the spec device name (and notes renames).
+#
+# When bumping to a new spec version add a V column here and an @Vx_y rule
+# row, after rechecking the Device Types table and \input order.
+#
+# id   key             V1_2    V1_3    V1_4
+0      reserved        -       -       -       # reserved (invalid)
+1      net             5.1     5.1     5.1     # network device (v1.2 "network card")
+2      blk             5.2     5.2     5.2     # block device
+3      console         5.3     5.3     5.3     # console
+4      rng             5.4     5.4     5.4     # entropy source
+5      balloon         5.5     5.5     5.5     # memory ballooning (traditional)
+6      iomem           -       -       -       # ioMemory
+7      rpmsg           -       -       -       # rpmsg
+8      scsi            5.6     5.6     5.6     # SCSI host
+9      p9              -       -       -       # 9P transport
+10     mac80211        -       -       -       # mac80211 wlan
+11     rprocserial     -       -       -       # rproc serial
+12     caif            -       -       -       # virtio CAIF
+13     balloonlegacy   -       -       -       # memory balloon
+16     gpu             5.7     5.7     5.7     # GPU device
+17     rtc             -       -       5.23    # Timer/Clock (v1.2/v1.3), RTC (v1.4)
+18     input           5.8     5.8     5.8     # Input device
+19     vsock           5.10    5.10    5.10    # Socket device
+20     crypto          5.9     5.9     5.9     # Crypto device
+21     sigdist         -       -       -       # Signal Distribution Module
+22     pstore          -       -       -       # pstore device
+23     iommu           5.13    5.13    5.13    # IOMMU device
+24     mem             5.15    5.15    5.15    # Memory device
+25     sound           5.14    5.14    5.14    # Audio (v1.2), Sound (v1.3+)
+26     fs              5.11    5.11    5.11    # file system device
+27     pmem            5.19    5.19    5.19    # PMEM device
+28     rpmb            5.12    5.12    5.12    # RPMB device
+29     mac80211hwsim   -       -       -       # mac80211 hwsim simulation device
+30     videoenc        -       -       -       # Video encoder device
+31     videodec        -       -       -       # Video decoder device
+32     scmi            5.17    5.17    5.17    # SCMI device
+33     nitrosecure     -       -       -       # NitroSecureModule
+34     i2c             5.16    5.16    5.16    # I2C adapter
+35     watchdog        -       -       -       # Watchdog (no normative chapter)
+36     can             -       -       5.20    # CAN device (chapter added v1.4)
+38     paramserver     -       -       -       # Parameter Server
+39     audiopolicy     -       -       -       # Audio policy device
+40     bluetooth       -       -       -       # Bluetooth device
+41     gpio            5.18    5.18    5.18    # GPIO device
+42     rdma            -       -       -       # RDMA device
+43     camera          -       -       -       # Camera device (v1.3+)
+44     ism             -       -       -       # ISM device (v1.3+)
+45     spi             -       -       5.21    # SPI master (v1.3), SPI controller (v1.4)
+46     tee             -       -       -       # TEE device (v1.4+)
+47     cpuballoon      -       -       -       # CPU balloon device (v1.4+)
+48     media           -       -       5.22    # Media device (v1.4)
+49     usb             -       -       -       # USB controller (v1.4+)
+
+# Per-version facts.
+#   admin        admin virtqueues (chapter 2) exist in this version
+#   max_chapter  highest numeric chapter that may appear in a section
+#
+# version    admin   max_chapter
+@V1_2        no      7
+@V1_3        yes     7
+@V1_4        yes     7
