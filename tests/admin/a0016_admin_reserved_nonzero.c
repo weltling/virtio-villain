@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * A0016: Admin command with all reserved header bytes non-zero (spec 9.4)
+ * A0016: Admin command with all reserved header bytes non-zero (spec 2.13)
  *
  * The admin cmd header has 12 reserved bytes. Set them all to 0xFF.
  * The device must ignore reserved fields without crashing.

@@ -2,7 +2,7 @@
 /*
  * RTC0031: CLOCK_CAP response split across two writable descriptors.
  *
- * Spec draft RTC.5: the device must honour the descriptor chain
+ * Spec 5.23.6: the device must honour the descriptor chain
  * geometry when writing a response. The 16-byte CLOCK_CAP response
  * is offered as two writable descriptors (status half and capability
  * half). A device that assumes a single contiguous response buffer

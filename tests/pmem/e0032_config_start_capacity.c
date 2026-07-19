@@ -2,7 +2,7 @@
 /*
  * E0032: read pmem config start address and capacity.
  *
- * Spec 5.16.4: When VIRTIO_PMEM_F_SHMEM_REGION is offered the
+ * Spec 5.19.4: When VIRTIO_PMEM_F_SHMEM_REGION is offered the
  * device config contains start (offset 0) and capacity (offset 8).
  * Without the feature, the device still has a start and size pair.
  * Read both and verify capacity is non zero.

@@ -3,7 +3,7 @@
  * A0024: admin_legacy_cfg_write
  *
  * Issue a legacy common configuration write command via admin VQ.
- * Spec v1.3 9.4: VIRTIO_ADMIN_CMD_LEGACY_COMMON_CFG_WRITE allows
+ * Spec v1.3 2.13: VIRTIO_ADMIN_CMD_LEGACY_COMMON_CFG_WRITE allows
  * the owner to write legacy registers of a group member.
  */
 #include "tests/test.h"

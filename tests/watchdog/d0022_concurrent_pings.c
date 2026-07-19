@@ -2,7 +2,7 @@
 /*
  * D0022: Watchdog concurrent pings.
  *
- * Spec 5.20: Submit two watchdog pings in the same avail ring
+ * Submit two watchdog pings in the same avail ring
  * batch. The device must handle multiple in flight pings without
  * confusion or double completion.
  */

@@ -5,7 +5,7 @@
  * Submit a request with an undefined type value. The device must
  * return an error or handle gracefully without crashing.
  *
- * Spec 5.10.6.1: Robustness test.
+ * Spec 5.19.6.1: Robustness test.
  */
 #include "tests/test.h"
 #include "lib/util.h"

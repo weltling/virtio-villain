@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * A0014: Admin LIST_USE with maximum group size (spec 9.4)
+ * A0014: Admin LIST_USE with maximum group size (spec 2.13)
  *
  * Submit LIST_USE with group_type set to maximum valid value
  * and a large response buffer. Tests device handling of

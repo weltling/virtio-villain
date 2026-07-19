@@ -2,7 +2,7 @@
 /*
  * R0022: Plug at exact block boundaries.
  *
- * Spec 5.14.6.1: Verify that plugging exactly the first block
+ * Spec 5.15.6.1: Verify that plugging exactly the first block
  * and last block of the usable region are handled correctly.
  * Both addresses must be block_size aligned and within range.
  */

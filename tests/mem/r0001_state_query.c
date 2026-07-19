@@ -5,7 +5,7 @@
  * Submit a VIRTIO_MEM_REQ_STATE request to query the plug state
  * of a memory block.
  *
- * Spec 5.14.6.2: The driver may query the state of blocks.
+ * Spec 5.15.6.2: The driver may query the state of blocks.
  */
 #include "tests/test.h"
 #include "lib/util.h"

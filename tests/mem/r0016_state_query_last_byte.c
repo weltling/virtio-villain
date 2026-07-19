@@ -3,7 +3,7 @@
  * R0016: mem_state_query_last_byte
  *
  * Query state for an address one block below region_size. Spec
- * 5.14.6.2 says the query must succeed for any address inside
+ * 5.15.6.2 says the query must succeed for any address inside
  * the configured region. The device must report a real state
  * rather than treating the last block as out of range.
  */

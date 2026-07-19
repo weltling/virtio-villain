@@ -2,7 +2,7 @@
 /*
  * RTC0018: alarm SET then NOTIF_ALARM delivered on alarmq.
  *
- * Spec RTC.5 says when VIRTIO_RTC_F_ALARM is negotiated the
+ * Spec 5.23.6 says when VIRTIO_RTC_F_ALARM is negotiated the
  * driver may post a SET_ALARM request with FLAG_ALARM_ENABLED
  * and a past or zero alarm_time. The device must consider this
  * an immediate alarm expiration event and deliver a single

@@ -4,7 +4,7 @@
  *
  * Submit a VIRTIO_MEM_REQ_UNPLUG_ALL request to unplug all blocks.
  *
- * Spec 5.14.6.2: The device unplugs all currently plugged blocks.
+ * Spec 5.15.6.2: The device unplugs all currently plugged blocks.
  */
 #include "tests/test.h"
 #include "lib/util.h"

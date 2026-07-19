@@ -2,7 +2,7 @@
 /*
  * RTC0027: RTC READ_TIME with zero response length.
  *
- * Spec RTC.5: Submit a READ_TIME request where the writable
+ * Spec 5.23.6: Submit a READ_TIME request where the writable
  * response descriptor has length 0. The device must not write
  * past the descriptor boundary.
  */

@@ -3,7 +3,7 @@
  * E0024: Pmem flush chain with two request descriptors before
  * the writable response.
  *
- * Spec 5.10.6.1: A flush chain is exactly one readable request
+ * Spec 5.19.6.1: A flush chain is exactly one readable request
  * followed by one writable response. Submit a chain with two
  * readable request descriptors followed by a single writable
  * response. The device must reject the malformed chain rather

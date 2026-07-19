@@ -3,7 +3,7 @@
  * D0014: watchdog_zero_len_chain
  *
  * Submit a chain of seventeen zero length writable descriptors.
- * Spec 5.16 expects the watchdog to consume a single writable
+ * The watchdog is expected to consume a single writable
  * descriptor per ping; this malformed chain must not be treated
  * as a ping nor reset the host.
  */

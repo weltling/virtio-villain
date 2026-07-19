@@ -5,7 +5,7 @@
  * Send UNPLUG for a block address that was never PLUGged. Device
  * must reject with appropriate error rather than silently drop.
  *
- * Spec 5.14.6.2.
+ * Spec 5.15.6.2.
  */
 #include "tests/test.h"
 #include "lib/util.h"

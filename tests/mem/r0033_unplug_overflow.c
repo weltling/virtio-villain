@@ -2,7 +2,7 @@
 /*
  * R0033: virtio-mem UNPLUG with addr + length overflowing u64.
  *
- * Spec 5.14.6.2: A range must lie within the usable region. An
+ * Spec 5.15.6.2: A range must lie within the usable region. An
  * UNPLUG whose addr plus nb_blocks*block_size overflows a 64
  * bit value can confuse a device that bounds checks the end
  * address by computing it without overflow detection. Submit

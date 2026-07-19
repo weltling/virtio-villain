@@ -5,7 +5,7 @@
  * Response descriptor len=1 GiB but backed by one page. Device
  * must clamp or reject without overrunning the page.
  *
- * Spec 5.10.6.1.
+ * Spec 5.19.6.1.
  */
 #include "tests/test.h"
 #include "lib/util.h"

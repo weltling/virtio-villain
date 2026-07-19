@@ -5,7 +5,7 @@
  * Submit a request without a device-writable response descriptor.
  * The device must detect the malformed chain.
  *
- * Spec 5.10.6.1: Robustness test.
+ * Spec 5.19.6.1: Robustness test.
  */
 #include "tests/test.h"
 #include "lib/util.h"

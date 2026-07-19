@@ -2,7 +2,7 @@
 /*
  * D0027: Watchdog ping with a one byte writable descriptor.
  *
- * Spec 5.20: The watchdog only requires a tiny pong buffer.
+ * The watchdog only requires a tiny pong buffer.
  * Submit a single byte writable descriptor. The device must
  * accept the minimal buffer and complete the ping without
  * underrunning or rounding the length up to a larger size.

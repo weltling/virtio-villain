@@ -3,7 +3,7 @@
  * A0018: Submit admin command with data_len larger than the available
  * descriptor buffer.
  *
- * Spec 9.4: The command header's data_len field claims more data
+ * Spec 2.13: The command header's data_len field claims more data
  * than the descriptor's len provides. The device must handle this
  * mismatch without crashing.
  */

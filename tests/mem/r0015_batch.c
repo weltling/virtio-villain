@@ -5,7 +5,7 @@
  * Submit several plug requests back-to-back across distinct
  * descriptor pairs to exercise multi-request handling.
  *
- * Spec 5.14.6.2.
+ * Spec 5.15.6.2.
  */
 #include "tests/test.h"
 #include "lib/util.h"

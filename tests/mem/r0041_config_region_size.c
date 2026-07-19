@@ -2,7 +2,7 @@
 /*
  * R0041: read virtio-mem config region_size and validate.
  *
- * Spec 5.14.4: The device config exposes region_size at offset 24
+ * Spec 5.15.4: The device config exposes region_size at offset 24
  * (after block_size[8]+node_id[2]+padding[6]+addr[8]). It must be
  * non zero, a multiple of block_size, and at least as large as
  * usable_region_size.

@@ -3,7 +3,7 @@
  * R0006: Virtio-mem PLUG with addr=0.
  *
  * Plug request whose addr is 0, almost certainly outside the
- * advertised mem region. Per spec 5.14.6.2 the device must
+ * advertised mem region. Per spec 5.15.6.2 the device must
  * respond with VIRTIO_MEM_RESP_INVALID_REQUEST or _ERROR.
  */
 #include "tests/test.h"

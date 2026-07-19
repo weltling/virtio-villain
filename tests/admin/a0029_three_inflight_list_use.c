@@ -2,7 +2,7 @@
 /*
  * A0029: Three concurrent LIST_USE commands on the same admin queue.
  *
- * Spec 9.4: Push three identical LIST_USE chains in the same
+ * Spec 2.13: Push three identical LIST_USE chains in the same
  * avail batch and a single kick. The device must process them
  * without descriptor cross talk or duplicate completions.
  */

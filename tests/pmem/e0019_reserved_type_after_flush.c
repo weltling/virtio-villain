@@ -3,7 +3,7 @@
  * E0019: pmem_reserved_type_after_flush
  *
  * Submit a normal flush, expect OK, then submit a request whose
- * type is one above the highest defined value. Spec 5.10.6.1
+ * type is one above the highest defined value. Spec 5.19.6.1
  * defines only TYPE_FLUSH (0); reserved types must yield EIO and
  * the next flush must still complete OK.
  */

@@ -6,7 +6,7 @@
  * Only the first 4 bytes are defined; the device must ignore any
  * trailing data and still process the flush.
  *
- * Spec 5.10.6.1.
+ * Spec 5.19.6.1.
  */
 #include "tests/test.h"
 #include "lib/util.h"

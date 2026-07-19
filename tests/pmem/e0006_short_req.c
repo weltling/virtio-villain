@@ -5,7 +5,7 @@
  * Request descriptor of 1 byte, smaller than uint32_t type.
  * Device must reject the malformed input.
  *
- * Spec 5.10.6.1.
+ * Spec 5.19.6.1.
  */
 #include "tests/test.h"
 #include "lib/util.h"

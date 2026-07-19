@@ -2,7 +2,7 @@
 /*
  * R0031: virtio_mem PLUG then UNPLUG of the same range in one batch.
  *
- * Spec 5.14.6.2: PLUG and UNPLUG operate on a contiguous block
+ * Spec 5.15.6.2: PLUG and UNPLUG operate on a contiguous block
  * range. Submit a PLUG followed by an UNPLUG of the same range
  * in the same avail batch and single kick. The device must
  * serialise the two requests and leave the range fully unplugged,

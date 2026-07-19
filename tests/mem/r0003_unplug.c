@@ -4,7 +4,7 @@
  *
  * Submit a VIRTIO_MEM_REQ_UNPLUG request to unplug a memory block.
  *
- * Spec 5.14.6.2: The driver unplugs blocks to return memory.
+ * Spec 5.15.6.2: The driver unplugs blocks to return memory.
  */
 #include "tests/test.h"
 #include "lib/util.h"

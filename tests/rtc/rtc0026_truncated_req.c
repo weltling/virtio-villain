@@ -2,7 +2,7 @@
 /*
  * RTC0026: RTC READ_TIME with truncated request.
  *
- * Spec RTC.5: Submit a READ_TIME request descriptor whose length
+ * Spec 5.23.6: Submit a READ_TIME request descriptor whose length
  * is smaller than sizeof(rtc_req_read). The device must detect the
  * short request and not read beyond the descriptor.
  */

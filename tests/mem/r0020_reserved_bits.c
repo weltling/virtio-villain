@@ -2,7 +2,7 @@
 /*
  * R0020: Plug request with reserved bits set.
  *
- * Spec 5.14.6: The padding fields in virtio_mem_req must be
+ * Spec 5.15.6: The padding fields in virtio_mem_req must be
  * zero. Set them to nonzero values and verify the device either
  * rejects the request or still completes without crashing.
  */

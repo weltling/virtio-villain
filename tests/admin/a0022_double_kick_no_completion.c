@@ -3,7 +3,7 @@
  * A0022: admin_double_kick_no_completion
  *
  * Submit a single admin command, kick once, then kick a second
- * time before any completion arrives. Spec 1.3 chapter 9.4 says
+ * time before any completion arrives. Spec 1.3 chapter 2.13 says
  * the second kick is a no op when no new descriptors are
  * available. The command must complete exactly once.
  */

@@ -2,7 +2,7 @@
 /*
  * A0033: Admin command data buffer pointing at the device's MMIO BAR.
  *
- * Spec 9.4, 2.7.5: Descriptor addr fields name guest physical
+ * Spec 2.13, 2.7.5: Descriptor addr fields name guest physical
  * addresses. Submit a LIST_USE whose data descriptor addr falls
  * inside the device's own virtio configuration BAR rather than
  * RAM. A device that DMAs through the generic memory API

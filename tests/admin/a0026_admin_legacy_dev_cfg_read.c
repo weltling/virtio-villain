@@ -3,7 +3,7 @@
  * A0026: admin_legacy_dev_cfg_read
  *
  * Issue a legacy device configuration read command via admin VQ.
- * Spec v1.3 9.4: VIRTIO_ADMIN_CMD_LEGACY_DEV_CFG_READ accesses
+ * Spec v1.3 2.13: VIRTIO_ADMIN_CMD_LEGACY_DEV_CFG_READ accesses
  * the device specific legacy configuration space of a member.
  */
 #include "tests/test.h"

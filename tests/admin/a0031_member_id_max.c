@@ -2,7 +2,7 @@
 /*
  * A0031: LIST_USE with group_member_id = 0xFFFFFFFFFFFFFFFF.
  *
- * Spec 9.4: group_member_id is the 64 bit identifier of the
+ * Spec 2.13: group_member_id is the 64 bit identifier of the
  * group member targeted by an admin command. Send LIST_USE
  * with the maximum representable value. The device must
  * reject the unknown identifier cleanly rather than truncating

@@ -2,7 +2,7 @@
 /*
  * D0019: Write to device config (read only for driver).
  *
- * Spec 5.16.4: The watchdog config space is device writable only.
+ * The watchdog config space is device writable only.
  * The driver should not write it. Attempt a write and confirm the
  * device does not crash or change state unexpectedly.
  */

@@ -2,7 +2,7 @@
 /*
  * R0021: STATE query beyond the usable region size.
  *
- * Spec 5.14.6.2: Query state for an address that is within the
+ * Spec 5.15.6.2: Query state for an address that is within the
  * region but beyond usable_region_size. The device must respond
  * with UNPLUGGED or reject rather than accessing memory beyond
  * the usable portion.

@@ -2,7 +2,7 @@
 /*
  * A0034: Admin LIST_USE with status descriptor before data.
  *
- * Spec 9.4: An admin command chain is laid out as readable
+ * Spec 2.13: An admin command chain is laid out as readable
  * command header followed by optional readable command data
  * and a writable status/result. Build a chain whose writable
  * status descriptor sits between the readable header and the

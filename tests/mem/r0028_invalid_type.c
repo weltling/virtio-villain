@@ -2,7 +2,7 @@
 /*
  * R0028: virtio_mem invalid request type.
  *
- * Spec 5.14.6: Submit a request with type=0xFFFF which is not a
+ * Spec 5.15.6: Submit a request with type=0xFFFF which is not a
  * defined virtio_mem operation. The device must return an error
  * response without crashing.
  */

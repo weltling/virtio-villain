@@ -3,7 +3,7 @@
  * RTC0022: rtc_read_invalid_clock_id
  *
  * Submit a READ_TIME request with clock_id set to 0xFFFF. Spec
- * draft RTC.5 says the device must validate clock_id and return
+ * 5.23.6 says the device must validate clock_id and return
  * an error for unknown clocks without crashing.
  */
 #include "tests/test.h"

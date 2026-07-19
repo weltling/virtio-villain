@@ -2,7 +2,7 @@
 /*
  * R0008: Virtio-mem PLUG with unaligned addr.
  *
- * Per spec 5.14.6.2 addr must be aligned to block_size. Submit a
+ * Per spec 5.15.6.2 addr must be aligned to block_size. Submit a
  * plug request with addr offset by 1 byte; device must reject.
  */
 #include "tests/test.h"

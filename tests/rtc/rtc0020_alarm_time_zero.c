@@ -3,7 +3,7 @@
  * RTC0020: rtc_alarm_time_zero
  *
  * Submit an alarmq SET request whose time_ns is zero. Spec draft
- * RTC.7 says the device must behave deterministically for an
+ * 5.23.6 says the device must behave deterministically for an
  * alarm time in the past. The test passes if the device responds
  * (either fires or rejects) and stays alive across two repeats.
  */

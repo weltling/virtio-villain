@@ -2,7 +2,7 @@
 /*
  * D0023: Watchdog ping with both readable and writable flags.
  *
- * Spec 5.20: The watchdog ping buffer should be writable only.
+ * The watchdog ping buffer should be writable only.
  * Setting both readable and writable (i.e. no WRITE flag plus
  * chaining a writable) is an unusual combination. The device
  * must not misinterpret the flags.

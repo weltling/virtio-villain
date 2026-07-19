@@ -5,7 +5,7 @@
  * Plug request with nb_blocks=0 is meaningless. Device must
  * either reject or treat as no-op without corrupting state.
  *
- * Spec 5.14.6.2.
+ * Spec 5.15.6.2.
  */
 #include "tests/test.h"
 #include "lib/util.h"

@@ -5,7 +5,7 @@
  * Writable response of only 1 byte, less than the 4-byte
  * virtio_pmem_resp.ret. Device must reject.
  *
- * Spec 5.10.6.1.
+ * Spec 5.19.6.1.
  */
 #include "tests/test.h"
 #include "lib/util.h"

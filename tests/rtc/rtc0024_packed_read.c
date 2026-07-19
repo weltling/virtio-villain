@@ -2,7 +2,7 @@
 /*
  * RTC0024: RTC packed virtqueue read.
  *
- * Spec 2.8/RTC.5: Submit a READ_TIME request using the packed ring
+ * Spec 2.8/5.23.6: Submit a READ_TIME request using the packed ring
  * format. Basic positive path for packed vring support.
  */
 #include "tests/test.h"

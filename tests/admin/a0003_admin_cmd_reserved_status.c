@@ -3,7 +3,7 @@
  * A0003: admin_cmd_reserved_status
  *
  * Send an admin command with a reserved/invalid opcode and verify the
- * device handles it safely. Spec v1.3 2.9: driver MUST handle a
+ * device handles it safely. Spec v1.3 2.12: driver MUST handle a
  * command error with a reserved status code gracefully.
  */
 #include "tests/test.h"

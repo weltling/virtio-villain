@@ -2,7 +2,7 @@
 /*
  * E0025: Pmem flush submitted through an INDIRECT descriptor.
  *
- * Spec 2.7.5.3, 5.10.6.1: A driver may submit a request through
+ * Spec 2.7.5.3, 5.19.6.1: A driver may submit a request through
  * a single avail entry that points to an indirect descriptor
  * table holding the readable request and writable response.
  * Build a two entry indirect table for a FLUSH and dispatch

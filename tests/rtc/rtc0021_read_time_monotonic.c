@@ -4,7 +4,7 @@
  *
  * Read current time from the requestq twice in succession and
  * verify the second reading is not earlier than the first. Spec
- * draft RTC.5 says time must be monotonically nondecreasing.
+ * 5.23.6 says time must be monotonically nondecreasing.
  * The device must return consistent timestamps.
  */
 #include "tests/test.h"

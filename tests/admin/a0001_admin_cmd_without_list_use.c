@@ -3,7 +3,7 @@
  * A0001: admin_cmd_without_list_use
  *
  * Send an admin command on the admin virtqueue without first issuing
- * VIRTIO_ADMIN_CMD_LIST_USE. Spec v1.3 2.9: driver MUST issue
+ * VIRTIO_ADMIN_CMD_LIST_USE. Spec v1.3 2.12: driver MUST issue
  * LIST_USE and wait for success before using any other admin commands.
  *
  * This test uses queue 0 of a block device to inject an admin command

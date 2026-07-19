@@ -2,7 +2,7 @@
 /*
  * E0017: many sequential flushes
  *
- * Spec 5.10.6 defines VIRTIO_PMEM_REQ_TYPE_FLUSH as a synchronous
+ * Spec 5.19.6 defines VIRTIO_PMEM_REQ_TYPE_FLUSH as a synchronous
  * flush request. Submit 64 flushes back to back, waiting for each
  * to complete before sending the next. A VMM that has resource
  * leaks per flush, or that fuses multiple in flight flushes

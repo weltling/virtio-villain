@@ -5,7 +5,7 @@
  * Submit a VIRTIO_PMEM_REQ_TYPE_FLUSH request and verify the device
  * responds with VIRTIO_PMEM_RESP_TYPE_OK.
  *
- * Spec 5.10.6.1: The driver sends flush requests to persist writes.
+ * Spec 5.19.6.1: The driver sends flush requests to persist writes.
  */
 #include "tests/test.h"
 #include "lib/util.h"

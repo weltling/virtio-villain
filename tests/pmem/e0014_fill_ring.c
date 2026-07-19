@@ -5,7 +5,7 @@
  * Post 16 flush requests (one per slot, two-descriptor chains
  * each) into the ring and advance avail->idx in one shot.
  *
- * Spec 5.10.6.1.
+ * Spec 5.19.6.1.
  */
 #include "tests/test.h"
 #include "lib/util.h"

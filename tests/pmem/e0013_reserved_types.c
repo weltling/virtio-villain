@@ -5,7 +5,7 @@
  * Iterate type values 1..7 (FLUSH=0 is the only defined type) and
  * verify the device safely returns an error for each.
  *
- * Spec 5.10.6.1.
+ * Spec 5.19.6.1.
  */
 #include "tests/test.h"
 #include "lib/util.h"

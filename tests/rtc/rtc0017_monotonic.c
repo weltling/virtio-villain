@@ -2,7 +2,7 @@
 /*
  * RTC0017: 32 sequential clock reads, monotonic and OK
  *
- * Spec RTC.5 says VIRTIO_RTC_REQ_READ returns the current clock
+ * Spec 5.23.6 says VIRTIO_RTC_REQ_READ returns the current clock
  * value in nanoseconds. The clock must be monotonic, so a series
  * of reads in quick succession must produce non decreasing values.
  * Submit 32 reads, each with its own request and response buffer,

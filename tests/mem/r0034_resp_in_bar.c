@@ -2,7 +2,7 @@
 /*
  * R0034: Virtio-mem response descriptor aimed at the device MMIO BAR.
  *
- * Spec 5.14.6.2: The mem response is a writable buffer.
+ * Spec 5.15.6.2: The mem response is a writable buffer.
  * Submit a PLUG whose writable response descriptor points at
  * the device's own common configuration BAR rather than RAM.
  * A device that writes the response through the generic memory

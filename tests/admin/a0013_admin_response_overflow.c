@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * A0013: Admin command response buffer overflow (spec 9.4)
+ * A0013: Admin command response buffer overflow (spec 2.13)
  *
  * Submit an admin command with a response buffer too small to hold
  * the expected result. The device must handle buffer truncation

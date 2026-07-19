@@ -2,7 +2,7 @@
 /*
  * RTC0033: CLOCK_CAP reserved fields must be zeroed.
  *
- * Spec draft RTC.5: reserved fields in a response MUST be set to
+ * Spec 5.23.6: reserved fields in a response MUST be set to
  * zero by the device. A device that copies a stack or heap structure
  * verbatim can leak uninitialised host memory through the trailing
  * reserved bytes of the CLOCK_CAP response. This sends a valid

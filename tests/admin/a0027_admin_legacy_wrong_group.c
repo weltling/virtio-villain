@@ -3,7 +3,7 @@
  * A0027: admin_legacy_cfg_wrong_group_type
  *
  * Issue a legacy common cfg read with group_type=0 (invalid).
- * Spec v1.3 9.4: only valid group types should be accepted.
+ * Spec v1.3 2.13: only valid group types should be accepted.
  */
 #include "tests/test.h"
 #include "lib/util.h"

@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * A0017: Admin command with zero-length command buffer (spec 9.4)
+ * A0017: Admin command with zero-length command buffer (spec 2.13)
  *
  * Submit an admin command descriptor with len=0 for the command
  * header. This is an invalid request - the device must handle

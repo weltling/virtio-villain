@@ -2,7 +2,7 @@
 /*
  * D0028: Watchdog ping descriptor pointing at device MMIO BAR.
  *
- * Spec 5.16: The watchdog ping is a writable buffer the device
+ * The watchdog ping is a writable buffer the device
  * fills with a counter byte to acknowledge the kick. Submit a
  * ping whose writable descriptor addr points at the device's
  * own common configuration BAR rather than RAM. A device that

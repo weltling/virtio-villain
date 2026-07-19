@@ -5,7 +5,7 @@
  * Submit two flush requests back-to-back to exercise concurrent
  * request handling in the pmem device.
  *
- * Spec 5.10.6.1: Stress test.
+ * Spec 5.19.6.1: Stress test.
  */
 #include "tests/test.h"
 #include "lib/util.h"

@@ -7,7 +7,7 @@
  * of all System RAM. Device must not access memory outside the
  * guest's mapping or crash the VMM.
  *
- * Spec 5.10.6.1.
+ * Spec 5.19.6.1.
  */
 #include "tests/test.h"
 #include "lib/util.h"

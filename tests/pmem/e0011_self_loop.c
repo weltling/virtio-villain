@@ -5,7 +5,7 @@
  * Request descriptor with NEXT pointing back to itself. The
  * device must detect the cycle.
  *
- * Spec 5.10.6.1.
+ * Spec 5.19.6.1.
  */
 #include "tests/test.h"
 #include "lib/util.h"

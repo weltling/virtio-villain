@@ -3,7 +3,7 @@
  * R0017: mem_plug_overflow
  *
  * Submit a PLUG request whose addr plus nb_blocks times block_size
- * overflows a 64 bit value. Spec 5.14.6 requires bounds checking
+ * overflows a 64 bit value. Spec 5.15.6 requires bounds checking
  * before the device acts. The device must reject without integer
  * wraparound and stay alive.
  */

@@ -3,7 +3,7 @@
  * A0002: admin_group_before_list_use
  *
  * Send a group-type admin command before completing LIST_USE for
- * that group type. Spec v1.3 2.9: driver MUST NOT use any commands
+ * that group type. Spec v1.3 2.12: driver MUST NOT use any commands
  * for a given group type before sending LIST_USE with the correct list.
  */
 #include "tests/test.h"

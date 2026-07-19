@@ -2,7 +2,7 @@
 /*
  * RTC0032: CLOCK_CAP with an out-of-range clock_id.
  *
- * Spec draft RTC.5: the device must validate clock_id and report an
+ * Spec 5.23.6: the device must validate clock_id and report an
  * error status for clocks it does not expose, rather than indexing a
  * clock table out of bounds. This probes the capability path (rather
  * than the time read path covered by RTC0022) with clock_id 0xFFFF.

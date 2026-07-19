@@ -2,7 +2,7 @@
 /*
  * R0019: Plug immediately after unplug_all.
  *
- * Spec 5.14.6.1: After an UNPLUG_ALL succeeds the entire region
+ * Spec 5.15.6.1: After an UNPLUG_ALL succeeds the entire region
  * is unplugged. A subsequent PLUG of the first block must be
  * accepted. Verify the device handles the transition correctly.
  */

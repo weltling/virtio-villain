@@ -2,7 +2,7 @@
 /*
  * D0024: Watchdog ping with maximum length descriptor.
  *
- * Spec 5.20: Submit a ping with len set to 0xFFFFFFFF. Even
+ * Submit a ping with len set to 0xFFFFFFFF. Even
  * though the watchdog only needs a tiny buffer, the device must
  * not overflow internal calculations when presented with a
  * maximum length writable descriptor.

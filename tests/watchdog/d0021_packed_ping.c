@@ -2,7 +2,7 @@
 /*
  * D0021: Watchdog ping with packed virtqueue.
  *
- * Spec 2.8/5.20: Submit a watchdog ping using the packed ring
+ * Spec 2.8: Submit a watchdog ping using the packed ring
  * format. The device must accept the descriptor and complete
  * without crashing.
  */

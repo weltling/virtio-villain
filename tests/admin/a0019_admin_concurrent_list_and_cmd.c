@@ -3,7 +3,7 @@
  * A0019: Submit LIST_USE on one descriptor chain and a regular admin
  * command simultaneously on a second chain.
  *
- * Spec 9.4: Tests device behavior when multiple admin operations
+ * Spec 2.13: Tests device behavior when multiple admin operations
  * are in flight concurrently on the same admin queue.
  */
 #include "tests/test.h"

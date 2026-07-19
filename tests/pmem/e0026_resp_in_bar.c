@@ -2,7 +2,7 @@
 /*
  * E0026: Pmem flush response descriptor aimed at the device MMIO BAR.
  *
- * Spec 5.10.6.1: The pmem flush response is a writable buffer.
+ * Spec 5.19.6.1: The pmem flush response is a writable buffer.
  * Submit a flush whose writable response descriptor points at
  * the device's own common configuration BAR rather than RAM.
  * A device that performs the response write through the generic

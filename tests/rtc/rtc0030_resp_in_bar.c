@@ -2,7 +2,7 @@
 /*
  * RTC0030: RTC CFG response descriptor in device MMIO BAR.
  *
- * Spec draft RTC.5: The RTC CFG request returns a writable
+ * Spec 5.23.6: The RTC CFG request returns a writable
  * response. Submit a CFG whose writable response descriptor
  * addr points at the device's own common configuration BAR
  * rather than RAM. A device that writes the status and clock

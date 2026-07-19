@@ -2,7 +2,7 @@
 /*
  * D0016: Read watchdog config space timer value.
  *
- * Spec 5.16.4: The watchdog config contains a timeout_ms value.
+ * The watchdog config contains a timeout_ms value.
  * Read it to exercise the config access path. The device must
  * not crash on a config read and must return a sensible value.
  */

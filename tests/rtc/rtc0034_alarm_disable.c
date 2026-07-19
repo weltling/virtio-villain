@@ -2,7 +2,7 @@
 /*
  * RTC0034: alarm disable via SET_ALARM_ENABLED with flag cleared.
  *
- * Spec RTC.5: the driver can disable a previously armed alarm
+ * Spec 5.23.6: the driver can disable a previously armed alarm
  * by sending SET_ALARM_ENABLED with the enabled flag cleared.
  * The device must accept the request and stop delivering
  * NOTIF_ALARM notifications for that clock.

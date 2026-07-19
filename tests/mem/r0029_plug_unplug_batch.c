@@ -2,7 +2,7 @@
 /*
  * R0029: virtio_mem PLUG and UNPLUG same block in one batch.
  *
- * Spec 5.14.6: Submit a PLUG and then an UNPLUG for the same
+ * Spec 5.15.6: Submit a PLUG and then an UNPLUG for the same
  * block address in the same avail ring batch. The device must
  * handle concurrent conflicting operations gracefully.
  */

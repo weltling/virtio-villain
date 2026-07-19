@@ -2,7 +2,7 @@
 /*
  * E0018: interleave four flushes with reads in between
  *
- * Spec 5.18.5 says VIRTIO_PMEM_REQ_TYPE_FLUSH commits dirty data
+ * Spec 5.19.6 says VIRTIO_PMEM_REQ_TYPE_FLUSH commits dirty data
  * to backing storage. A driver that interleaves flushes with
  * normal pmem reads (host loads from the mapped region) should
  * see every flush complete in order. This catches devices that

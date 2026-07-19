@@ -2,7 +2,7 @@
 /*
  * E0022: Pmem flush with truncated response descriptor.
  *
- * Spec 5.10.6.1: The response is a 4 byte virtio_pmem_resp. Submit
+ * Spec 5.19.6.1: The response is a 4 byte virtio_pmem_resp. Submit
  * a flush whose writable response descriptor is only 2 bytes long.
  * The device must not write past the descriptor length and must
  * still complete or cleanly reject the request.

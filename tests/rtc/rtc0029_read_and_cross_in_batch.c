@@ -3,7 +3,7 @@
  * RTC0029: READ_TIME and READ_CROSS submitted in the same avail
  * batch.
  *
- * Spec RTC.5: the device must independently process heterogeneous
+ * Spec 5.23.6: the device must independently process heterogeneous
  * requests on the requestq. Push a READ_TIME chain and a
  * READ_CROSS chain in the same batch and verify both complete
  * without confusion between message types.

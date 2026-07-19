@@ -2,7 +2,7 @@
 /*
  * A0020: LIST_QUERY then LIST_USE then second LIST_QUERY
  *
- * Spec 9.4 says LIST_QUERY enumerates available admin command
+ * Spec 2.13 says LIST_QUERY enumerates available admin command
  * groups and LIST_USE binds the driver to one. A second
  * LIST_QUERY after a LIST_USE round must still succeed without
  * confusing the device, so the driver can re enumerate at any

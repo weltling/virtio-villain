@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * A0015: Admin command with corrupt group_type + valid opcode (spec 9.4)
+ * A0015: Admin command with corrupt group_type + valid opcode (spec 2.13)
  *
  * Submit a valid admin opcode (LIST_QUERY) but with group_type set
  * to 0xFFFF (invalid). The device should reject gracefully.

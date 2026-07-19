@@ -3,7 +3,7 @@
  * RTC0019: rtc_read_reserved_flags
  *
  * Submit a READ request whose reserved bytes in the message
- * header are non zero. Spec draft RTC.5 marks them reserved,
+ * header are non zero. Spec 5.23.6 marks them reserved,
  * requiring the device to reject the request without reading
  * the clock. The device must stay alive.
  */

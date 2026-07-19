@@ -3,7 +3,7 @@
  * A0021: admin_cmd_oversized_data
  *
  * Submit a LIST_USE command whose readable data buffer exceeds
- * one page. Spec 1.3 chapter 9.4 limits admin command data to
+ * one page. Spec 1.3 chapter 2.13 limits admin command data to
  * the negotiated maximum. The device must reject the command
  * without partial parse.
  */

@@ -2,7 +2,7 @@
 /*
  * RTC0028: RTC READ_TIME with invalid msg_type.
  *
- * Spec RTC.5: Submit a request with msg_type=0xFFFF which is not
+ * Spec 5.23.6: Submit a request with msg_type=0xFFFF which is not
  * a valid RTC operation. The device must return an error without
  * crashing.
  */

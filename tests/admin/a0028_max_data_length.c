@@ -3,7 +3,7 @@
  * A0028: admin_cmd_max_data_payload
  *
  * Submit an admin command with the data length field set to
- * UINT32_MAX. Spec 9.4.2 says the device must validate the
+ * UINT32_MAX. Spec 2.13 says the device must validate the
  * data_length against the actual descriptor. The device must
  * not allocate unbounded memory or crash.
  */

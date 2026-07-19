@@ -5,7 +5,7 @@
  * Submit a request descriptor of only 2 bytes, smaller than
  * struct virtio_mem_req. Device must reject the malformed input.
  *
- * Spec 5.14.6.2.
+ * Spec 5.15.6.2.
  */
 #include "tests/test.h"
 #include "lib/util.h"

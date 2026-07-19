@@ -2,7 +2,7 @@
 /*
  * R0032: virtio-mem UNPLUG with addr unaligned to block_size.
  *
- * Spec 5.14.6.2: addr must be a multiple of block_size for both
+ * Spec 5.15.6.2: addr must be a multiple of block_size for both
  * PLUG and UNPLUG. Submit an UNPLUG with addr offset by one
  * byte. The device must reject the request rather than
  * truncating addr to a valid alignment and unplugging a

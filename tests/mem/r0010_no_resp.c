@@ -6,7 +6,7 @@
  * device cannot return its response and must reject the chain
  * rather than crash.
  *
- * Spec 5.14.6.2.
+ * Spec 5.15.6.2.
  */
 #include "tests/test.h"
 #include "lib/util.h"

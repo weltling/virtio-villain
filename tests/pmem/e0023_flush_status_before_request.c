@@ -3,7 +3,7 @@
  * E0023: Pmem flush chain with the response descriptor placed
  * before the request descriptor.
  *
- * Spec 5.10.6.1: the chain layout is request (readable), then
+ * Spec 5.19.6.1: the chain layout is request (readable), then
  * response (writable). Reorder so the writable response appears
  * first. The device must reject the chain rather than treating
  * the response buffer as a request payload.

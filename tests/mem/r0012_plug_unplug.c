@@ -5,7 +5,7 @@
  * Plug a single block, wait for OK, then unplug the same block.
  * Tests the full lifecycle round-trip.
  *
- * Spec 5.14.6.2.
+ * Spec 5.15.6.2.
  */
 #include "tests/test.h"
 #include "lib/util.h"

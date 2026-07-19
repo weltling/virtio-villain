@@ -4,7 +4,7 @@
  *
  * Submit a VIRTIO_MEM_REQ_PLUG request to plug a single memory block.
  *
- * Spec 5.14.6.2: The driver plugs blocks to make memory available.
+ * Spec 5.15.6.2: The driver plugs blocks to make memory available.
  */
 #include "tests/test.h"
 #include "lib/util.h"

@@ -3,7 +3,7 @@
  * A0023: admin_legacy_cfg_read
  *
  * Issue a legacy common configuration read command via admin VQ.
- * Spec v1.3 9.4: VIRTIO_ADMIN_CMD_LEGACY_COMMON_CFG_READ allows
+ * Spec v1.3 2.13: VIRTIO_ADMIN_CMD_LEGACY_COMMON_CFG_READ allows
  * the owner to read legacy registers of a group member.
  */
 #include "tests/test.h"

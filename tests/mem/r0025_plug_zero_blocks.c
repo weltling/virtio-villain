@@ -2,7 +2,7 @@
 /*
  * R0025: virtio_mem PLUG with zero nb_blocks.
  *
- * Spec 5.14.6: Submit a PLUG request with nb_blocks=0. The device
+ * Spec 5.15.6: Submit a PLUG request with nb_blocks=0. The device
  * must reject the degenerate request or handle it gracefully
  * without plugging anything.
  */

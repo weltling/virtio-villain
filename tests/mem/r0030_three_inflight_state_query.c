@@ -2,7 +2,7 @@
 /*
  * R0030: Three concurrent virtio_mem STATE queries.
  *
- * Spec 5.14.6.2: Push three STATE requests in one avail batch.
+ * Spec 5.15.6.2: Push three STATE requests in one avail batch.
  * The device must produce three independent responses without
  * mixing buffers or duplicating completions.
  */

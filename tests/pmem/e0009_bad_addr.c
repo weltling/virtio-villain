@@ -5,7 +5,7 @@
  * Request descriptor addr=0xFFFFFFFFFFFF0000, outside any mapping.
  * Device must refuse to dereference.
  *
- * Spec 5.10.6.1.
+ * Spec 5.19.6.1.
  */
 #include "tests/test.h"
 #include "lib/util.h"

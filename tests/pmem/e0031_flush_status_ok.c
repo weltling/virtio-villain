@@ -2,7 +2,7 @@
 /*
  * E0031: pmem flush verify status is zero (success).
  *
- * Spec 5.16.6: the device responds to VIRTIO_PMEM_REQ_TYPE_FLUSH
+ * Spec 5.19.6: the device responds to VIRTIO_PMEM_REQ_TYPE_FLUSH
  * with ret=0 on success. Issue a flush and assert the response
  * field is zero rather than just checking the used ring advanced.
  */

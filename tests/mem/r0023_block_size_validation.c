@@ -2,7 +2,7 @@
 /*
  * R0023: Verify block_size from config is nonzero and power of 2.
  *
- * Spec 5.14.4: block_size must be a power of two, at least the
+ * Spec 5.15.4: block_size must be a power of two, at least the
  * page size. This test reads the config and issues a STATE query
  * at addr = region_addr + block_size - 1 (misaligned) to confirm
  * the device enforces alignment based on its advertised block_size.

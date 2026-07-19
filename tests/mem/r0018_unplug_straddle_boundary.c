@@ -3,7 +3,7 @@
  * R0018: mem_unplug_straddle_boundary
  *
  * Issue an UNPLUG that spans both a plugged region and the area
- * just outside. Spec 5.14.6 requires the device to reject without
+ * just outside. Spec 5.15.6 requires the device to reject without
  * partially unplugging and to leave the map state idempotent on a
  * follow up state query.
  */

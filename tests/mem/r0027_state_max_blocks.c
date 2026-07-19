@@ -2,7 +2,7 @@
 /*
  * R0027: virtio_mem STATE query with nb_blocks at maximum.
  *
- * Spec 5.14.6: Submit a STATE request with nb_blocks set to
+ * Spec 5.15.6: Submit a STATE request with nb_blocks set to
  * 0xFFFF. The device must clamp or reject the oversized range
  * without integer overflow.
  */

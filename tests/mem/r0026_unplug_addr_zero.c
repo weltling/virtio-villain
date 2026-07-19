@@ -2,7 +2,7 @@
 /*
  * R0026: virtio_mem UNPLUG at address zero.
  *
- * Spec 5.14.6: Submit an UNPLUG request at address 0 which is
+ * Spec 5.15.6: Submit an UNPLUG request at address 0 which is
  * outside the usable region. The device must reject the invalid
  * address rather than corrupting internal state.
  */
