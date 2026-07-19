@@ -1638,6 +1638,108 @@ def filter_tests(tests, includes, excludes, dirs, exclude_dirs):
 _JUNIT_FAILURE = {"FAIL", "WEDGED", "XPASS"}
 _JUNIT_SKIPPED = {"SKIP", "XFAIL"}
 
+# Verdict severity, most severe first. Used to pick a representative
+# verdict when every retry of a test failed but with a different kind.
+_STATUS_RANK = {
+    "FAIL": 0, "WEDGED": 1, "XPASS": 2,
+    "REJECT": 4, "PASS": 5, "SKIP": 6, "XFAIL": 7,
+}
+
+
+def _status_rank(status):
+    return _STATUS_RANK.get(status, 99)
+
+
+# Prefix marking a result whose first attempt failed and was retried.
+# The rest of the line lists the verdict of every attempt in order. A
+# retried test that recovered to an acceptable verdict is transient,
+# not a stable property of the test; one that failed every attempt keeps
+# its failure verdict and still gates.
+_ATTEMPTS_PREFIX = "[vv] attempts: "
+
+
+def _fold_retries(name, statuses, details):
+    """Combine a failing test with its solo reruns into one result.
+
+    statuses lists the verdict of every attempt in order, starting with
+    the first attempt. The result keeps the real resolved verdict, not a
+    synthetic one. When a retry reached an acceptable verdict that
+    verdict is reported and the attempts note marks the result as
+    retried so the caller can list it separately. When every attempt
+    failed the most severe failure is reported and the run gates.
+    details holds the (status, output) of the attempts whose output is
+    specific to this test, which excludes a batched first attempt
+    because its log is shared with the whole batch. The attached output
+    is a solo attempt's own log, preferring the most severe solo failure
+    and otherwise the last solo rerun, so there is always test-specific
+    context and never the shared batch log.
+    """
+    note = _ATTEMPTS_PREFIX + ", ".join(statuses) + "\n"
+    if statuses[-1] not in _JUNIT_FAILURE:
+        verdict = statuses[-1]
+    else:
+        verdict = min(statuses, key=_status_rank)
+    fails = [(st, o) for st, o in details if st in _JUNIT_FAILURE and o]
+    if fails:
+        detail = min(fails, key=lambda p: _status_rank(p[0]))[1]
+    elif details:
+        detail = details[-1][1] or ""
+    else:
+        detail = ""
+    return (name, verdict, note + detail)
+
+
+def _recovered_on_retry(status, output):
+    """True if a result failed first and recovered on a rerun.
+
+    Such a result carries the attempts note and a non failing verdict.
+    It is reported as its real verdict and listed separately as a
+    retried result, not claimed to be an inherent property of the test.
+    A retried test that kept failing has a failing verdict and gates.
+    """
+    return (status not in _JUNIT_FAILURE
+            and bool(output) and output.startswith(_ATTEMPTS_PREFIX))
+
+
+def _apply_retries(batch_results, retries, backend, kernel, timeout,
+                   verbose, disk_format, opts, batched=False):
+    """Retry only the failing tests to absorb transient failures.
+
+    Acceptable verdicts (PASS, REJECT, SKIP, XFAIL) are left untouched,
+    so a green run and batching pay no extra cost. A failing verdict
+    (FAIL, WEDGED, XPASS) is retried solo up to `retries` more times,
+    stopping at the first acceptable verdict. A test that fails then
+    recovers keeps that real verdict and is marked retried; a test that
+    fails every attempt keeps its most severe failure and still gates.
+    When the first attempt came from a batch its output is shared with
+    the batch, so it is not attached to the single test; only solo
+    reruns provide detail.
+    """
+    if retries <= 0:
+        return batch_results
+    out = []
+    for name, status, output in batch_results:
+        if status not in _JUNIT_FAILURE:
+            out.append((name, status, output))
+            continue
+        statuses = [status]
+        # Attempts whose output belongs to this test alone. A batched
+        # first attempt is excluded because its log covers every test in
+        # the batch.
+        details = [] if batched else [(status, output)]
+        for _ in range(retries):
+            r = run_test(backend, kernel, name, timeout, verbose,
+                         False, disk_format, opts)
+            if len(r) != 1:
+                break
+            _, st, o = r[0]
+            statuses.append(st)
+            details.append((st, o))
+            if st not in _JUNIT_FAILURE:
+                break
+        out.append(_fold_retries(name, statuses, details))
+    return out
+
 
 def _xml_safe(text):
     """Drop code points that XML 1.0 forbids so the report stays valid."""
@@ -1766,11 +1868,14 @@ def build_results_doc(results, test_info, *, backend_name, vmm):
     a test name to (description, spec_version, spec_section). Output is
     kept only for non PASS verdicts to keep the report lean. Each failing
     verdict (FAIL, WEDGED, XPASS) also carries a security tier from the
-    triage in _security_triage; other verdicts carry security None.
+    triage in _security_triage; other verdicts carry security None. A
+    result that failed first and recovered on a rerun keeps that real
+    verdict and is flagged retried.
     """
     tests = []
     for name, status, output in results:
         desc, ver, sec = test_info.get(name, ("", "", ""))
+        retried = _recovered_on_retry(status, output or "")
         out = (output or "") if status != "PASS" else ""
         security = None
         if status in _JUNIT_FAILURE:
@@ -1779,6 +1884,7 @@ def build_results_doc(results, test_info, *, backend_name, vmm):
         tests.append({
             "name": name,
             "status": status,
+            "retried": retried,
             "description": desc,
             "spec_version": ver,
             "spec_section": sec,
@@ -1793,6 +1899,7 @@ def build_results_doc(results, test_info, *, backend_name, vmm):
             ("xpass", "XPASS"),
         )
     }
+    counts["retried"] = sum(1 for t in tests if t["retried"])
     return {
         "tool": "virtio-villain",
         "backend": backend_name,
@@ -1893,6 +2000,16 @@ def main():
                         help="Stream VM output directly to stdout")
     parser.add_argument("-j", "--jobs", type=int, default=1,
                         help="Run N tests in parallel (default: 1)")
+    parser.add_argument("--retries", type=int, default=0, metavar="N",
+                        help="Retry a failing test up to N times to detect "
+                             "flakiness (default: 0). A test that passes runs "
+                             "once, so a green run pays no extra cost. A test "
+                             "that fails is retried solo, stopping at the "
+                             "first pass. A test that fails then recovers on "
+                             "a rerun keeps that real verdict and is listed "
+                             "as retried (a transient failure, not a stable "
+                             "property); a test that fails every attempt "
+                             "still gates. Works alongside --batch.")
     parser.add_argument("-v", "--verbose", action="count", default=0,
                         help="Increase verbosity (-v: commands, -vv: full output)")
     parser.add_argument("-d", "--disk-type", choices=DISK_FORMATS, default="raw",
@@ -1997,6 +2114,9 @@ def main():
     args = parser.parse_args()
 
     _install_termination_as_interrupt()
+
+    if args.retries < 0:
+        sys.exit("--retries must not be negative")
 
     if args.apply_sysconfig:
         enable_sysconfigs(args.vmm)
@@ -2233,6 +2353,11 @@ def main():
 
     saved_term = _save_term()
     results = []
+    # Names of tests that failed then recovered on a retry. They are
+    # reported under their real verdict and listed here as retried, a
+    # transient failure rather than a claimed property of the test.
+    retried = []
+    retried_attempts = {}
     is_tty = sys.stdout.isatty()
 
     def _progress(done, total, current=""):
@@ -2247,6 +2372,7 @@ def main():
         skip_cnt = sum(1 for _, s, _ in results if s == "SKIP")
         xfail_cnt = sum(1 for _, s, _ in results if s == "XFAIL")
         xpass_cnt = sum(1 for _, s, _ in results if s == "XPASS")
+        retried_cnt = len(retried)
         parts = [f"{done}/{total}"]
         if passed:
             parts.append(f"\033[32m{passed}P\033[0m")
@@ -2262,6 +2388,8 @@ def main():
             parts.append(f"\033[34m{xfail_cnt}XF\033[0m")
         if xpass_cnt:
             parts.append(f"\033[31m{xpass_cnt}XP\033[0m")
+        if retried_cnt:
+            parts.append(f"\033[93m{retried_cnt}RT\033[0m")
         status = " ".join(parts)
         if current:
             line = f"{status} | {current}"
@@ -2335,23 +2463,41 @@ def main():
     def _report(name, status, output):
         """Print one test result immediately."""
         results.append((name, status, output))
+        recovered = _recovered_on_retry(status, output or "")
+        lines = output.splitlines() if output else []
+        attempts = (lines[0] if lines and lines[0].startswith(_ATTEMPTS_PREFIX)
+                    else "")
+        if recovered:
+            retried.append(name)
+            retried_attempts[name] = attempts[len(_ATTEMPTS_PREFIX):]
         if not args.console:
             _clear_progress()
             print(_format_test_line(name, status), file=human)
+
+        def _emit(line):
+            print(f"{_DIM}       {line}{_RESET}" if is_tty
+                  else f"       {line}", file=human)
+
         if args.log_dir and output:
             log_path = os.path.join(args.log_dir, f"{name}.log")
             with open(log_path, "w") as f:
                 f.write(output)
             if status == "FAIL":
                 print(f"       log: {log_path}", file=human)
-        if not args.console and status in _JUNIT_FAILURE and output:
+        # A retried result is shown under its real verdict and listed at
+        # the end, so it renders like any normal result with no detail.
+        if recovered or args.console:
+            return
+        if attempts:
+            _emit(attempts)
+        if status in _JUNIT_FAILURE and output:
             tier, why = _security_triage(output)
             sev = f"       security: {tier} -- {why}"
             print(f"{_DIM}{sev}{_RESET}" if is_tty else sev, file=human)
-        if not args.console and status == "FAIL" and output:
-            for line in output.splitlines()[-10:]:
-                print(f"{_DIM}       {line}{_RESET}" if is_tty else f"       {line}",
-                      file=human)
+        if output and (status == "FAIL" or attempts):
+            for line in lines[-10:]:
+                if line and line != attempts:
+                    _emit(line)
 
     pool = None
     # Reorder tests according to --test-order.
@@ -2444,6 +2590,12 @@ def main():
                                 batch_results[0][0]),
                             args.timeout, args.verbose,
                             args.disk_type, vm_opts)
+                    if args.retries > 0:
+                        batch_results = _apply_retries(
+                            batch_results, args.retries,
+                            *_backend_for(batch_results[0][0]),
+                            args.timeout, args.verbose,
+                            args.disk_type, vm_opts, batch_size > 1)
                     for name, status, output in batch_results:
                         done += 1
                         with _print_lock:
@@ -2493,6 +2645,12 @@ def main():
                             batch_results, *_backend_for(item[0]),
                             args.timeout, args.verbose,
                             args.disk_type, vm_opts)
+                    if args.retries > 0:
+                        batch_results = _apply_retries(
+                            batch_results, args.retries,
+                            *_backend_for(item[0]),
+                            args.timeout, args.verbose,
+                            args.disk_type, vm_opts, batch_size > 1)
                     for name, status, output in batch_results:
                         done += 1
                         _report(name, status, output)
@@ -2518,6 +2676,7 @@ def main():
     num_skip = sum(1 for _, s, _ in results if s == "SKIP")
     num_xfail = sum(1 for _, s, _ in results if s == "XFAIL")
     num_xpass = sum(1 for _, s, _ in results if s == "XPASS")
+    num_retried = len(retried)
     total = len(results)
 
     if is_tty:
@@ -2534,6 +2693,8 @@ def main():
             summary += f", \033[34m{num_xfail} xfail\033[0m"
         if num_xpass:
             summary += f", \033[31m{num_xpass} xpass\033[0m"
+        if num_retried:
+            summary += f", \033[93m{num_retried} retried\033[0m"
     else:
         summary = f"\n{num_passed}/{total} tests passed"
         if num_failed:
@@ -2548,6 +2709,8 @@ def main():
             summary += f", {num_xfail} xfail"
         if num_xpass:
             summary += f", {num_xpass} xpass"
+        if num_retried:
+            summary += f", {num_retried} retried"
     print(summary, file=human)
 
     failed = [name for name, s, _ in results if s == "FAIL"]
@@ -2584,6 +2747,16 @@ def main():
         for name in xpass:
             desc, ver, sec = test_info.get(name, ("", "", ""))
             print(f"  {name:<7} {desc}", file=human)
+
+    if retried:
+        hdr = ("\033[93mRETRIED (failed first, recovered on rerun):\033[0m"
+               if is_tty else "RETRIED (failed first, recovered on rerun):")
+        print(f"\n{hdr}", file=human)
+        for name in retried:
+            desc, ver, sec = test_info.get(name, ("", "", ""))
+            seq = retried_attempts.get(name, "")
+            tail = f"   [{seq}]" if seq else ""
+            print(f"  {name:<7} {desc}{tail}", file=human)
 
     if machine_report:
         doc = build_results_doc(results, test_info,

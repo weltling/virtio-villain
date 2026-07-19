@@ -235,6 +235,22 @@ that point on without operator intervention. FAIL indicates a VMM bug
 such as a crash or core dump. The `run` script exits nonzero if
 there are any FAILs or WEDGEDs.
 
+With `--retries N` a failing test is rerun. A test that then reaches an
+acceptable verdict is reported under its real verdict (PASS, REJECT or
+SKIP) and listed at the end under RETRIED with the sequence of attempt
+verdicts, for example `B0042 [FAIL, PASS]`. A retried result does not
+fail the run. A test that fails every retry keeps its failing verdict
+and still gates.
+
+A retried result is not a claim that the test is inherently unreliable.
+Under heavy parallelism or batching a test can fail once for reasons of
+the run rather than the test, for example a CPU starved guest missing
+its timeout, or a batch neighbor wedging the shared VM. The solo rerun
+removes the batch neighbor and often the load, so the retry mainly
+keeps the exit code honest. To confirm a test is genuinely
+nondeterministic, run it isolated and serialized with `--jobs 1
+--batch 0 --retries N`.
+
 ## Host side sidecars
 
 A few tests need a host side action while the guest runs: hot plug,
@@ -282,7 +298,17 @@ Pipe to a file or through `| cat` to suppress colors.
 ./run -m ./qemu-system-x86_64                              # QEMU backend
 ./run -m ./cloud-hypervisor -v T01                         # verbose, full test output
 ./run -m ./cloud-hypervisor -c T01                         # forward guest console to stdout
+./run -m ./cloud-hypervisor --retries 4 T01               # retry a failure up to 4 times, list it retried if it recovers
 ```
+
+For correctness runs keep `--jobs` modest. Heavy oversubscription
+(many parallel VMs each with several vCPUs on fewer host cores) starves
+the guests of CPU time and can make a stable test fail once. The runner
+already scales the per test timeout by the oversubscription factor, but
+timing sensitive tests are best confirmed at a low `--jobs`. Use
+`--retries N` to tell a real regression apart from an oversubscription
+artifact. Only failing tests are retried, so a green run pays no extra
+cost.
 
 ### Machine readable output
 

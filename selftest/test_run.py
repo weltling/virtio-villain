@@ -747,7 +747,7 @@ def test_unit_build_results_doc_counts():
     assert doc["total"] == 7
     c = doc["counts"]
     assert c == {"pass": 1, "fail": 1, "reject": 1, "wedged": 1,
-                 "skip": 1, "xfail": 1, "xpass": 1}
+                 "skip": 1, "xfail": 1, "xpass": 1, "retried": 0}
 
 
 def test_unit_build_results_doc_per_test_fields():
@@ -880,6 +880,235 @@ def test_unit_format_results_junit_no_keyerror():
     # Must not raise KeyError for any verdict status.
     xml = RUN_MOD.format_results_junit(doc)
     assert "testsuite" in xml
+
+
+# ---------------------------------------------------------------------------
+# Retry and transient failure handling (--retries).
+
+def test_unit_fold_retries_recovered_keeps_real_verdict():
+    # A test that failed then passed keeps its real PASS verdict, not a
+    # synthetic status, and carries the attempts note so it can be
+    # listed as retried separately.
+    name, status, out = RUN_MOD._fold_retries(
+        "X0001", ["FAIL", "PASS"], [("FAIL", "fail out")])
+    assert status == "PASS"
+    assert out.startswith("[vv] attempts: FAIL, PASS\n")
+    assert "fail out" in out
+    assert RUN_MOD._recovered_on_retry(status, out) is True
+
+
+def test_unit_fold_retries_recovered_to_skip_keeps_skip():
+    name, status, out = RUN_MOD._fold_retries(
+        "X0001", ["WEDGED", "SKIP"], [("SKIP", "solo skip log")])
+    assert status == "SKIP"
+    assert out == "[vv] attempts: WEDGED, SKIP\nsolo skip log"
+    assert RUN_MOD._recovered_on_retry(status, out) is True
+
+
+def test_unit_fold_retries_all_fail_is_hard_failure():
+    # Every attempt failed, only the failure kind varied. This stays a
+    # gating failure, most severe kind, and did not recover.
+    name, status, out = RUN_MOD._fold_retries(
+        "X0001", ["WEDGED", "FAIL"],
+        [("WEDGED", "wedged out"), ("FAIL", "fail out")])
+    assert status == "FAIL"
+    assert out.startswith("[vv] attempts: WEDGED, FAIL\n")
+    assert "fail out" in out
+    assert RUN_MOD._recovered_on_retry(status, out) is False
+
+
+def test_unit_recovered_on_retry():
+    # Retried and resolved to acceptable -> recovered.
+    assert RUN_MOD._recovered_on_retry(
+        "PASS", "[vv] attempts: FAIL, PASS\n") is True
+    # Retried but still failing -> not recovered, it gates.
+    assert RUN_MOD._recovered_on_retry(
+        "FAIL", "[vv] attempts: FAIL, FAIL\n") is False
+    # Not retried -> not recovered.
+    assert RUN_MOD._recovered_on_retry("PASS", "boot ok") is False
+    assert RUN_MOD._recovered_on_retry("SKIP", "") is False
+
+
+def test_unit_build_results_doc_retried_counts_and_verdict():
+    results = [
+        ("RNG0001", "PASS", "boot ok"),
+        ("X0001", "SKIP",
+         "[vv] attempts: WEDGED, SKIP\n[SKIP] X0001\n"),
+    ]
+    doc = RUN_MOD.build_results_doc(
+        results, {}, backend_name="ch", vmm="/bin/ch")
+    # The recovered test keeps its real SKIP verdict and is counted
+    # retried too.
+    assert doc["counts"]["skip"] == 1
+    assert doc["counts"]["retried"] == 1
+    by_name = {t["name"]: t for t in doc["tests"]}
+    assert by_name["X0001"]["status"] == "SKIP"
+    assert by_name["X0001"]["retried"] is True
+    # An acceptable verdict carries no security tier.
+    assert by_name["X0001"]["security"] is None
+    assert by_name["RNG0001"]["retried"] is False
+
+
+def test_unit_build_results_doc_retried_pass_detected():
+    # A recovered PASS drops its output but is still counted retried,
+    # detected from the note before the output is dropped.
+    results = [("X0001", "PASS", "[vv] attempts: FAIL, PASS\n")]
+    doc = RUN_MOD.build_results_doc(
+        results, {}, backend_name="ch", vmm="/bin/ch")
+    assert doc["counts"]["retried"] == 1
+    t = doc["tests"][0]
+    assert t["status"] == "PASS"
+    assert t["retried"] is True
+    assert t["output"] == ""
+
+
+def test_unit_format_results_junit_recovered_is_not_failure():
+    import xml.etree.ElementTree as ET
+    results = [
+        ("RNG0001", "PASS", "boot ok"),
+        ("X0001", "SKIP", "[vv] attempts: WEDGED, SKIP\n"),
+    ]
+    doc = RUN_MOD.build_results_doc(
+        results, {}, backend_name="ch", vmm="/bin/ch")
+    xml = RUN_MOD.format_results_junit(doc)
+    root = ET.fromstring(xml)
+    suite = root.find("testsuite")
+    # A recovered result resolved to SKIP is not a JUnit failure.
+    assert suite.get("failures") == "0"
+    cases = {c.get("name"): c for c in suite.findall("testcase")}
+    assert cases["X0001"].find("failure") is None
+    assert cases["X0001"].find("skipped") is not None
+
+
+def test_unit_apply_retries_no_retry_for_acceptable():
+    # A batch of acceptable verdicts is returned untouched and boots no
+    # extra VMs, so batching and green runs pay no retry cost.
+    calls = {"n": 0}
+
+    def fake_run_test(*a, **k):
+        calls["n"] += 1
+        return [("X", "PASS", "x")]
+
+    orig = RUN_MOD.run_test
+    RUN_MOD.run_test = fake_run_test
+    try:
+        batch = [("A", "PASS", "a"), ("B", "REJECT", "b"),
+                 ("C", "SKIP", "c")]
+        out = RUN_MOD._apply_retries(
+            batch, 5, None, None, 5, 0, "raw", {})
+    finally:
+        RUN_MOD.run_test = orig
+    assert out == batch
+    assert calls["n"] == 0
+
+
+def test_unit_apply_retries_recovered_keeps_real_verdict():
+    # Only the failing test is retried, it stops at the first pass, and
+    # it reports its real PASS verdict, marked retried by the note.
+    calls = {"n": 0}
+
+    def fake_run_test(backend, kernel, name, *a, **k):
+        calls["n"] += 1
+        return [(name, "PASS", "retry ok")]
+
+    orig = RUN_MOD.run_test
+    RUN_MOD.run_test = fake_run_test
+    try:
+        batch = [("A", "PASS", "a"), ("B", "FAIL", "b failed")]
+        out = RUN_MOD._apply_retries(
+            batch, 3, None, None, 5, 0, "raw", {})
+    finally:
+        RUN_MOD.run_test = orig
+    names = {n: (s, o) for n, s, o in out}
+    assert names["A"] == ("PASS", "a")
+    assert names["B"][0] == "PASS"
+    assert RUN_MOD._recovered_on_retry(*names["B"]) is True
+    assert names["B"][1].startswith("[vv] attempts: FAIL, PASS\n")
+    assert "b failed" in names["B"][1]
+    # Only B was retried, and it stopped at the first pass.
+    assert calls["n"] == 1
+
+
+def test_unit_apply_retries_batched_drops_shared_output():
+    # When the failing attempt came from a batch its output is shared
+    # with the whole batch, so it must not be attached to one test. The
+    # solo rerun's own clean output is attached instead.
+    def fake_run_test(backend, kernel, name, *a, **k):
+        return [(name, "SKIP", "solo skip output")]
+
+    orig = RUN_MOD.run_test
+    RUN_MOD.run_test = fake_run_test
+    try:
+        batch = [("N0102", "WEDGED",
+                  "[SKIP] F0018\n[SKIP] T0110\n[PASS] B0193\n"
+                  "cloud-hypervisor: unrelated batch log noise")]
+        out = RUN_MOD._apply_retries(
+            batch, 3, None, None, 5, 0, "raw", {}, True)
+    finally:
+        RUN_MOD.run_test = orig
+    name, status, output = out[0]
+    assert status == "SKIP"
+    assert RUN_MOD._recovered_on_retry(status, output) is True
+    assert output == "[vv] attempts: WEDGED, SKIP\nsolo skip output"
+    # None of the shared batch log leaked into this test's detail.
+    assert "B0193" not in output
+    assert "cloud-hypervisor" not in output
+
+
+def test_unit_apply_retries_batched_keeps_solo_failure_output():
+    # A batched failure whose solo rerun also fails attaches the solo
+    # failing output, which is specific to this test.
+    def fake_run_test(backend, kernel, name, *a, **k):
+        return [(name, "FAIL", "solo failure detail")]
+
+    orig = RUN_MOD.run_test
+    RUN_MOD.run_test = fake_run_test
+    try:
+        batch = [("B", "FAIL", "shared batch blob")]
+        out = RUN_MOD._apply_retries(
+            batch, 2, None, None, 5, 0, "raw", {}, True)
+    finally:
+        RUN_MOD.run_test = orig
+    name, status, output = out[0]
+    assert status == "FAIL"
+    assert output.startswith("[vv] attempts: FAIL, FAIL, FAIL\n")
+    assert "solo failure detail" in output
+    assert "shared batch blob" not in output
+
+
+def test_unit_apply_retries_all_fail_gates():
+    # A test that fails every attempt exhausts the budget and keeps a
+    # gating failure verdict.
+    calls = {"n": 0}
+
+    def fake_run_test(backend, kernel, name, *a, **k):
+        calls["n"] += 1
+        return [(name, "FAIL", "still broken")]
+
+    orig = RUN_MOD.run_test
+    RUN_MOD.run_test = fake_run_test
+    try:
+        batch = [("B", "FAIL", "b failed")]
+        out = RUN_MOD._apply_retries(
+            batch, 2, None, None, 5, 0, "raw", {})
+    finally:
+        RUN_MOD.run_test = orig
+    assert out[0][1] == "FAIL"
+    assert RUN_MOD._recovered_on_retry(out[0][1], out[0][2]) is False
+    # Two retries after the seeded failure.
+    assert calls["n"] == 2
+
+
+def test_unit_apply_retries_zero_is_noop():
+    batch = [("B", "FAIL", "b failed")]
+    out = RUN_MOD._apply_retries(batch, 0, None, None, 5, 0, "raw", {})
+    assert out == batch
+
+
+def test_retries_flag_rejects_negative():
+    result = run_runner("--retries", "-1", "RNG0001")
+    assert result.returncode != 0
+    assert "--retries must not be negative" in (result.stderr + result.stdout)
 
 
 # ---------------------------------------------------------------------------
