@@ -37,4 +37,4 @@ static test_result_t test_rtc_basic(struct virtio_dev *dev,
 
 REGISTER_TEST(RTC0001, VIRTIO_PCI_DEVICE_RTC, test_rtc_basic,
               "RTC basic CFG request",
-              VIRTIO_SPEC_V1_4, "RTC.5");
+              VIRTIO_SPEC_V1_4, "5.23.6");

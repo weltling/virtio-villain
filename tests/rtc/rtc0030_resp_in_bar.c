@@ -40,4 +40,4 @@ static test_result_t test_rtc_resp_in_bar(struct virtio_dev *dev,
 
 REGISTER_TEST(RTC0030, VIRTIO_PCI_DEVICE_RTC, test_rtc_resp_in_bar,
               "RTC CFG response descriptor in device MMIO BAR",
-              VIRTIO_SPEC_V1_4, "RTC.5");
+              VIRTIO_SPEC_V1_4, "5.23.6");

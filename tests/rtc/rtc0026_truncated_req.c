@@ -40,4 +40,4 @@ static test_result_t test_rtc_truncated_req(struct virtio_dev *dev,
 
 REGISTER_TEST(RTC0026, VIRTIO_PCI_DEVICE_RTC, test_rtc_truncated_req,
               "READ_TIME with truncated request descriptor",
-              VIRTIO_SPEC_V1_4, "RTC.5");
+              VIRTIO_SPEC_V1_4, "5.23.6");

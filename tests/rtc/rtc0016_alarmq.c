@@ -31,4 +31,4 @@ static test_result_t test_rtc_alarmq(struct virtio_dev *dev,
 
 REGISTER_TEST_Q(RTC0016, VIRTIO_PCI_DEVICE_RTC, test_rtc_alarmq,
                 "RTC alarmq writable buffer",
-                VIRTIO_SPEC_V1_4, "RTC.5", 1);
+                VIRTIO_SPEC_V1_4, "5.23.6", 1);

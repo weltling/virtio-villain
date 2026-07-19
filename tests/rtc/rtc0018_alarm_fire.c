@@ -130,5 +130,5 @@ static test_result_t test_rtc_alarm_fire(struct virtio_dev *dev,
 
 REGISTER_TEST_REQUIRES(RTC0018, VIRTIO_PCI_DEVICE_RTC, test_rtc_alarm_fire,
               "alarm SET then NOTIF_ALARM delivered on alarmq",
-              VIRTIO_SPEC_V1_4, "RTC.5",
+              VIRTIO_SPEC_V1_4, "5.23.6",
               0, 2);

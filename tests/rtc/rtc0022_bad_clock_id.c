@@ -42,4 +42,4 @@ static test_result_t test_rtc_bad_clock(struct virtio_dev *dev,
 
 REGISTER_TEST(RTC0022, VIRTIO_PCI_DEVICE_RTC, test_rtc_bad_clock,
               "READ_TIME with invalid clock_id 0xFFFF",
-              VIRTIO_SPEC_V1_4, "RTC.5");
+              VIRTIO_SPEC_V1_4, "5.23.6");

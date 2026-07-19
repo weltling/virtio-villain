@@ -53,4 +53,4 @@ static test_result_t test_rtc_read_and_cross(struct virtio_dev *dev,
 
 REGISTER_TEST(RTC0029, VIRTIO_PCI_DEVICE_RTC, test_rtc_read_and_cross,
               "READ_TIME and READ_CROSS in the same batch",
-              VIRTIO_SPEC_V1_4, "RTC.5");
+              VIRTIO_SPEC_V1_4, "5.23.6");

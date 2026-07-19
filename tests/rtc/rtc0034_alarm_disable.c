@@ -59,5 +59,5 @@ static test_result_t test_rtc_alarm_disable(struct virtio_dev *dev,
 
 REGISTER_TEST_REQUIRES(RTC0034, VIRTIO_PCI_DEVICE_RTC, test_rtc_alarm_disable,
               "Disable alarm via SET_ALARM_ENABLED with flag cleared",
-              VIRTIO_SPEC_V1_4, "RTC.5",
+              VIRTIO_SPEC_V1_4, "5.23.6",
               (1ULL << VIRTIO_RTC_F_ALARM), 0);

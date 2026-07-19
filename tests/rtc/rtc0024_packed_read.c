@@ -45,4 +45,4 @@ static test_result_t test_rtc_packed_read(struct virtio_dev *dev,
 
 REGISTER_TEST_PACKED(RTC0024, VIRTIO_PCI_DEVICE_RTC, test_rtc_packed_read,
                      "RTC READ_TIME via packed virtqueue",
-                     VIRTIO_SPEC_V1_4, "RTC.5");
+                     VIRTIO_SPEC_V1_4, "5.23.6");

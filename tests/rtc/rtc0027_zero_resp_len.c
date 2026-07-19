@@ -38,4 +38,4 @@ static test_result_t test_rtc_zero_resp_len(struct virtio_dev *dev,
 
 REGISTER_TEST(RTC0027, VIRTIO_PCI_DEVICE_RTC, test_rtc_zero_resp_len,
               "READ_TIME with zero length response descriptor",
-              VIRTIO_SPEC_V1_4, "RTC.5");
+              VIRTIO_SPEC_V1_4, "5.23.6");

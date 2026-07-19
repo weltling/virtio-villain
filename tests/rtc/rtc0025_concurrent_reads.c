@@ -53,4 +53,4 @@ static test_result_t test_rtc_concurrent_reads(struct virtio_dev *dev,
 
 REGISTER_TEST(RTC0025, VIRTIO_PCI_DEVICE_RTC, test_rtc_concurrent_reads,
               "Two READ_TIME requests in one batch",
-              VIRTIO_SPEC_V1_4, "RTC.5");
+              VIRTIO_SPEC_V1_4, "5.23.6");

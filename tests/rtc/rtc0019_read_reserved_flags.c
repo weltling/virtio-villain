@@ -41,4 +41,4 @@ static test_result_t test_rtc_read_reserved(struct virtio_dev *dev,
 
 REGISTER_TEST(RTC0019, VIRTIO_PCI_DEVICE_RTC, test_rtc_read_reserved,
               "READ with reserved bytes set in the header",
-              VIRTIO_SPEC_V1_4, "RTC.5");
+              VIRTIO_SPEC_V1_4, "5.23.6");
