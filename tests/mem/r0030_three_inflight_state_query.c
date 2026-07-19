@@ -45,4 +45,4 @@ static test_result_t test_mem_three_state(struct virtio_dev *dev,
 
 REGISTER_TEST(R0030, VIRTIO_PCI_DEVICE_MEM, test_mem_three_state,
               "Three concurrent STATE queries in one batch",
-              VIRTIO_SPEC_V1_2, "5.14.6.2");
+              VIRTIO_SPEC_V1_2, "5.15.6.2");

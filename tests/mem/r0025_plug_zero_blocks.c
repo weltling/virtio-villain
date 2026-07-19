@@ -41,4 +41,4 @@ static test_result_t test_mem_plug_zero_blocks(struct virtio_dev *dev,
 
 REGISTER_TEST(R0025, VIRTIO_PCI_DEVICE_MEM, test_mem_plug_zero_blocks,
               "PLUG request with nb_blocks zero",
-              VIRTIO_SPEC_V1_2, "5.14.6");
+              VIRTIO_SPEC_V1_2, "5.15.6");

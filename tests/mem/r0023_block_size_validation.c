@@ -47,4 +47,4 @@ static test_result_t test_mem_block_size_validation(struct virtio_dev *dev,
 
 REGISTER_TEST(R0023, VIRTIO_PCI_DEVICE_MEM, test_mem_block_size_validation,
               "State query at misaligned block_size address",
-              VIRTIO_SPEC_V1_2, "5.14.4");
+              VIRTIO_SPEC_V1_2, "5.15.4");

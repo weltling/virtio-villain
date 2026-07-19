@@ -36,4 +36,4 @@ static test_result_t test_mem_huge_nb(struct virtio_dev *dev,
 
 REGISTER_TEST(R0007, VIRTIO_PCI_DEVICE_MEM, test_mem_huge_nb,
               "Plug with huge nb_blocks",
-              VIRTIO_SPEC_V1_2, "5.14.6.2");
+              VIRTIO_SPEC_V1_2, "5.15.6.2");

@@ -63,4 +63,4 @@ static test_result_t test_mem_plug_after_unplug_all(struct virtio_dev *dev,
 
 REGISTER_TEST(R0019, VIRTIO_PCI_DEVICE_MEM, test_mem_plug_after_unplug_all,
               "Plug first block after unplug_all",
-              VIRTIO_SPEC_V1_2, "5.14.6.1");
+              VIRTIO_SPEC_V1_2, "5.15.6.1");

@@ -42,4 +42,4 @@ static test_result_t test_mem_unplug_overflow(struct virtio_dev *dev,
 
 REGISTER_TEST(R0033, VIRTIO_PCI_DEVICE_MEM, test_mem_unplug_overflow,
               "UNPLUG with addr plus length overflowing u64",
-              VIRTIO_SPEC_V1_2, "5.14.6.2");
+              VIRTIO_SPEC_V1_2, "5.15.6.2");

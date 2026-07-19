@@ -50,4 +50,4 @@ static test_result_t test_mem_unplug_straddle(struct virtio_dev *dev,
 
 REGISTER_TEST(R0018, VIRTIO_PCI_DEVICE_MEM, test_mem_unplug_straddle,
               "Unplug spanning region boundary",
-              VIRTIO_SPEC_V1_2, "5.14.6");
+              VIRTIO_SPEC_V1_2, "5.15.6");

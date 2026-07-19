@@ -41,4 +41,4 @@ static test_result_t test_mem_resp_in_bar(struct virtio_dev *dev,
 
 REGISTER_TEST(R0034, VIRTIO_PCI_DEVICE_MEM, test_mem_resp_in_bar,
               "Mem response descriptor points at device MMIO BAR",
-              VIRTIO_SPEC_V1_2, "5.14.6.2");
+              VIRTIO_SPEC_V1_2, "5.15.6.2");

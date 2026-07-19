@@ -38,4 +38,4 @@ static test_result_t test_mem_invalid_type(struct virtio_dev *dev,
 
 REGISTER_TEST(R0028, VIRTIO_PCI_DEVICE_MEM, test_mem_invalid_type,
               "Request with invalid type 0xFFFF",
-              VIRTIO_SPEC_V1_2, "5.14.6");
+              VIRTIO_SPEC_V1_2, "5.15.6");

@@ -54,4 +54,4 @@ static test_result_t test_mem_huge_len_past_ram(struct virtio_dev *dev,
 
 REGISTER_TEST(R0024, VIRTIO_PCI_DEVICE_MEM, test_mem_huge_len_past_ram,
               "Mem response writable len crosses end of RAM",
-              VIRTIO_SPEC_V1_2, "5.14.6");
+              VIRTIO_SPEC_V1_2, "5.15.6");

@@ -51,4 +51,4 @@ static test_result_t test_mem_state_query(struct virtio_dev *dev,
 
 REGISTER_TEST(R0001, VIRTIO_PCI_DEVICE_MEM, test_mem_state_query,
               "Query memory block state",
-              VIRTIO_SPEC_V1_2, "5.14.6.2");
+              VIRTIO_SPEC_V1_2, "5.15.6.2");

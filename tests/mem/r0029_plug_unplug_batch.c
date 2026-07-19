@@ -61,4 +61,4 @@ static test_result_t test_mem_plug_unplug_batch(struct virtio_dev *dev,
 
 REGISTER_TEST(R0029, VIRTIO_PCI_DEVICE_MEM, test_mem_plug_unplug_batch,
               "PLUG and UNPLUG same block in one batch",
-              VIRTIO_SPEC_V1_2, "5.14.6");
+              VIRTIO_SPEC_V1_2, "5.15.6");

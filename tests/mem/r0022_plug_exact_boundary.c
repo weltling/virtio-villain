@@ -66,4 +66,4 @@ static test_result_t test_mem_plug_exact_boundary(struct virtio_dev *dev,
 
 REGISTER_TEST(R0022, VIRTIO_PCI_DEVICE_MEM, test_mem_plug_exact_boundary,
               "Plug at exact first and last block boundaries",
-              VIRTIO_SPEC_V1_2, "5.14.6.1");
+              VIRTIO_SPEC_V1_2, "5.15.6.1");

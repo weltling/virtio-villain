@@ -47,4 +47,4 @@ static test_result_t test_mem_plug_unplug(struct virtio_dev *dev,
 
 REGISTER_TEST(R0012, VIRTIO_PCI_DEVICE_MEM, test_mem_plug_unplug,
               "Plug then unplug",
-              VIRTIO_SPEC_V1_2, "5.14.6.2");
+              VIRTIO_SPEC_V1_2, "5.15.6.2");

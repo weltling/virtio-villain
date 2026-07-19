@@ -41,4 +41,4 @@ static test_result_t test_mem_state_max_blocks(struct virtio_dev *dev,
 
 REGISTER_TEST(R0027, VIRTIO_PCI_DEVICE_MEM, test_mem_state_max_blocks,
               "STATE query with maximum nb_blocks value",
-              VIRTIO_SPEC_V1_2, "5.14.6");
+              VIRTIO_SPEC_V1_2, "5.15.6");

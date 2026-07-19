@@ -37,4 +37,4 @@ static test_result_t test_mem_unplug_unbacked(struct virtio_dev *dev,
 
 REGISTER_TEST(R0013, VIRTIO_PCI_DEVICE_MEM, test_mem_unplug_unbacked,
               "Unplug never-plugged block",
-              VIRTIO_SPEC_V1_2, "5.14.6.2");
+              VIRTIO_SPEC_V1_2, "5.15.6.2");

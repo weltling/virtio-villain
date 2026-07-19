@@ -45,4 +45,4 @@ static test_result_t test_mem_invalid_type(struct virtio_dev *dev,
 
 REGISTER_TEST(R0005, VIRTIO_PCI_DEVICE_MEM, test_mem_invalid_type,
               "Request with undefined type value",
-              VIRTIO_SPEC_V1_2, "5.14.6.2");
+              VIRTIO_SPEC_V1_2, "5.15.6.2");
