@@ -35,4 +35,4 @@ static test_result_t test_watchdog_rapid_ping(struct virtio_dev *dev,
 
 REGISTER_TEST(D0034, VIRTIO_PCI_DEVICE_WATCHDOG, test_watchdog_rapid_ping,
               "Rapid ping burst of 8 with single kick",
-              VIRTIO_SPEC_V1_4, "5.18");
+              VIRTIO_SPEC_V1_4, "-");

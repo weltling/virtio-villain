@@ -35,4 +35,4 @@ static test_result_t test_watchdog_flags_combo(struct virtio_dev *dev,
 
 REGISTER_TEST(D0023, VIRTIO_PCI_DEVICE_WATCHDOG, test_watchdog_flags_combo,
               "Watchdog ping with readable then writable chain",
-              VIRTIO_SPEC_V1_2, "5.20");
+              VIRTIO_SPEC_V1_2, "-");

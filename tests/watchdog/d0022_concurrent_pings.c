@@ -36,4 +36,4 @@ static test_result_t test_watchdog_concurrent_pings(struct virtio_dev *dev,
 
 REGISTER_TEST(D0022, VIRTIO_PCI_DEVICE_WATCHDOG, test_watchdog_concurrent_pings,
               "Two watchdog pings submitted in one batch",
-              VIRTIO_SPEC_V1_2, "5.20");
+              VIRTIO_SPEC_V1_2, "-");

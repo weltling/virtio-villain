@@ -42,4 +42,4 @@ static test_result_t test_watchdog_huge_len_past_ram(struct virtio_dev *dev,
 
 REGISTER_TEST(D0020, VIRTIO_PCI_DEVICE_WATCHDOG, test_watchdog_huge_len_past_ram,
               "Watchdog ping writable len crosses end of RAM",
-              VIRTIO_SPEC_V1_2, "5.20");
+              VIRTIO_SPEC_V1_2, "-");

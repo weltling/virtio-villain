@@ -31,4 +31,4 @@ static test_result_t test_watchdog_ping_in_bar(struct virtio_dev *dev,
 REGISTER_TEST(D0028, VIRTIO_PCI_DEVICE_WATCHDOG,
               test_watchdog_ping_in_bar,
               "Watchdog ping descriptor in device MMIO BAR",
-              VIRTIO_SPEC_V1_2, "5.16");
+              VIRTIO_SPEC_V1_2, "-");

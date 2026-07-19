@@ -68,4 +68,4 @@ static test_result_t test_watchdog_reset_ping(struct virtio_dev *dev,
 
 REGISTER_TEST(D0035, VIRTIO_PCI_DEVICE_WATCHDOG, test_watchdog_reset_ping,
               "Ping, reset device, reinit, ping again",
-              VIRTIO_SPEC_V1_4, "5.18");
+              VIRTIO_SPEC_V1_4, "-");

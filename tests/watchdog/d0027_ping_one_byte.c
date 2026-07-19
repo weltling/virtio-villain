@@ -31,4 +31,4 @@ static test_result_t test_watchdog_one_byte(struct virtio_dev *dev,
 
 REGISTER_TEST(D0027, VIRTIO_PCI_DEVICE_WATCHDOG, test_watchdog_one_byte,
               "Watchdog ping with a one byte writable buffer",
-              VIRTIO_SPEC_V1_2, "5.20");
+              VIRTIO_SPEC_V1_2, "-");

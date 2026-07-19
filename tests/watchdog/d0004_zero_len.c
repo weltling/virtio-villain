@@ -29,4 +29,4 @@ static test_result_t test_watchdog_zero_len(struct virtio_dev *dev,
 
 REGISTER_TEST(D0004, VIRTIO_PCI_DEVICE_WATCHDOG, test_watchdog_zero_len,
               "Watchdog ping with zero-length descriptor",
-              VIRTIO_SPEC_V1_2, "5.16");
+              VIRTIO_SPEC_V1_2, "-");

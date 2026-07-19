@@ -33,4 +33,4 @@ static test_result_t test_watchdog_fill_ring(struct virtio_dev *dev,
 
 REGISTER_TEST(D0010, VIRTIO_PCI_DEVICE_WATCHDOG, test_watchdog_fill_ring,
               "Watchdog fill the ring",
-              VIRTIO_SPEC_V1_2, "5.20");
+              VIRTIO_SPEC_V1_2, "-");

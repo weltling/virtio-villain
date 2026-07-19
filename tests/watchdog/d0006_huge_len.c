@@ -30,4 +30,4 @@ static test_result_t test_watchdog_huge_len(struct virtio_dev *dev,
 
 REGISTER_TEST(D0006, VIRTIO_PCI_DEVICE_WATCHDOG, test_watchdog_huge_len,
               "Watchdog ping with 1 GiB length",
-              VIRTIO_SPEC_V1_2, "5.20");
+              VIRTIO_SPEC_V1_2, "-");

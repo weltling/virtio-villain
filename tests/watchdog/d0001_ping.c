@@ -33,4 +33,4 @@ static test_result_t test_watchdog_ping(struct virtio_dev *dev,
 
 REGISTER_TEST(D0001, VIRTIO_PCI_DEVICE_WATCHDOG, test_watchdog_ping,
               "Watchdog ping keepalive",
-              VIRTIO_SPEC_V1_2, "5.16");
+              VIRTIO_SPEC_V1_2, "-");

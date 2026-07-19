@@ -39,4 +39,4 @@ static test_result_t test_watchdog_multi_chain(struct virtio_dev *dev,
 
 REGISTER_TEST(D0018, VIRTIO_PCI_DEVICE_WATCHDOG, test_watchdog_multi_chain,
               "Ping with chained descriptor batch",
-              VIRTIO_SPEC_V1_2, "5.16");
+              VIRTIO_SPEC_V1_2, "-");

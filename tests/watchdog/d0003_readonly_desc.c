@@ -32,4 +32,4 @@ static test_result_t test_watchdog_readonly(struct virtio_dev *dev,
 
 REGISTER_TEST(D0003, VIRTIO_PCI_DEVICE_WATCHDOG, test_watchdog_readonly,
               "Watchdog ping with non-writable descriptor",
-              VIRTIO_SPEC_V1_2, "5.16");
+              VIRTIO_SPEC_V1_2, "-");
