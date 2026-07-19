@@ -46,4 +46,4 @@ static test_result_t test_admin_corrupt_group_type(struct virtio_dev *dev,
 
 REGISTER_TEST(A0015, VIRTIO_PCI_DEVICE_BLK, test_admin_corrupt_group_type,
               "Admin LIST_QUERY with group_type=0xFFFF and max member_id",
-              VIRTIO_SPEC_V1_3, "9.4");
+              VIRTIO_SPEC_V1_3, "2.13");

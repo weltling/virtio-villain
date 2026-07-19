@@ -53,4 +53,4 @@ static test_result_t test_admin_list_use_max_group(struct virtio_dev *dev,
 
 REGISTER_TEST(A0014, VIRTIO_PCI_DEVICE_BLK, test_admin_list_use_max_group,
               "Admin LIST_USE with maximum group_type value",
-              VIRTIO_SPEC_V1_3, "9.4");
+              VIRTIO_SPEC_V1_3, "2.13");

@@ -89,4 +89,4 @@ static test_result_t test_admin_concurrent(struct virtio_dev *dev,
 
 REGISTER_TEST(A0019, VIRTIO_PCI_DEVICE_BLK, test_admin_concurrent,
               "Concurrent LIST_USE and admin command on same queue",
-              VIRTIO_SPEC_V1_3, "9.4");
+              VIRTIO_SPEC_V1_3, "2.13");

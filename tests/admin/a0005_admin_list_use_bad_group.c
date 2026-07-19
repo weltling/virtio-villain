@@ -43,4 +43,4 @@ static test_result_t test_admin_list_use_bad_group(struct virtio_dev *dev,
 
 REGISTER_TEST(A0005, VIRTIO_PCI_DEVICE_BLK, test_admin_list_use_bad_group,
               "LIST_USE with invalid group_type 0xFFFF",
-              VIRTIO_SPEC_V1_3, "2.9");
+              VIRTIO_SPEC_V1_3, "2.12");

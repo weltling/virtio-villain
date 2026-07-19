@@ -48,4 +48,4 @@ static test_result_t test_admin_reserved_nonzero(struct virtio_dev *dev,
 
 REGISTER_TEST(A0016, VIRTIO_PCI_DEVICE_BLK, test_admin_reserved_nonzero,
               "Admin command with all reserved header bytes set to 0xFF",
-              VIRTIO_SPEC_V1_3, "9.4");
+              VIRTIO_SPEC_V1_3, "2.13");

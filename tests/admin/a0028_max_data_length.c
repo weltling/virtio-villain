@@ -56,4 +56,4 @@ static test_result_t test_admin_max_data(struct virtio_dev *dev,
 
 REGISTER_TEST_Q(A0028, VIRTIO_PCI_DEVICE_BLK, test_admin_max_data,
                 "Admin command with UINT64_MAX data_length",
-                VIRTIO_SPEC_V1_3, "9.4.2", VV_QUEUE_LAST);
+                VIRTIO_SPEC_V1_3, "2.13", VV_QUEUE_LAST);

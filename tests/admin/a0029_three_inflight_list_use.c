@@ -52,4 +52,4 @@ static test_result_t test_admin_three_inflight(struct virtio_dev *dev,
 
 REGISTER_TEST(A0029, VIRTIO_PCI_DEVICE_BLK, test_admin_three_inflight,
               "Three concurrent LIST_USE in one batch",
-              VIRTIO_SPEC_V1_3, "9.4");
+              VIRTIO_SPEC_V1_3, "2.13");

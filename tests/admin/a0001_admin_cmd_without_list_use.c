@@ -52,4 +52,4 @@ static test_result_t test_admin_cmd_without_list_use(struct virtio_dev *dev,
 
 REGISTER_TEST(A0001, VIRTIO_PCI_DEVICE_BLK, test_admin_cmd_without_list_use,
               "Admin command without prior LIST_USE",
-              VIRTIO_SPEC_V1_3, "2.9");
+              VIRTIO_SPEC_V1_3, "2.12");

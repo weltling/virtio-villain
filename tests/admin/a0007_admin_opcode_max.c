@@ -41,4 +41,4 @@ static test_result_t test_admin_opcode_max(struct virtio_dev *dev,
 
 REGISTER_TEST(A0007, VIRTIO_PCI_DEVICE_BLK, test_admin_opcode_max,
               "Admin command with opcode = 0xFFFF (max undefined)",
-              VIRTIO_SPEC_V1_3, "9.4");
+              VIRTIO_SPEC_V1_3, "2.13");

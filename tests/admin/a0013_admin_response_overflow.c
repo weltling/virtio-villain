@@ -48,4 +48,4 @@ static test_result_t test_admin_response_overflow(struct virtio_dev *dev,
 
 REGISTER_TEST(A0013, VIRTIO_PCI_DEVICE_BLK, test_admin_response_overflow,
               "Admin command with 1-byte response buffer (overflow)",
-              VIRTIO_SPEC_V1_3, "9.4");
+              VIRTIO_SPEC_V1_3, "2.13");

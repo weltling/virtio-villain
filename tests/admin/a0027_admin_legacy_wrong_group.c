@@ -44,4 +44,4 @@ static test_result_t test_admin_legacy_wrong_group(struct virtio_dev *dev,
 
 REGISTER_TEST(A0027, VIRTIO_PCI_DEVICE_BLK, test_admin_legacy_wrong_group,
               "Admin legacy cfg read with invalid group type",
-              VIRTIO_SPEC_V1_3, "9.4");
+              VIRTIO_SPEC_V1_3, "2.13");

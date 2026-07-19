@@ -68,4 +68,4 @@ static test_result_t test_admin_query_use_query(struct virtio_dev *dev,
 
 REGISTER_TEST(A0020, VIRTIO_PCI_DEVICE_BLK, test_admin_query_use_query,
               "LIST_QUERY then LIST_USE then LIST_QUERY in one batch",
-              VIRTIO_SPEC_V1_2, "9.4");
+              VIRTIO_SPEC_V1_3, "2.13");

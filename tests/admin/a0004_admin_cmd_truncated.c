@@ -42,4 +42,4 @@ static test_result_t test_admin_cmd_truncated(struct virtio_dev *dev,
 
 REGISTER_TEST(A0004, VIRTIO_PCI_DEVICE_BLK, test_admin_cmd_truncated,
               "Admin command with truncated header buffer",
-              VIRTIO_SPEC_V1_3, "2.9");
+              VIRTIO_SPEC_V1_3, "2.12");

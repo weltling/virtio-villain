@@ -45,4 +45,4 @@ static test_result_t test_admin_cmd_reserved_status(struct virtio_dev *dev,
 
 REGISTER_TEST(A0003, VIRTIO_PCI_DEVICE_BLK, test_admin_cmd_reserved_status,
               "Admin command with reserved opcode",
-              VIRTIO_SPEC_V1_3, "2.9");
+              VIRTIO_SPEC_V1_3, "2.12");

@@ -45,4 +45,4 @@ static test_result_t test_admin_legacy_dev_read(struct virtio_dev *dev,
 
 REGISTER_TEST(A0026, VIRTIO_PCI_DEVICE_BLK, test_admin_legacy_dev_read,
               "Admin legacy device cfg read command",
-              VIRTIO_SPEC_V1_3, "9.4");
+              VIRTIO_SPEC_V1_3, "2.13");
