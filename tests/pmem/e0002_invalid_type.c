@@ -41,4 +41,4 @@ static test_result_t test_pmem_invalid_type(struct virtio_dev *dev,
 
 REGISTER_TEST(E0002, VIRTIO_PCI_DEVICE_PMEM, test_pmem_invalid_type,
               "Flush request with invalid type",
-              VIRTIO_SPEC_V1_2, "5.10.6.1");
+              VIRTIO_SPEC_V1_2, "5.19.6.1");

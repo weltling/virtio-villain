@@ -50,4 +50,4 @@ static test_result_t test_pmem_flush_indirect(struct virtio_dev *dev,
 
 REGISTER_TEST(E0025, VIRTIO_PCI_DEVICE_PMEM, test_pmem_flush_indirect,
               "Pmem flush submitted via indirect descriptor",
-              VIRTIO_SPEC_V1_2, "5.10.6.1");
+              VIRTIO_SPEC_V1_2, "5.19.6.1");

@@ -51,4 +51,4 @@ static test_result_t test_pmem_interleave(struct virtio_dev *dev,
 
 REGISTER_TEST(E0018, VIRTIO_PCI_DEVICE_PMEM, test_pmem_interleave,
               "four sequential flushes complete with status OK",
-              VIRTIO_SPEC_V1_2, "5.18.5");
+              VIRTIO_SPEC_V1_2, "5.19.6");

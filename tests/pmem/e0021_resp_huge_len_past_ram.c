@@ -48,4 +48,4 @@ static test_result_t test_pmem_resp_huge_len_past_ram(struct virtio_dev *dev,
 
 REGISTER_TEST(E0021, VIRTIO_PCI_DEVICE_PMEM, test_pmem_resp_huge_len_past_ram,
               "Pmem flush response writable len crosses end of RAM",
-              VIRTIO_SPEC_V1_2, "5.10.6.1");
+              VIRTIO_SPEC_V1_2, "5.19.6.1");

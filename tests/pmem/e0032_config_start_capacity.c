@@ -37,4 +37,4 @@ static test_result_t test_pmem_config(struct virtio_dev *dev,
 
 REGISTER_TEST(E0032, VIRTIO_PCI_DEVICE_PMEM, test_pmem_config,
               "Read pmem config start and capacity",
-              VIRTIO_SPEC_V1_2, "5.16.4");
+              VIRTIO_SPEC_V1_2, "5.19.4");

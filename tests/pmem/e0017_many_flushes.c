@@ -51,4 +51,4 @@ static test_result_t test_pmem_many_flushes(struct virtio_dev *dev,
 
 REGISTER_TEST(E0017, VIRTIO_PCI_DEVICE_PMEM, test_pmem_many_flushes,
               "64 sequential PMEM flushes complete in order",
-              VIRTIO_SPEC_V1_2, "5.10.6");
+              VIRTIO_SPEC_V1_2, "5.19.6");

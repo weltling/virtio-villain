@@ -44,4 +44,4 @@ static test_result_t test_pmem_flush_status(struct virtio_dev *dev,
 
 REGISTER_TEST(E0031, VIRTIO_PCI_DEVICE_PMEM, test_pmem_flush_status,
               "Flush response status is zero (success)",
-              VIRTIO_SPEC_V1_2, "5.16.6");
+              VIRTIO_SPEC_V1_2, "5.19.6");

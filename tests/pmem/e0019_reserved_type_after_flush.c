@@ -51,4 +51,4 @@ static test_result_t test_pmem_reserved_then_flush(struct virtio_dev *dev,
 
 REGISTER_TEST(E0019, VIRTIO_PCI_DEVICE_PMEM, test_pmem_reserved_then_flush,
               "Reserved type then a normal flush",
-              VIRTIO_SPEC_V1_2, "5.10.6.1");
+              VIRTIO_SPEC_V1_2, "5.19.6.1");

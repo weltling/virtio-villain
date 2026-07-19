@@ -39,4 +39,4 @@ static test_result_t test_pmem_resp_in_bar(struct virtio_dev *dev,
 
 REGISTER_TEST(E0026, VIRTIO_PCI_DEVICE_PMEM, test_pmem_resp_in_bar,
               "Flush response descriptor points at device MMIO BAR",
-              VIRTIO_SPEC_V1_2, "5.10.6.1");
+              VIRTIO_SPEC_V1_2, "5.19.6.1");

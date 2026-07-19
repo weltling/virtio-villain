@@ -66,4 +66,4 @@ static test_result_t test_pmem_double_flush(struct virtio_dev *dev,
 
 REGISTER_TEST(E0004, VIRTIO_PCI_DEVICE_PMEM, test_pmem_double_flush,
               "Two flush requests in rapid succession",
-              VIRTIO_SPEC_V1_2, "5.10.6.1");
+              VIRTIO_SPEC_V1_2, "5.19.6.1");

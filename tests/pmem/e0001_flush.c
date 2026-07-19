@@ -41,4 +41,4 @@ static test_result_t test_pmem_flush(struct virtio_dev *dev,
 
 REGISTER_TEST(E0001, VIRTIO_PCI_DEVICE_PMEM, test_pmem_flush,
               "Flush persistent memory",
-              VIRTIO_SPEC_V1_2, "5.10.6.1");
+              VIRTIO_SPEC_V1_2, "5.19.6.1");

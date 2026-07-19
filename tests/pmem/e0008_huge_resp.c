@@ -31,4 +31,4 @@ static test_result_t test_pmem_huge_resp(struct virtio_dev *dev,
 
 REGISTER_TEST(E0008, VIRTIO_PCI_DEVICE_PMEM, test_pmem_huge_resp,
               "Flush huge response length",
-              VIRTIO_SPEC_V1_2, "5.10.6.1");
+              VIRTIO_SPEC_V1_2, "5.19.6.1");
