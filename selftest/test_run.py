@@ -1253,31 +1253,40 @@ def test_unit_batch_timeout_preserves_printed_verdicts():
     assert verdicts["T0003"] == "WEDGED"
 
 
-def test_unit_batch_idle_watchdog_bounds_hang():
-    """A hang mid batch trips one timeout after the last verdict.
+class _SlowMidBatchBackend:
+    """VM where a test in the middle of a batch is slow to report.
 
-    The batch budget is timeout * ntests, but the idle watchdog resets
-    on each printed verdict, so a stalled test is killed about one
-    timeout after the previous test reported rather than after the whole
-    scaled budget. Without the watchdog this run would block for the
-    full effective_timeout.
+    T0001 reports at once, then the VM is silent for longer than a
+    single per test timeout before T0002 and T0003 report. The whole
+    run stays well inside the batch budget (timeout * ntests).
     """
-    import time as _time
-    timeout = 2
-    tests = ["T0001", "T0002", "T0003", "T0004"]
-    effective = timeout * len(tests)
-    start = _time.monotonic()
+    name = "fake"
+    console_device = "ttyS0"
+    mmio_transport = False
+
+    def build_cmd(self, kernel, initramfs, disk_path, cmdline, opts=None):
+        return ["sh", "-c",
+                "printf '[PASS] T0001\\n'; sleep 1.4; "
+                "printf '[PASS] T0002\\n[PASS] T0003\\n'"]
+
+
+def test_unit_batch_slow_test_does_not_wedge_siblings():
+    """A slow test must not wedge the tests after it in the same batch.
+
+    T0002 goes silent for about 1.4s, longer than the 1s per test
+    timeout but far under the 3s batch budget. The VM must not be killed
+    for overrunning a single per test slice, so every test reports. A
+    per test idle kill or a premature all-markers kill would wedge T0002
+    and T0003; this test fails on that behavior and passes on the single
+    absolute batch timer.
+    """
     results = RUN_MOD.run_test(
-        _TimeoutBackend(), "kernel", tests, timeout, 0, False, "raw", {})
-    elapsed = _time.monotonic() - start
-    assert elapsed < effective - timeout, (
-        f"idle watchdog did not bound the hang: {elapsed:.1f}s "
-        f"(budget {effective}s)")
+        _SlowMidBatchBackend(), "kernel", ["T0001", "T0002", "T0003"],
+        1, 0, False, "raw", {})
     verdicts = {name: st for name, st, _ in results}
     assert verdicts["T0001"] == "PASS"
     assert verdicts["T0002"] == "PASS"
-    assert verdicts["T0003"] == "WEDGED"
-    assert verdicts["T0004"] == "WEDGED"
+    assert verdicts["T0003"] == "PASS"
 
 
 def test_unit_merge_streams_no_stderr():
