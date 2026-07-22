@@ -406,6 +406,8 @@ are grouped by error class for triage. See
 
 ## Found Bugs
 
+### Cloud Hypervisor
+
 A subset of upstream Cloud Hypervisor fixes surfaced by this harness:
 
 - [#8491](https://github.com/cloud-hypervisor/cloud-hypervisor/pull/8491) virtio-devices: Omit the device config capability for configless devices
@@ -428,6 +430,10 @@ A subset of upstream Cloud Hypervisor fixes surfaced by this harness:
 - [#7805](https://github.com/cloud-hypervisor/cloud-hypervisor/pull/7805) virtio: Spec compliance fixes
 
 All in cloud-hypervisor/cloud-hypervisor, all merged.
+
+### QEMU
+
+- [#3968](https://gitlab.com/qemu-project/qemu/-/work_items/3968) virtio: Malformed packed descriptor livelocks the device at 100% host CPU (guest triggered DoS), reproducer P0040
 
 ## Acknowledgments
 
