@@ -398,6 +398,29 @@ class VmmBackend:
             args += ["--trace", ev]
         return args
 
+    @staticmethod
+    def _qemu_drive_arg(disk_path, qemu_fmt, opts):
+        """Build the QEMU -drive value from the generic IO opts.
+
+        Maps the cross backend --io-engine to QEMU aio modes and adds
+        O_DIRECT when requested. QEMU native AIO requires direct IO, so
+        the aio engine turns it on regardless of --direct.
+        """
+        aio_map = {"default": None, "io_uring": "io_uring",
+                   "aio": "native", "sync": "threads"}
+        engine = opts.get("io_engine", "default")
+        aio = aio_map.get(engine)
+        direct = bool(opts.get("direct"))
+        if engine == "aio":
+            direct = True
+        parts = [f"file={disk_path}", f"format={qemu_fmt}",
+                 "if=none", "id=vd0"]
+        if aio:
+            parts.append(f"aio={aio}")
+        if direct:
+            parts.append("cache.direct=on")
+        return ",".join(parts)
+
 
 class CloudHypervisor(VmmBackend):
     name = "ch"
@@ -417,6 +440,26 @@ class CloudHypervisor(VmmBackend):
         with cls._cid_lock:
             cls._cid_counter += 1
             return cls._cid_counter
+
+    @staticmethod
+    def _ch_disk_arg(disk_path, disk_fmt, blk_queues, opts):
+        """Build the CH --disk value from the generic IO opts.
+
+        Maps --io-engine to CH's _disable_io_uring / _disable_aio
+        toggles. CH prefers io_uring, then Linux AIO, then sync, so aio
+        disables io_uring and sync disables both. direct=on requests
+        O_DIRECT.
+        """
+        engine = opts.get("io_engine", "default")
+        arg = (f"path={disk_path},image_type={disk_fmt}"
+               f",num_queues={blk_queues},iommu=on")
+        if engine == "aio":
+            arg += ",_disable_io_uring=on"
+        elif engine == "sync":
+            arg += ",_disable_io_uring=on,_disable_aio=on"
+        if opts.get("direct"):
+            arg += ",direct=on"
+        return arg
 
     def build_cmd(self, kernel, initramfs, disk_path, cmdline, opts=None):
         opts = opts or {}
@@ -451,7 +494,7 @@ class CloudHypervisor(VmmBackend):
             *(["-vv"] if os.environ.get("VV_CH_DEBUG") else []),
             "--kernel", kernel,
             "--initramfs", initramfs,
-            "--disk", f"path={disk_path},image_type={disk_fmt},num_queues={blk_queues},iommu=on",
+            "--disk", self._ch_disk_arg(disk_path, disk_fmt, blk_queues, opts),
             "--net", f"tap=,num_queues={net_queues}{',iommu=on' if opts.get('net_iommu') else ''}",
             "--vsock", f"cid={cid},socket={vsock_sock}",
             "--balloon", "size=0",
@@ -521,7 +564,7 @@ class Qemu(VmmBackend):
             "-enable-kvm",
             "-kernel", kernel,
             "-initrd", initramfs,
-            "-drive", f"file={disk_path},format={qemu_fmt},if=none,id=vd0",
+            "-drive", self._qemu_drive_arg(disk_path, qemu_fmt, opts),
             "-device", blk_dev,
             "-netdev", netdev,
             "-device", net_dev,
@@ -584,7 +627,7 @@ class QemuMicrovm(VmmBackend):
             "-enable-kvm",
             "-kernel", kernel,
             "-initrd", initramfs,
-            "-drive", f"file={disk_path},format={qemu_fmt},if=none,id=vd0",
+            "-drive", self._qemu_drive_arg(disk_path, qemu_fmt, opts),
             "-device", "virtio-blk-device,drive=vd0",
             "-append", cmdline,
             "-nographic",
@@ -1994,6 +2037,13 @@ def main():
                         help="Increase verbosity (-v: commands, -vv: full output)")
     parser.add_argument("-d", "--disk-type", choices=DISK_FORMATS, default="raw",
                         help="Disk image format (default: raw)")
+    parser.add_argument("--io-engine",
+                        choices=["default", "io_uring", "aio", "sync"],
+                        default="default",
+                        help="Block IO engine: default (VMM decides), "
+                             "io_uring, aio (Linux AIO), or sync.")
+    parser.add_argument("--direct", action="store_true",
+                        help="Open block backing files with O_DIRECT.")
     parser.add_argument("-s", "--cpus", type=int, default=None,
                         help="Number of vCPUs (default: 4 for CH, 1 for QEMU)")
     parser.add_argument("-M", "--memory", default="512M", type=_normalize_mem,
@@ -2133,6 +2183,8 @@ def main():
         "api_enabled": not args.no_api_socket,
         "vmm_trace": vmm_trace,
         "vmm_trace_file": args.vmm_trace_file,
+        "io_engine": args.io_engine,
+        "direct": args.direct,
     }
 
     # Scale the per VM wall clock deadline by the host oversubscription
@@ -2172,6 +2224,13 @@ def main():
             qemu_path = shutil.which(f"qemu-system-{arch}")
             if qemu_path:
                 mmio_backend = QemuMicrovm(qemu_path)
+
+    # QEMU refuses aio=native without O_DIRECT, so the aio engine turns
+    # direct IO on. Warn when the QEMU backend does so implicitly.
+    if (args.io_engine == "aio" and not args.direct
+            and backend.name.startswith("qemu")):
+        print("Note: --io-engine aio requires direct IO on QEMU, "
+              "enabling cache.direct=on", file=sys.stderr)
 
     if args.log_dir:
         os.makedirs(args.log_dir, exist_ok=True)

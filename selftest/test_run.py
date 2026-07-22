@@ -445,6 +445,89 @@ def test_unit_qemu_build_cmd_omits_qmp():
     assert "-qmp" not in cmd
 
 
+# ---------------------------------------------------------------------------
+# Block IO engine and direct IO mapping.
+
+def _qemu_drive(cmd):
+    return cmd[cmd.index("-drive") + 1]
+
+
+def _ch_disk(cmd):
+    return cmd[cmd.index("--disk") + 1]
+
+
+def test_unit_qemu_io_engine_default_omits_aio():
+    be = RUN_MOD.Qemu("/usr/bin/qemu-system-x86_64")
+    drive = _qemu_drive(be.build_cmd("/k", "/i", "/d.raw", "c", {}))
+    assert "aio=" not in drive
+    assert "cache.direct" not in drive
+
+
+def test_unit_qemu_io_engine_io_uring():
+    be = RUN_MOD.Qemu("/usr/bin/qemu-system-x86_64")
+    drive = _qemu_drive(
+        be.build_cmd("/k", "/i", "/d.raw", "c", {"io_engine": "io_uring"}))
+    assert "aio=io_uring" in drive
+
+
+def test_unit_qemu_io_engine_sync_maps_threads():
+    be = RUN_MOD.Qemu("/usr/bin/qemu-system-x86_64")
+    drive = _qemu_drive(
+        be.build_cmd("/k", "/i", "/d.raw", "c", {"io_engine": "sync"}))
+    assert "aio=threads" in drive
+
+
+def test_unit_qemu_io_engine_aio_forces_direct():
+    """QEMU aio=native requires O_DIRECT, so aio turns direct on."""
+    be = RUN_MOD.Qemu("/usr/bin/qemu-system-x86_64")
+    drive = _qemu_drive(
+        be.build_cmd("/k", "/i", "/d.raw", "c", {"io_engine": "aio"}))
+    assert "aio=native" in drive
+    assert "cache.direct=on" in drive
+
+
+def test_unit_qemu_direct_without_engine():
+    be = RUN_MOD.Qemu("/usr/bin/qemu-system-x86_64")
+    drive = _qemu_drive(
+        be.build_cmd("/k", "/i", "/d.raw", "c", {"direct": True}))
+    assert "cache.direct=on" in drive
+    assert "aio=" not in drive
+
+
+def test_unit_ch_io_engine_default_has_no_toggles():
+    be = RUN_MOD.CloudHypervisor("/usr/bin/cloud-hypervisor")
+    disk = _ch_disk(be.build_cmd("/k", "/i", "/d.raw", "c",
+                                 {"blk_queues": 1, "net_queues": 1}))
+    assert "_disable_io_uring" not in disk
+    assert "_disable_aio" not in disk
+
+
+def test_unit_ch_io_engine_aio_disables_io_uring():
+    be = RUN_MOD.CloudHypervisor("/usr/bin/cloud-hypervisor")
+    disk = _ch_disk(be.build_cmd(
+        "/k", "/i", "/d.raw", "c",
+        {"blk_queues": 1, "net_queues": 1, "io_engine": "aio"}))
+    assert "_disable_io_uring=on" in disk
+    assert "_disable_aio" not in disk
+
+
+def test_unit_ch_io_engine_sync_disables_both():
+    be = RUN_MOD.CloudHypervisor("/usr/bin/cloud-hypervisor")
+    disk = _ch_disk(be.build_cmd(
+        "/k", "/i", "/d.raw", "c",
+        {"blk_queues": 1, "net_queues": 1, "io_engine": "sync"}))
+    assert "_disable_io_uring=on" in disk
+    assert "_disable_aio=on" in disk
+
+
+def test_unit_ch_direct_adds_direct():
+    be = RUN_MOD.CloudHypervisor("/usr/bin/cloud-hypervisor")
+    disk = _ch_disk(be.build_cmd(
+        "/k", "/i", "/d.raw", "c",
+        {"blk_queues": 1, "net_queues": 1, "direct": True}))
+    assert "direct=on" in disk
+
+
 def test_unit_find_ch_remote_sibling():
     """_find_ch_remote prefers a binary next to cloud-hypervisor."""
     with tempfile.TemporaryDirectory() as td:
