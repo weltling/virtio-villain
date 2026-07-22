@@ -2011,136 +2011,122 @@ def _desc_column_width(cols, longest_desc, fixed):
 
 def main():
     print_banner(sys.stderr)
-    parser = argparse.ArgumentParser(description="virtio-villain test runner")
-    parser.add_argument("-m", "--vmm", required=True, help="Path to VMM binary")
-    parser.add_argument("-k", "--kernel", default=None,
-                        help="Path to guest kernel, fetched automatically if omitted")
-    parser.add_argument("-t", "--timeout", type=int, default=30,
-                        help="Timeout for each test in seconds (default: 30)")
-    parser.add_argument("-l", "--log-dir", default=None,
-                        help="Save output for each test to files in this directory")
-    parser.add_argument("-c", "--console", action="store_true",
-                        help="Stream VM output directly to stdout")
-    parser.add_argument("-j", "--jobs", type=int, default=1,
+    parser = argparse.ArgumentParser(
+        description="virtio-villain test runner",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        add_help=False,
+        epilog=(
+            "examples\n"
+            "  run -m ./cloud-hypervisor\n"
+            "        run all tests on Cloud Hypervisor\n"
+            "  run -m ./qemu-system-x86_64 --order fast -j 4\n"
+            "        QEMU, pool friendly order, four in parallel\n"
+            "  run -m ./cloud-hypervisor -i 'B*' -x 'B02*'\n"
+            "        block tests, excluding the B02 hotplug family\n"
+            "  run -m ./qemu-system-x86_64 --io-engine io_uring B0001\n"
+            "        one test with the io_uring block engine\n"
+        ),
+    )
+
+    g_vmm = parser.add_argument_group("VMM and guest")
+    g_vmm.add_argument("-m", "--vmm", required=True, metavar="PATH",
+                       help="Path to the VMM binary (required)")
+    g_vmm.add_argument("-k", "--kernel", default=None, metavar="PATH",
+                       help="Guest kernel, fetched automatically if omitted")
+    g_vmm.add_argument("-s", "--cpus", type=int, default=None, metavar="N",
+                       help="vCPUs per VM (default: 4 CH, 1 QEMU)")
+    g_vmm.add_argument("-M", "--memory", default="512M", type=_normalize_mem,
+                       metavar="SIZE",
+                       help="Guest memory size (default: 512M)")
+    g_vmm.add_argument("-d", "--disk-type", choices=DISK_FORMATS,
+                       default="raw",
+                       help="Disk image format (default: raw)")
+    g_vmm.add_argument("--blk-queues", type=int, default=4, metavar="N",
+                       help="Block device queues (default: 4)")
+    g_vmm.add_argument("--net-queues", type=int, default=4, metavar="N",
+                       help="Net device queue pairs (default: 4)")
+    g_vmm.add_argument("--packed", action="store_true", default=True,
+                       help="Use packed virtqueues (default)")
+    g_vmm.add_argument("--no-packed", action="store_true",
+                       help="Use split virtqueues")
+    g_vmm.add_argument("--io-engine",
+                       choices=["default", "io_uring", "aio", "sync"],
+                       default="default",
+                       help="Block IO engine, one of default, io_uring, aio "
+                            "(Linux AIO) or sync (default: default)")
+    g_vmm.add_argument("--direct", action="store_true",
+                       help="Open block backing files with O_DIRECT")
+
+    g_sel = parser.add_argument_group("test selection")
+    g_sel.add_argument("tests", nargs="*", metavar="TEST",
+                       help="Test IDs to run (default: all)")
+    g_sel.add_argument("-i", "--include", action="append", default=[],
+                       metavar="GLOB",
+                       help="Run tests matching shell GLOB, repeatable")
+    g_sel.add_argument("-x", "--exclude", action="append", default=[],
+                       metavar="GLOB",
+                       help="Skip tests matching shell GLOB, repeatable")
+    g_sel.add_argument("--dir", action="append", default=[], dest="dirs",
+                       metavar="NAME",
+                       help="Run tests from directory NAME under tests/, "
+                            "repeatable")
+    g_sel.add_argument("--exclude-dir", action="append", default=[],
+                       metavar="NAME",
+                       help="Skip tests from directory NAME, repeatable")
+    g_sel.add_argument("--skip-unsupported", action="store_true",
+                       help="Probe the VMM and drop tests it cannot run")
+    g_sel.add_argument("--order",
+                       choices=["default", "fast", "alpha", "random",
+                                "reverse"],
+                       default="default",
+                       help="Execution order, one of default, fast, alpha, "
+                            "random or reverse (default: default)")
+    g_sel.add_argument("--batch", type=int, default=0, metavar="N",
+                       help="Run N tests per VM boot, 0 disables (default: 0)")
+
+    g_exec = parser.add_argument_group("execution")
+    g_exec.add_argument("-j", "--jobs", type=int, default=1, metavar="N",
                         help="Run N tests in parallel (default: 1)")
-    parser.add_argument("--retries", type=int, default=0, metavar="N",
-                        help="Retry a failing test up to N times to detect "
-                             "flakiness (default: 0). A test that passes runs "
-                             "once, so a green run pays no extra cost. A test "
-                             "that fails is retried solo, stopping at the "
-                             "first pass. A test that fails then recovers on "
-                             "a rerun keeps that real verdict and is listed "
-                             "as retried (a transient failure, not a stable "
-                             "property); a test that fails every attempt "
-                             "still gates. Works alongside --batch.")
-    parser.add_argument("-v", "--verbose", action="count", default=0,
-                        help="Increase verbosity (-v: commands, -vv: full output)")
-    parser.add_argument("-d", "--disk-type", choices=DISK_FORMATS, default="raw",
-                        help="Disk image format (default: raw)")
-    parser.add_argument("--io-engine",
-                        choices=["default", "io_uring", "aio", "sync"],
-                        default="default",
-                        help="Block IO engine: default (VMM decides), "
-                             "io_uring, aio (Linux AIO), or sync.")
-    parser.add_argument("--direct", action="store_true",
-                        help="Open block backing files with O_DIRECT.")
-    parser.add_argument("-s", "--cpus", type=int, default=None,
-                        help="Number of vCPUs (default: 4 for CH, 1 for QEMU)")
-    parser.add_argument("-M", "--memory", default="512M", type=_normalize_mem,
-                        help="Guest memory size (default: 512M)")
-    parser.add_argument("--blk-queues", type=int, default=4,
-                        help="Number of block device queues (default: 4)")
-    parser.add_argument("--net-queues", type=int, default=4,
-                        help="Number of net device queue pairs (default: 4)")
-    parser.add_argument("--packed", action="store_true", default=True,
-                        help="Use packed virtqueues (default)")
-    parser.add_argument("--no-packed", action="store_true",
-                        help="Use split virtqueues")
-    parser.add_argument("--skip-unsupported", action="store_true",
-                        help="Probe the VMM for available devices and "
-                             "features before running tests. Tests that "
-                             "target a missing device or require features "
-                             "not offered are excluded from the run.")
-    parser.add_argument("--no-api-socket", action="store_true",
-                        help="Disable per VM control socket "
-                             "(CH --api-socket or QEMU -qmp). The socket "
-                             "is enabled by default and required for "
-                             "save, restore and hotplug oriented tests.")
-    parser.add_argument("--vmm-trace", action="append", default=[],
+    g_exec.add_argument("-t", "--timeout", type=int, default=30,
+                        metavar="SEC",
+                        help="Per test timeout in seconds (default: 30)")
+    g_exec.add_argument("--retries", type=int, default=0, metavar="N",
+                        help="Retry a failing test up to N times to spot "
+                             "flakiness (default: 0)")
+
+    g_out = parser.add_argument_group("output and reporting")
+    g_out.add_argument("-c", "--console", action="store_true",
+                       help="Stream VM output directly to stdout")
+    g_out.add_argument("-l", "--log-dir", default=None, metavar="DIR",
+                       help="Save per test output into this directory")
+    g_out.add_argument("-v", "--verbose", action="count", default=0,
+                       help="Increase verbosity (-v commands, -vv full "
+                            "output)")
+    g_out.add_argument("--format", choices=["text", "json", "junit"],
+                       default="text",
+                       help="Report format, one of text, json or junit "
+                            "(default: text)")
+    g_out.add_argument("--output", default=None, metavar="FILE",
+                       help="Write the report to FILE instead of stdout")
+
+    g_diag = parser.add_argument_group("diagnostics and host")
+    g_diag.add_argument("--vmm-trace", action="append", default=[],
                         metavar="EVENTS",
-                        help="Enable VMM tracepoints. Comma separated event "
-                             "names or globs, repeatable. Example: "
-                             "'virtio_queue_notify,virtqueue_pop' or "
-                             "'virtio_blk_*'. Only backends that support "
-                             "tracing accept this; others error out. Best "
-                             "used with --jobs 1 since all VMs share one "
-                             "trace file.")
-    parser.add_argument("--vmm-trace-file", default=None, metavar="PATH",
-                        help="Where the VMM writes the trace log when "
-                             f"--vmm-trace is set (default: "
-                             f"{DEFAULT_VMM_TRACE_FILE}).")
-    parser.add_argument("--apply-sysconfig", action="store_true",
-                        help="Apply host settings that a sanitizer "
-                             "instrumented VMM needs, then revert them on "
-                             "exit. Grants the VMM CAP_SYS_PTRACE so "
-                             "LeakSanitizer can complete its exit time "
-                             "leak scan against the non dumpable VMM, and "
-                             "sets kernel.yama.ptrace_scope=0 as a "
-                             "fallback. Uses sudo; only the values it "
-                             "changed are reverted.")
-    parser.add_argument("-i", "--include", action="append", default=[],
-                        metavar="GLOB",
-                        help="Run tests whose name matches the shell glob, "
-                             "ignores case. Repeatable. Examples: "
-                             "'RNG*', 'T0[1-5]', 'PCI00??', '*0001'. "
-                             "Combines with positional names, with --dir, "
-                             "and with --exclude or --exclude-dir.")
-    parser.add_argument("-x", "--exclude", action="append", default=[],
-                        metavar="GLOB",
-                        help="Skip tests whose name matches the shell glob, "
-                             "ignores case. Repeatable. Applied after "
-                             "--include and --dir. Examples: 'RTC*', "
-                             "'T01', 'PCI006?'.")
-    parser.add_argument("--dir", action="append", default=[], dest="dirs",
-                        metavar="NAME",
-                        help="Run tests whose source directory under tests/ "
-                             "matches NAME. Repeatable. Plain names match "
-                             "exactly. Shell globs match across known "
-                             "directories. Examples: rtc, pci, blk, vring, "
-                             "'p*' for packed, pci, pmem. Use with "
-                             "--exclude or --exclude-dir to refine the "
-                             "selection.")
-    parser.add_argument("--exclude-dir", action="append", default=[],
-                        metavar="NAME",
-                        help="Skip tests whose source directory under tests/ "
-                             "matches NAME. Repeatable. Plain names match "
-                             "exactly. Shell globs are supported. Applied "
-                             "after --include and --dir.")
-    parser.add_argument("--order", choices=["default", "fast", "alpha",
-                        "random", "reverse"], default="default",
-                        help="Test execution order. default: as discovered. "
-                             "fast: slow tests interleaved among shuffled "
-                             "fast ones for optimal pool utilization. "
-                             "alpha: sorted by test ID. "
-                             "random: fully shuffled. "
-                             "reverse: reverse alphabetical.")
-    parser.add_argument("--batch", type=int, default=0, metavar="N",
-                        help="Run N tests per VM boot. Tests are grouped "
-                             "by device type and submitted as a comma "
-                             "separated list. 0 (default) disables batching. "
-                             "Sidecar tests are never batched.")
-    parser.add_argument("--format", choices=["text", "json", "junit"],
-                        default="text",
-                        help="Result report format (default: text). "
-                             "json and junit emit a machine readable "
-                             "report for CI. With either, the human table "
-                             "goes to stderr and the report to stdout "
-                             "unless --output is given.")
-    parser.add_argument("--output", default=None, metavar="FILE",
-                        help="Write the --format report to FILE instead of "
-                             "stdout. The human table stays on stdout.")
-    parser.add_argument("tests", nargs="*",
-                        help="Test IDs to run (default: all)")
+                        help="Enable VMM tracepoints, comma separated globs, "
+                             "repeatable")
+    g_diag.add_argument("--vmm-trace-file", default=None, metavar="PATH",
+                        help=f"Trace log path for --vmm-trace "
+                             f"(default: {DEFAULT_VMM_TRACE_FILE})")
+    g_diag.add_argument("--apply-sysconfig", action="store_true",
+                        help="Apply sanitizer host settings via sudo, "
+                             "reverted on exit")
+    g_diag.add_argument("--no-api-socket", action="store_true",
+                        help="Disable the per VM control socket")
+
+    g_other = parser.add_argument_group("other")
+    g_other.add_argument("-h", "--help", action="help",
+                         default=argparse.SUPPRESS,
+                         help="Show this help message and exit")
     args = parser.parse_args()
 
     _install_termination_as_interrupt()

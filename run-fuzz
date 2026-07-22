@@ -1902,125 +1902,188 @@ def main():
     print_banner(sys.stderr)
     parser = argparse.ArgumentParser(
         description="virtio-villain coverage fuzzer",
-        usage="%(prog)s <command> [options]",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        add_help=False,
+        epilog=(
+            "examples\n"
+            "  run-fuzz fuzz --vmm ./cloud-hypervisor -n 50000 -j 4\n"
+            "        run the coverage fuzzing loop\n"
+            "  run-fuzz triage --vmm ./cloud-hypervisor\n"
+            "        replay crashes and group them by error class\n"
+            "  run-fuzz gen-test target/crashes/blob --id B9000\n"
+            "        turn a crash blob into a C test\n"
+            "  run-fuzz cov-report --vmm ./cloud-hypervisor\n"
+            "        build an HTML coverage report from the corpus\n"
+        ),
     )
-    sub = parser.add_subparsers(dest="command")
+    sub = parser.add_subparsers(dest="command", title="commands",
+                                metavar="<command>")
 
-    # Shared flag for subcommands that boot the VMM. Applied via the run
-    # module so the registry and revert logic live in exactly one place.
-    sysconf_parent = argparse.ArgumentParser(add_help=False)
-    sysconf_parent.add_argument(
-        "--apply-sysconfig", action="store_true",
-        help="Apply host settings a sanitizer instrumented VMM needs, "
-             "then revert them on exit. Grants the VMM CAP_SYS_PTRACE "
-             "so LeakSanitizer can complete its exit time leak scan "
-             "against the non dumpable VMM, and sets "
-             "kernel.yama.ptrace_scope=0 as a fallback. Uses sudo; only "
-             "the values it changed are reverted.")
+    # Shared VMM sanitizer flag as a "host" group. Kept in one place so
+    # the registry and revert logic live in the run module.
+    def _add_sysconfig(p):
+        g = p.add_argument_group("host")
+        g.add_argument(
+            "--apply-sysconfig", action="store_true",
+            help="Apply sanitizer host settings via sudo, "
+                 "reverted on exit")
+
+    # Append -h/--help last so the useful options lead each screen.
+    def _add_help(p):
+        g = p.add_argument_group("other")
+        g.add_argument("-h", "--help", action="help",
+                       default=argparse.SUPPRESS,
+                       help="Show this help message and exit")
+
+    _add_help(parser)
 
     # --- fuzz (default) ---
     p_fuzz = sub.add_parser("fuzz", help="Run the fuzzing loop",
-                            parents=[sysconf_parent])
-    p_fuzz.add_argument("--vmm", required=True, help="Path to VMM binary")
-    p_fuzz.add_argument("--kernel", default=None,
-                        help="Path to guest kernel (auto-detected if omitted)")
-    p_fuzz.add_argument("--disk", default=None,
-                        help="Path to raw disk image (created in tmpdir if omitted)")
-    p_fuzz.add_argument("--iterations", "-n", type=int, default=10000,
-                        help="Number of fuzzing iterations")
-    p_fuzz.add_argument("--corpus-dir", default=os.path.join("target", "corpus"),
-                        help="Directory for interesting inputs")
-    p_fuzz.add_argument("--crashes-dir", default=os.path.join("target", "crashes"),
-                        help="Directory for crash-triggering inputs")
-    p_fuzz.add_argument("--timeout", type=int, default=3,
-                        help="VMM boot timeout in seconds")
-    p_fuzz.add_argument("--jobs", "-j", type=int, default=1,
-                        help="Number of parallel VMs (default: 1)")
-    p_fuzz.add_argument("--cpus", type=int, default=1,
-                        help="vCPUs per VM (default: 1)")
-    p_fuzz.add_argument("--memory", default="128M",
-                        type=_run_mod._normalize_mem,
-                        help="RAM per VM (default: 128M)")
-    p_fuzz.add_argument("--no-coverage", action="store_true",
-                        help="Skip coverage feedback (dumb fuzzing)")
+                            add_help=False)
+    g = p_fuzz.add_argument_group("target")
+    g.add_argument("--vmm", required=True, metavar="PATH",
+                   help="Path to the VMM binary (required)")
+    g.add_argument("--kernel", default=None, metavar="PATH",
+                   help="Guest kernel, auto-detected if omitted")
+    g.add_argument("--disk", default=None, metavar="PATH",
+                   help="Raw disk image, created in tmpdir if omitted")
+    g = p_fuzz.add_argument_group("fuzzing")
+    g.add_argument("-n", "--iterations", type=int, default=10000,
+                   metavar="N",
+                   help="Fuzzing iterations (default: 10000)")
+    g.add_argument("--corpus-dir", default=os.path.join("target", "corpus"),
+                   metavar="DIR",
+                   help="Directory for interesting inputs "
+                        "(default: target/corpus)")
+    g.add_argument("--crashes-dir",
+                   default=os.path.join("target", "crashes"),
+                   metavar="DIR",
+                   help="Directory for crash inputs "
+                        "(default: target/crashes)")
+    g.add_argument("--no-coverage", action="store_true",
+                   help="Skip coverage feedback (dumb fuzzing)")
+    g = p_fuzz.add_argument_group("execution")
+    g.add_argument("-j", "--jobs", type=int, default=1, metavar="N",
+                   help="Parallel VMs (default: 1)")
+    g.add_argument("--cpus", type=int, default=1, metavar="N",
+                   help="vCPUs per VM (default: 1)")
+    g.add_argument("--memory", default="128M",
+                   type=_run_mod._normalize_mem, metavar="SIZE",
+                   help="RAM per VM (default: 128M)")
+    g.add_argument("--timeout", type=int, default=3, metavar="SEC",
+                   help="VMM boot timeout in seconds (default: 3)")
+    _add_sysconfig(p_fuzz)
+    _add_help(p_fuzz)
 
     # --- decode ---
-    p_decode = sub.add_parser("decode", help="Decode and print crash blobs")
-    p_decode.add_argument("blobs", nargs="+", help="Blob files to decode")
+    p_decode = sub.add_parser("decode", help="Decode and print crash blobs",
+                              add_help=False)
+    p_decode.add_argument("blobs", nargs="+", metavar="BLOB",
+                          help="Blob files to decode")
+    _add_help(p_decode)
 
     # --- gen-test ---
     p_gen = sub.add_parser("gen-test",
-                           help="Generate a C test from a fuzz blob")
-    p_gen.add_argument("blob", help="Fuzz blob to convert")
+                           help="Generate a C test from a fuzz blob",
+                           add_help=False)
+    p_gen.add_argument("blob", metavar="BLOB",
+                       help="Fuzz blob to convert")
     p_gen.add_argument("--device", default=None,
-                       choices=sorted(_DEVICE_MAP),
-                       help="Override target virtio device. "
-                            "Resolved from bin/fuzz.c if omitted")
-    p_gen.add_argument("--id", default=None,
-                       help="Test ID, e.g. B9000 or RNG9000. "
-                            "Auto-picked from the fuzz range if omitted")
+                       choices=sorted(_DEVICE_MAP), metavar="DEV",
+                       help="Target virtio device, from bin/fuzz.c if "
+                            "omitted")
+    p_gen.add_argument("--id", default=None, metavar="ID",
+                       help="Test ID like B9000, auto-picked if omitted")
     p_gen.add_argument("--force", action="store_true",
                        help="Overwrite existing test file")
+    _add_help(p_gen)
 
     # --- replay ---
     p_replay = sub.add_parser("replay", help="Replay crash blobs against VMM",
-                              parents=[sysconf_parent])
-    p_replay.add_argument("--vmm", required=True, help="Path to VMM binary")
-    p_replay.add_argument("--kernel", default=None,
-                          help="Path to guest kernel (auto-detected if omitted)")
-    p_replay.add_argument("--disk", default=None,
-                          help="Path to raw disk image (created in tmpdir if omitted)")
-    p_replay.add_argument("--timeout", type=int, default=5,
-                          help="VMM boot timeout in seconds")
+                              add_help=False)
+    p_replay.add_argument("--vmm", required=True, metavar="PATH",
+                          help="Path to the VMM binary (required)")
+    p_replay.add_argument("--kernel", default=None, metavar="PATH",
+                          help="Guest kernel, auto-detected if omitted")
+    p_replay.add_argument("--disk", default=None, metavar="PATH",
+                          help="Raw disk image, created in tmpdir if omitted")
+    p_replay.add_argument("--timeout", type=int, default=5, metavar="SEC",
+                          help="VMM boot timeout in seconds (default: 5)")
     p_replay.add_argument("-v", "--verbose", action="store_true",
                           help="Print the full captured VMM stderr log")
-    p_replay.add_argument("blobs", nargs="+", help="Blob files to replay")
+    p_replay.add_argument("blobs", nargs="+", metavar="BLOB",
+                          help="Blob files to replay")
+    _add_sysconfig(p_replay)
+    _add_help(p_replay)
 
     # --- seed ---
-    p_seed = sub.add_parser("seed", help="Generate corpus from existing tests")
+    p_seed = sub.add_parser("seed", help="Generate corpus from existing tests",
+                            add_help=False)
     p_seed.add_argument("--corpus-dir", default=os.path.join("target", "corpus"),
-                        help="Directory to write seeds into")
+                        metavar="DIR",
+                        help="Directory to write seeds into "
+                             "(default: target/corpus)")
+    _add_help(p_seed)
 
     # --- triage ---
     p_triage = sub.add_parser("triage", help="Replay and group crashes by error class",
-                              parents=[sysconf_parent])
-    p_triage.add_argument("--vmm", required=True, help="Path to VMM binary")
-    p_triage.add_argument("--kernel", default=None,
-                          help="Path to guest kernel (auto-detected if omitted)")
-    p_triage.add_argument("--disk", default=None,
-                          help="Path to raw disk image (created in tmpdir if omitted)")
-    p_triage.add_argument("--timeout", type=int, default=5,
-                          help="VMM boot timeout in seconds")
-    p_triage.add_argument("--crashes-dir", default=os.path.join("target", "crashes"),
-                          help="Directory containing crash blobs")
+                              add_help=False)
+    p_triage.add_argument("--vmm", required=True, metavar="PATH",
+                          help="Path to the VMM binary (required)")
+    p_triage.add_argument("--kernel", default=None, metavar="PATH",
+                          help="Guest kernel, auto-detected if omitted")
+    p_triage.add_argument("--disk", default=None, metavar="PATH",
+                          help="Raw disk image, created in tmpdir if omitted")
+    p_triage.add_argument("--timeout", type=int, default=5, metavar="SEC",
+                          help="VMM boot timeout in seconds (default: 5)")
+    p_triage.add_argument("--crashes-dir",
+                          default=os.path.join("target", "crashes"),
+                          metavar="DIR",
+                          help="Directory containing crash blobs "
+                               "(default: target/crashes)")
+    _add_sysconfig(p_triage)
+    _add_help(p_triage)
 
     # --- minimize ---
     p_min = sub.add_parser("minimize", help="Remove corpus entries with redundant coverage",
-                           parents=[sysconf_parent])
-    p_min.add_argument("--vmm", required=True, help="Path to VMM binary")
-    p_min.add_argument("--kernel", default=None,
-                       help="Path to guest kernel (auto-detected if omitted)")
-    p_min.add_argument("--timeout", type=int, default=3,
-                       help="VMM boot timeout in seconds")
+                           add_help=False)
+    p_min.add_argument("--vmm", required=True, metavar="PATH",
+                       help="Path to the VMM binary (required)")
+    p_min.add_argument("--kernel", default=None, metavar="PATH",
+                       help="Guest kernel, auto-detected if omitted")
+    p_min.add_argument("--timeout", type=int, default=3, metavar="SEC",
+                       help="VMM boot timeout in seconds (default: 3)")
     p_min.add_argument("--corpus-dir", default=os.path.join("target", "corpus"),
-                       help="Directory containing corpus blobs")
+                       metavar="DIR",
+                       help="Directory containing corpus blobs "
+                            "(default: target/corpus)")
     p_min.add_argument("--dry-run", action="store_true",
                        help="Show what would be removed without deleting")
+    _add_sysconfig(p_min)
+    _add_help(p_min)
 
     # --- cov-report ---
     p_cov = sub.add_parser("cov-report", help="Generate HTML coverage report from corpus",
-                           parents=[sysconf_parent])
-    p_cov.add_argument("--vmm", required=True, help="Path to VMM binary")
-    p_cov.add_argument("--kernel", default=None,
-                       help="Path to guest kernel (auto-detected if omitted)")
-    p_cov.add_argument("--timeout", type=int, default=3,
-                       help="VMM boot timeout in seconds")
+                           add_help=False)
+    p_cov.add_argument("--vmm", required=True, metavar="PATH",
+                       help="Path to the VMM binary (required)")
+    p_cov.add_argument("--kernel", default=None, metavar="PATH",
+                       help="Guest kernel, auto-detected if omitted")
+    p_cov.add_argument("--timeout", type=int, default=3, metavar="SEC",
+                       help="VMM boot timeout in seconds (default: 3)")
     p_cov.add_argument("--corpus-dir", default=os.path.join("target", "corpus"),
-                       help="Directory containing corpus blobs")
-    p_cov.add_argument("--output", "-o", default=os.path.join("target", "cov-report"),
-                       help="Output directory for HTML report")
+                       metavar="DIR",
+                       help="Directory containing corpus blobs "
+                            "(default: target/corpus)")
+    p_cov.add_argument("-o", "--output",
+                       default=os.path.join("target", "cov-report"),
+                       metavar="DIR",
+                       help="Output directory for the HTML report "
+                            "(default: target/cov-report)")
     p_cov.add_argument("--no-profraw", action="store_true",
                        help="Skip merging target/profraw/ from test runs")
+    _add_sysconfig(p_cov)
+    _add_help(p_cov)
 
     args = parser.parse_args()
 
