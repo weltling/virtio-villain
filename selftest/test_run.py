@@ -6,6 +6,7 @@ import importlib.machinery
 import importlib.util
 import os
 import random
+import re
 import shutil
 import subprocess
 import sys
@@ -15,6 +16,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = os.path.dirname(SCRIPT_DIR)
 INIT_BINARY = os.path.join(ROOT_DIR, "target", "init")
 RUN = os.path.join(ROOT_DIR, "run")
+RUN_FUZZ = os.path.join(ROOT_DIR, "run-fuzz")
 MOCK_VMM = os.path.join(SCRIPT_DIR, "mock-vmm")
 
 
@@ -526,6 +528,49 @@ def test_unit_ch_direct_adds_direct():
         "/k", "/i", "/d.raw", "c",
         {"blk_queues": 1, "net_queues": 1, "direct": True}))
     assert "direct=on" in disk
+
+
+def test_unit_qemu_aio_forces_direct_gating():
+    """The aio direct IO nudge fires only for the QEMU backends."""
+    f = RUN_MOD._qemu_aio_forces_direct
+    assert f("qemu", "aio", False) is True
+    assert f("qemu-mmio", "aio", False) is True
+    assert f("qemu", "aio", True) is False
+    assert f("qemu", "io_uring", False) is False
+    assert f("ch", "aio", False) is False
+
+
+def _help_text(script, *args):
+    r = subprocess.run([sys.executable, script, *args, "--help"],
+                       capture_output=True, text=True, cwd=ROOT_DIR)
+    return r.stdout
+
+
+def test_unit_run_help_short_option_first():
+    text = _help_text(RUN)
+    assert not re.search(r"--[\w-]+, -\w", text), \
+        "an option lists its long form before the short form"
+    assert "-j, --jobs" in text
+
+
+def test_unit_run_help_lists_help_last():
+    text = _help_text(RUN)
+    assert "-h, --help" in text
+    assert text.index("--no-api-socket") < text.index("-h, --help")
+
+
+def test_unit_runfuzz_fuzz_help_short_option_first():
+    text = _help_text(RUN_FUZZ, "fuzz")
+    assert not re.search(r"--[\w-]+, -\w", text), \
+        "an option lists its long form before the short form"
+    assert "-n, --iterations" in text
+    assert "-j, --jobs" in text
+
+
+def test_unit_runfuzz_fuzz_help_lists_help_last():
+    text = _help_text(RUN_FUZZ, "fuzz")
+    assert "-h, --help" in text
+    assert text.index("--timeout") < text.index("-h, --help")
 
 
 def test_unit_find_ch_remote_sibling():

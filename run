@@ -2009,6 +2009,17 @@ def _desc_column_width(cols, longest_desc, fixed):
     return max(10, min(cols - fixed, longest_desc))
 
 
+def _qemu_aio_forces_direct(backend_name, io_engine, direct):
+    """Whether the runner must enable direct IO implicitly and warn.
+
+    QEMU aio=native needs O_DIRECT, so selecting the aio engine turns
+    direct IO on, but only for the QEMU backends. CH has no such
+    requirement, so a CH run must not print the note.
+    """
+    return (io_engine == "aio" and not direct
+            and backend_name.startswith("qemu"))
+
+
 def main():
     print_banner(sys.stderr)
     parser = argparse.ArgumentParser(
@@ -2213,8 +2224,7 @@ def main():
 
     # QEMU refuses aio=native without O_DIRECT, so the aio engine turns
     # direct IO on. Warn when the QEMU backend does so implicitly.
-    if (args.io_engine == "aio" and not args.direct
-            and backend.name.startswith("qemu")):
+    if _qemu_aio_forces_direct(backend.name, args.io_engine, args.direct):
         print("Note: --io-engine aio requires direct IO on QEMU, "
               "enabling cache.direct=on", file=sys.stderr)
 
