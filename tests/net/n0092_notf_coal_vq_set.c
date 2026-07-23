@@ -3,8 +3,10 @@
  * N0092: net_notf_coal_vq_set
  *
  * Send VIRTIO_NET_CTRL_NOTF_COAL_VQ_SET to configure per virtqueue
- * coalescing parameters. Spec v1.3 5.1.6.5: sets coalescing for a
- * specific virtqueue.
+ * coalescing parameters. Spec 5.1.6.5: the per virtqueue VQ_SET and
+ * VQ_GET commands require VIRTIO_NET_F_VQ_NOTF_COAL (bit 52), which
+ * is distinct from VIRTIO_NET_F_NOTF_COAL (bit 53) that gates the
+ * TX_SET and RX_SET commands.
  */
 #include "tests/test.h"
 #include "lib/util.h"
@@ -19,7 +21,7 @@ static test_result_t test_net_notf_coal_vq(struct virtio_dev *dev,
                                            struct vring *vr)
 {
     if (!virtio_pci_feature_offered(dev, VIRTIO_NET_F_CTRL_VQ) ||
-        !virtio_pci_feature_offered(dev, VIRTIO_NET_F_NOTF_COAL))
+        !virtio_pci_feature_offered(dev, VIRTIO_NET_F_VQ_NOTF_COAL))
         return TEST_SKIP;
 
     struct virtio_net_ctrl_hdr *ctrl = vv_alloc_pages(1);
@@ -53,6 +55,6 @@ static test_result_t test_net_notf_coal_vq(struct virtio_dev *dev,
 
 REGISTER_TEST_Q_REQUIRES(N0092, VIRTIO_PCI_DEVICE_NET, test_net_notf_coal_vq,
               "NOTF_COAL per virtqueue set",
-              VIRTIO_SPEC_V1_3, "5.1.6.5", VV_QUEUE_LAST,
+              VIRTIO_SPEC_V1_4, "5.1.6.5", VV_QUEUE_LAST,
               (1ULL << VIRTIO_NET_F_CTRL_VQ) |
-              (1ULL << VIRTIO_NET_F_NOTF_COAL), 0);
+              (1ULL << VIRTIO_NET_F_VQ_NOTF_COAL), 0);
