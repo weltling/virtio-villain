@@ -105,10 +105,11 @@ static void list_tests_tsv(void)
     int n = test_count();
     for (int i = 0; i < n; i++) {
         struct test_entry *t = test_get(i);
-        printf("%s\t%s\t%u.%u\t%s\t0x%04x\t%u\t0x%016llx\t%u\n",
+        printf("%s\t%s\t%u.%u\t%s\t0x%04x\t%u\t0x%016llx%016llx\t%u\n",
                t->name, t->desc,
                t->spec_version >> 8, t->spec_version & 0xff,
                t->spec_section, t->device_id, t->flags,
+               (unsigned long long)(t->required_features >> 64),
                (unsigned long long)t->required_features,
                t->min_queues);
     }
@@ -442,18 +443,19 @@ int main(int argc, char **argv)
             if (virtio_pci_find(dev_ids[i], &dev) < 0)
                 continue;
             volatile struct virtio_pci_common_cfg *cfg = dev.common;
-            cfg->device_feature_select = 0;
-            __sync_synchronize();
-            uint32_t lo = cfg->device_feature;
-            cfg->device_feature_select = 1;
-            __sync_synchronize();
-            uint32_t hi = cfg->device_feature;
-            uint64_t features = ((uint64_t)hi << 32) | lo;
+            unsigned __int128 features = 0;
+            for (unsigned w = 0; w < 4; w++) {
+                cfg->device_feature_select = w;
+                __sync_synchronize();
+                features |= (unsigned __int128)cfg->device_feature << (32 * w);
+            }
             uint16_t nq = cfg->num_queues;
             uint8_t has_isr = dev.isr ? 1 : 0;
             uint8_t has_cfg_cap = dev.pci_cfg_cap_offset ? 1 : 0;
-            printf("PROBE\t0x%04x\t0x%016llx\t%u\t%u\t%u\n",
-                   dev_ids[i], (unsigned long long)features, nq,
+            printf("PROBE\t0x%04x\t0x%016llx%016llx\t%u\t%u\t%u\n",
+                   dev_ids[i],
+                   (unsigned long long)(features >> 64),
+                   (unsigned long long)features, nq,
                    has_isr, has_cfg_cap);
         }
         shutdown(0);
