@@ -188,6 +188,7 @@ struct virtio_blk_zone_report_hdr_wide {
 #define VIRTIO_NET_F_RSC_EXT             61
 #define VIRTIO_NET_F_STANDBY             62
 #define VIRTIO_NET_F_SPEED_DUPLEX        63
+#define VIRTIO_NET_F_RSS_CONTEXT         64
 
 /* Control virtqueue command classes (spec 5.1.6.5). */
 #define VIRTIO_NET_CTRL_RX               0
@@ -199,6 +200,7 @@ struct virtio_blk_zone_report_hdr_wide {
 #define VIRTIO_NET_CTRL_NOTF_COAL        6
 #define VIRTIO_NET_CTRL_HASH_TUNNEL      7   /* proposal, not in a released spec */
 #define VIRTIO_NET_CTRL_STATS            8
+#define VIRTIO_NET_CTRL_RSS_CTX          9   /* spec VIRTNET_RSS_CTX_CTRL */
 
 /* CTRL_RX commands. */
 #define VIRTIO_NET_CTRL_RX_PROMISC       0
@@ -236,6 +238,12 @@ struct virtio_blk_zone_report_hdr_wide {
 /* CTRL_STATS commands. */
 #define VIRTIO_NET_CTRL_STATS_QUERY      0
 #define VIRTIO_NET_CTRL_STATS_GET        1
+
+/* CTRL_RSS_CTX commands (spec VIRTNET_RSS_CTX_CTRL). */
+#define VIRTIO_NET_CTRL_RSS_CTX_CAP_GET  0
+#define VIRTIO_NET_CTRL_RSS_CTX_ADD      1
+#define VIRTIO_NET_CTRL_RSS_CTX_MOD      2
+#define VIRTIO_NET_CTRL_RSS_CTX_DEL      3
 
 /* CTRL_HASH_TUNNEL commands (proposal, not in a released spec). */
 #define VIRTIO_NET_CTRL_HASH_TUNNEL_SET  0
