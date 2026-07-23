@@ -47,7 +47,7 @@ static uint16_t queue_size_for(struct virtio_dev *dev, uint16_t q)
  * dropped by virtio_pci_init_features. Tests with no requirement keep
  * the historical zero-feature negotiation.
  */
-static uint64_t features_to_negotiate(struct test_entry *t)
+static unsigned __int128 features_to_negotiate(struct test_entry *t)
 {
     if (t->required_features == 0)
         return 0;

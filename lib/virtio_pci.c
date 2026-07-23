@@ -124,7 +124,7 @@ int virtio_pci_find(uint16_t device_id, struct virtio_dev *dev)
     return virtio_pci_attach(device_id, dev);
 }
 
-int virtio_pci_init_features(struct virtio_dev *dev, uint64_t wanted)
+int virtio_pci_init_features(struct virtio_dev *dev, unsigned __int128 wanted)
 {
     volatile struct virtio_pci_common_cfg *cfg = dev->common;
 
@@ -154,21 +154,23 @@ int virtio_pci_init_features(struct virtio_dev *dev, uint64_t wanted)
     /*
      * Negotiate the requested feature bits, restricted to what the
      * device actually offers. A test that needs a feature the device
-     * does not offer will observe its absence and skip.
+     * does not offer will observe its absence and skip. All four
+     * 32-bit feature words are read and written so features at bit 64
+     * and above (for example RSS_CONTEXT and the tunnel offloads) can
+     * be negotiated too.
      */
-    cfg->device_feature_select = 0;
-    __sync_synchronize();
-    uint32_t lo = cfg->device_feature;
-    cfg->device_feature_select = 1;
-    __sync_synchronize();
-    uint32_t hi = cfg->device_feature;
-    uint64_t offered = ((uint64_t)hi << 32) | lo;
-    uint64_t neg = wanted & offered;
+    unsigned __int128 offered = 0;
+    for (unsigned w = 0; w < 4; w++) {
+        cfg->device_feature_select = w;
+        __sync_synchronize();
+        offered |= (unsigned __int128)cfg->device_feature << (32 * w);
+    }
+    unsigned __int128 neg = wanted & offered;
 
-    cfg->driver_feature_select = 0;
-    cfg->driver_feature = (uint32_t)(neg & 0xFFFFFFFFU);
-    cfg->driver_feature_select = 1;
-    cfg->driver_feature = (uint32_t)(neg >> 32);
+    for (unsigned w = 0; w < 4; w++) {
+        cfg->driver_feature_select = w;
+        cfg->driver_feature = (uint32_t)(neg >> (32 * w));
+    }
     cfg->device_status |= VIRTIO_STATUS_FEATURES_OK;
     __sync_synchronize();
 

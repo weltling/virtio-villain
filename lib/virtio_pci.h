@@ -118,7 +118,7 @@ int virtio_pci_init(struct virtio_dev *dev);
  * Like virtio_pci_init, but negotiates the requested feature bits
  * (restricted to those the device offers) instead of zero.
  */
-int virtio_pci_init_features(struct virtio_dev *dev, uint64_t wanted);
+int virtio_pci_init_features(struct virtio_dev *dev, unsigned __int128 wanted);
 
 /*
  * Return non-zero if the device offers the given feature bit. Handles

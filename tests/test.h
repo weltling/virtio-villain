@@ -99,8 +99,8 @@ struct test_entry {
     uint8_t       flags;
     uint8_t       queue_idx;   /* 0 = default, 1+ = explicit queue (value-1), 0xFF = last */
     uint16_t      min_queues;  /* 0 = no requirement */
-    uint64_t      required_features; /* feature bits that must be offered */
-    char          _pad[58];
+    unsigned __int128 required_features; /* feature bits that must be offered */
+    char          _pad[40];
 };
 
 /* Use with REGISTER_TEST_Q to select the last queue (e.g. net controlq). */
