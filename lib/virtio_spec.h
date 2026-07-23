@@ -189,6 +189,12 @@ struct virtio_blk_zone_report_hdr_wide {
 #define VIRTIO_NET_F_STANDBY             62
 #define VIRTIO_NET_F_SPEED_DUPLEX        63
 #define VIRTIO_NET_F_RSS_CONTEXT         64
+#define VIRTIO_NET_F_GUEST_UDP_TUNNEL_GSO      65
+#define VIRTIO_NET_F_GUEST_UDP_TUNNEL_GSO_CSUM 66
+#define VIRTIO_NET_F_HOST_UDP_TUNNEL_GSO       67
+#define VIRTIO_NET_F_HOST_UDP_TUNNEL_GSO_CSUM  68
+#define VIRTIO_NET_F_OUT_NET_HEADER            69
+#define VIRTIO_NET_F_IPSEC                     70
 
 /* Control virtqueue command classes (spec 5.1.6.5). */
 #define VIRTIO_NET_CTRL_RX               0
