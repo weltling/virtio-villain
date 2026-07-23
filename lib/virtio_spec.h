@@ -179,6 +179,8 @@ struct virtio_blk_zone_report_hdr_wide {
 #define VIRTIO_NET_F_DEVICE_STATS        50
 #define VIRTIO_NET_F_VQ_NOTF_COAL        52
 #define VIRTIO_NET_F_NOTF_COAL           53
+#define VIRTIO_NET_F_GUEST_USO4          54
+#define VIRTIO_NET_F_GUEST_USO6          55
 #define VIRTIO_NET_F_HOST_USO            56
 #define VIRTIO_NET_F_HASH_REPORT         57
 #define VIRTIO_NET_F_GUEST_HDRLEN        59
