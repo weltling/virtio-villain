@@ -107,6 +107,14 @@ struct test_entry {
 #define VV_QUEUE_LAST 0xFE
 
 /*
+ * Feature mask helper for a single bit. Use for required-feature masks
+ * that reference a bit at 64 or above (e.g. VIRTIO_NET_F_RSS_CONTEXT),
+ * where a plain 1ULL << bit would overflow. Bits below 64 may keep the
+ * 1ULL << bit form.
+ */
+#define VV_FEATURE_BIT(bit) ((unsigned __int128)1u << (bit))
+
+/*
  * Register a test case. The linker collects all entries into a
  * contiguous array via the "test_registry" section.
  * aligned(128) ensures consistent stride across translation units.
