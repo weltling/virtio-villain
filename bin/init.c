@@ -301,6 +301,38 @@ static const char *parse_cmdline_test(void)
     return p;
 }
 
+/*
+ * Multiplier for the positive wait timeout. The runner sets
+ * vv.wait_scale on the kernel command line to the host
+ * oversubscription factor. Referenced by the wait helpers in test.h.
+ */
+int vv_wait_scale = 1;
+
+/*
+ * Parse vv.wait_scale= from /proc/cmdline and apply it. Absent or
+ * malformed leaves the default of 1, so an unloaded run is unchanged.
+ */
+static void parse_cmdline_wait_scale(void)
+{
+    char buf[4096];
+    FILE *f = fopen("/proc/cmdline", "r");
+    if (!f)
+        return;
+    if (!fgets(buf, sizeof(buf), f)) {
+        fclose(f);
+        return;
+    }
+    fclose(f);
+
+    char *p = strstr(buf, "vv.wait_scale=");
+    if (!p)
+        return;
+    p += strlen("vv.wait_scale=");
+    int v = atoi(p);
+    if (v > 0)
+        vv_wait_scale = v;
+}
+
 static void shutdown(int failures)
 {
     fflush(stdout);
@@ -399,6 +431,7 @@ int main(int argc, char **argv)
     printf("\n[vv] virtio-villain\n\n");
 
     const char *test_name = parse_cmdline_test();
+    parse_cmdline_wait_scale();
 
     if (!test_name || strcmp(test_name, "all") == 0) {
         /* Run all tests */

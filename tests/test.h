@@ -66,6 +66,17 @@ typedef enum {
 /* Default timeout for vv_kick_and_wait (ms). */
 #define VV_TIMEOUT_MS 2000
 
+/*
+ * Multiplier applied to the positive wait timeout. The runner sets it
+ * from vv.wait_scale on the kernel command line to the host
+ * oversubscription factor, so a device response that arrives late
+ * because the guest vCPUs are starved is still caught instead of being
+ * misread as silence. It defaults to 1, so an unloaded run is
+ * unchanged. Only the positive wait helpers apply it; the expect reject
+ * path keeps the short silence window.
+ */
+extern int vv_wait_scale;
+
 typedef test_result_t (*test_fn)(struct virtio_dev *dev, struct vring *vr);
 typedef test_result_t (*test_packed_fn)(struct virtio_dev *dev,
                                        struct vring_packed *vr);
@@ -217,9 +228,11 @@ static inline test_result_t vv_kick_and_wait_n(struct virtio_dev *dev,
 
     (void)queue;
 
+    int scale = vv_wait_scale > 0 ? vv_wait_scale : 1;
+    int budget_us = timeout_ms * 1000 * scale;
     int elapsed = 0;
     int step = 10000; /* 10ms */
-    while (elapsed < timeout_ms * 1000) {
+    while (elapsed < budget_us) {
         usleep(step);
         __sync_synchronize();
         if ((uint16_t)(vr->used->idx - before) >= n)
@@ -300,9 +313,11 @@ static inline test_result_t vv_kick_and_wait_packed(struct virtio_dev *dev,
     __sync_synchronize();
     virtio_pci_kick(dev, vr->queue);
 
+    int scale = vv_wait_scale > 0 ? vv_wait_scale : 1;
+    int budget_us = timeout_ms * 1000 * scale;
     int elapsed = 0;
     int step = 10000; /* 10ms */
-    while (elapsed < timeout_ms * 1000) {
+    while (elapsed < budget_us) {
         usleep(step);
         if (vring_packed_desc_is_used(vr, check_idx, check_wrap))
             return TEST_PASS;

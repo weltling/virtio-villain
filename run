@@ -1165,8 +1165,10 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
         "cpufreq_core_init",
     ]
     skip_initcalls += list(sidecar_cfg.get("skip_initcalls", []))
+    wait_scale = (opts or {}).get("wait_scale", 1)
     cmdline = (f"console={backend.console_device} "
                f"initcall_blacklist={','.join(skip_initcalls)} "
+               f"vv.wait_scale={wait_scale} "
                f"vv.test={','.join(test_names)}")
     # Create pmem backing file
     pmem_path = disk_path.rsplit(".", 1)[0] + ".pmem"
@@ -2203,6 +2205,14 @@ def main():
               f"on {host_cpus} host CPUs)",
               file=sys.stderr)
         args.timeout = scaled_timeout
+
+    # Propagate the oversubscription factor to the guest so the positive
+    # wait helpers extend their window under the same CPU starvation. A
+    # device response that arrives late because the guest vCPUs are
+    # starved is then still caught instead of being misread as silence
+    # and reported as a spurious REJECT. The expect reject path in the
+    # guest ignores this and keeps its short silence window.
+    vm_opts["wait_scale"] = max(1, int(oversub))
 
     # Scale the sidecar VMM API call timeout by the same factor so
     # ch-remote and the CH API thread have headroom when CPU starved.
