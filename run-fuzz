@@ -37,6 +37,7 @@ _run_spec = _ilu.spec_from_loader(
 _run_mod = _ilu.module_from_spec(_run_spec)
 _run_spec.loader.exec_module(_run_mod)
 print_banner = _run_mod.print_banner
+ShortFirstHelpFormatter = _run_mod.ShortFirstHelpFormatter
 
 
 # --- Blob Format ---
@@ -1902,7 +1903,7 @@ def main():
     print_banner(sys.stderr)
     parser = argparse.ArgumentParser(
         description="virtio-villain coverage fuzzer",
-        formatter_class=argparse.RawDescriptionHelpFormatter,
+        formatter_class=ShortFirstHelpFormatter,
         add_help=False,
         epilog=(
             "examples\n"
@@ -1918,6 +1919,17 @@ def main():
     )
     sub = parser.add_subparsers(dest="command", title="commands",
                                 metavar="<command>")
+
+    # Give every subcommand the same short first help layout as the top
+    # level parser so the option rendering does not depend on the host
+    # Python version.
+    _sub_add_parser = sub.add_parser
+
+    def _add_parser(name, **kwargs):
+        kwargs.setdefault("formatter_class", ShortFirstHelpFormatter)
+        return _sub_add_parser(name, **kwargs)
+
+    sub.add_parser = _add_parser
 
     # Shared VMM sanitizer flag as a "host" group. Kept in one place so
     # the registry and revert logic live in the run module.
