@@ -90,6 +90,12 @@
 #define VIRTIO_BLK_S_IOERR           1
 #define VIRTIO_BLK_S_UNSUPP          2
 
+/* Zoned block status codes (spec 5.2.6.6). */
+#define VIRTIO_BLK_S_ZONE_INVALID_CMD     3
+#define VIRTIO_BLK_S_ZONE_UNALIGNED_WP    4
+#define VIRTIO_BLK_S_ZONE_OPEN_RESOURCE   5
+#define VIRTIO_BLK_S_ZONE_ACTIVE_RESOURCE 6
+
 /* Write-zeroes flags (spec 5.2.6.2). */
 #define VIRTIO_BLK_WRITE_ZEROES_FLAG_UNMAP 0x1
 
