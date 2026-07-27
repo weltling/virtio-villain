@@ -117,8 +117,31 @@ int virtio_pci_attach(uint16_t device_id, struct virtio_dev *dev)
     return 0;
 }
 
+/*
+ * Device agnostic tests register with device_id 0. Every modern virtio
+ * device exposes the common configuration structure those tests
+ * exercise, so attach to the first known device type that is present
+ * rather than looking for a nonexistent device with ID 0.
+ */
+static int virtio_pci_find_any(struct virtio_dev *dev)
+{
+    static const uint16_t ids[] = {
+#define X(name) VIRTIO_PCI_DEVICE_##name,
+        VIRTIO_PCI_DEVICE_IDS(X)
+#undef X
+    };
+    for (size_t i = 0; i < sizeof(ids) / sizeof(ids[0]); i++) {
+        if (pci_find_device(VIRTIO_PCI_VENDOR, ids[i], dev->slot,
+                            sizeof(dev->slot)) == 0)
+            return virtio_pci_attach(ids[i], dev);
+    }
+    return -1;
+}
+
 int virtio_pci_find(uint16_t device_id, struct virtio_dev *dev)
 {
+    if (device_id == 0)
+        return virtio_pci_find_any(dev);
     if (pci_find_device(VIRTIO_PCI_VENDOR, device_id, dev->slot, sizeof(dev->slot)) < 0)
         return -1;
     return virtio_pci_attach(device_id, dev);
