@@ -1,10 +1,13 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * PCI0065: 8-bit access to 32-bit register.
+ * PCI0065: 8-bit access to a 32-bit common config register.
  *
- * Spec 4.1.3.1 says common config registers should be accessed
- * with their natural width. Read device_feature one byte at a
- * time and check the assembled value matches the 32-bit read.
+ * Spec 4.1.3.1 requires the driver to access a 32-bit field with a
+ * single 32-bit access, so a device may decode the common config by
+ * register offset and return 0 for byte reads inside a 32-bit field.
+ * This exercises byte-wide reads of device_feature to confirm the
+ * device tolerates them, then verifies it still serves an aligned
+ * read of num_queues.
  */
 #include "tests/test.h"
 #include "lib/util.h"
@@ -19,12 +22,21 @@ static test_result_t test_pci_byte_access(struct virtio_dev *dev,
     (void)vr;
     dev->common->device_feature_select = 0;
     __sync_synchronize();
-    uint32_t w = dev->common->device_feature;
+
     volatile uint8_t *p = (volatile uint8_t *)&dev->common->device_feature;
-    uint32_t b = (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
-                 ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-    if (w != b)
-        TFAIL("w != b");
+    uint8_t b0 = p[0];
+    uint8_t b1 = p[1];
+    uint8_t b2 = p[2];
+    uint8_t b3 = p[3];
+    (void)b0; (void)b1; (void)b2; (void)b3;
+    __sync_synchronize();
+
+    uint16_t nq = dev->common->num_queues;
+    if (nq == 0xFFFF)
+        TFAIL("nq == 0xFFFF");
+
+    if (dev->common->device_status == 0)
+        TWEDGED("dev->common->device_status == 0");
     return TEST_PASS;
 }
 
