@@ -595,6 +595,13 @@ class Qemu(VmmBackend):
                 "-object", f"memory-backend-file,id=mem-fs,size={mem},mem-path=/dev/shm,share=on",
                 "-numa", "node,memdev=mem-fs",
             ]
+        # virtio-crypto with a builtin software cryptodev backend. CH has
+        # no crypto device model, so crypto tests only run under QEMU.
+        cmd += [
+            "-object", "cryptodev-backend-builtin,id=cryptodev0",
+            "-device",
+            f"virtio-crypto-pci,id=crypto0,cryptodev=cryptodev0,packed={packed_flag}",
+        ]
         if api_socket:
             cmd += ["-qmp", f"unix:{api_socket},server=on,wait=off"]
         cmd[1:1] = self.trace_args(opts)
@@ -1282,6 +1289,7 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
         "virtio_rtc_drv_init",
         "virtio_watchdog_driver_init",
         "virtio_input_driver_init",
+        "virtio_crypto_driver_init",
         # Subsystems unused by the harness
         "ext4_init_fs",
         "fuse_init",
@@ -1705,6 +1713,7 @@ PREFIX_DIR = {
     "I": "iommu",
     "RTC": "rtc",
     "F": "fs",
+    "CR": "crypto",
 }
 
 # Reverse: directory name to set of accepted prefixes.
@@ -1727,6 +1736,7 @@ PREFIX_DEVICE_ID = {
     "D": 0x1063,                 # watchdog
     "RTC": 0x1051,               # rtc
     "F": 0x105a,                 # fs
+    "CR": 0x1054,                # crypto
 }
 
 

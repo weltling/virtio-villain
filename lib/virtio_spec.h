@@ -673,6 +673,216 @@ struct ind_desc {
     uint16_t next;
 } __attribute__((packed));
 
+/* Crypto device / virtio-crypto (virtio spec 5.9) */
+
+/* Config status bit: the accelerator hardware is ready. */
+#define VIRTIO_CRYPTO_S_HW_READY   (1u << 0)
+
+/* Service masks in crypto_services. */
+#define VIRTIO_CRYPTO_SERVICE_CIPHER   0
+#define VIRTIO_CRYPTO_SERVICE_HASH     1
+#define VIRTIO_CRYPTO_SERVICE_MAC      2
+#define VIRTIO_CRYPTO_SERVICE_AEAD     3
+#define VIRTIO_CRYPTO_SERVICE_AKCIPHER 4
+
+/* Per request status codes returned by the device. */
+#define VIRTIO_CRYPTO_OK           0
+#define VIRTIO_CRYPTO_ERR          1
+#define VIRTIO_CRYPTO_BADMSG       2
+#define VIRTIO_CRYPTO_NOTSUPP      3
+#define VIRTIO_CRYPTO_INVSESS      4
+#define VIRTIO_CRYPTO_NOSPC        5
+#define VIRTIO_CRYPTO_KEY_REJECTED 6
+
+/* Device configuration layout (spec 5.9.4). */
+struct virtio_crypto_config {
+    uint32_t status;
+    uint32_t max_dataqueues;
+    uint32_t crypto_services;
+    uint32_t cipher_algo_l;
+    uint32_t cipher_algo_h;
+    uint32_t hash_algo;
+    uint32_t mac_algo_l;
+    uint32_t mac_algo_h;
+    uint32_t aead_algo;
+    uint32_t max_cipher_key_len;
+    uint32_t max_auth_key_len;
+    uint32_t akcipher_algo;
+    uint64_t max_size;
+} __attribute__((packed));
+
+/* Control request opcodes are (service << 8) | op (spec 5.9.7). */
+#define VIRTIO_CRYPTO_CIPHER_CREATE_SESSION  0x0002
+#define VIRTIO_CRYPTO_CIPHER_DESTROY_SESSION 0x0003
+
+/* Cipher algorithm ids (subset, spec 5.9.7.3). */
+#define VIRTIO_CRYPTO_CIPHER_AES_CBC   3
+
+/* Cipher direction. */
+#define VIRTIO_CRYPTO_OP_ENCRYPT  1
+#define VIRTIO_CRYPTO_OP_DECRYPT  2
+
+/* Symmetric op type. */
+#define VIRTIO_CRYPTO_SYM_OP_CIPHER  1
+
+/* Control queue request header (spec 5.9.7). */
+struct virtio_crypto_ctrl_header {
+    uint32_t opcode;
+    uint32_t algo;
+    uint32_t flag;
+    uint32_t queue_id;
+} __attribute__((packed));
+
+/* Cipher session parameters (spec 5.9.7.3.1). */
+struct virtio_crypto_cipher_session_para {
+    uint32_t algo;
+    uint32_t keylen;
+    uint32_t op;         /* VIRTIO_CRYPTO_OP_* */
+    uint32_t padding;
+} __attribute__((packed));
+
+/* Hash control opcodes and algorithm ids (spec 5.9.9). */
+#define VIRTIO_CRYPTO_HASH_CREATE_SESSION   0x0102
+#define VIRTIO_CRYPTO_HASH_DESTROY_SESSION  0x0103
+#define VIRTIO_CRYPTO_HASH_SHA1             2
+#define VIRTIO_CRYPTO_HASH_SHA_256          4
+
+/* Hash session parameters (spec 5.9.9). */
+struct virtio_crypto_hash_session_para {
+    uint32_t algo;
+    uint32_t hash_result_len;
+    uint8_t padding[8];
+} __attribute__((packed));
+
+/* MAC control opcodes and algorithm ids (spec 5.9.9.2). */
+#define VIRTIO_CRYPTO_MAC_CREATE_SESSION    0x0202
+#define VIRTIO_CRYPTO_MAC_DESTROY_SESSION   0x0203
+#define VIRTIO_CRYPTO_MAC_HMAC_SHA1         2
+
+/* MAC session parameters (spec 5.9.9.2). */
+struct virtio_crypto_mac_session_para {
+    uint32_t algo;
+    uint32_t hash_result_len;
+    uint32_t auth_key_len;
+    uint32_t padding;
+} __attribute__((packed));
+
+/* Akcipher control opcodes, algorithm ids, key types (spec 5.9.10). */
+#define VIRTIO_CRYPTO_AKCIPHER_CREATE_SESSION   0x0404
+#define VIRTIO_CRYPTO_AKCIPHER_DESTROY_SESSION  0x0405
+#define VIRTIO_CRYPTO_AKCIPHER_RSA              1
+#define VIRTIO_CRYPTO_AKCIPHER_KEY_TYPE_PUBLIC  1
+#define VIRTIO_CRYPTO_AKCIPHER_KEY_TYPE_PRIVATE 2
+#define VIRTIO_CRYPTO_RSA_RAW_PADDING           0
+#define VIRTIO_CRYPTO_RSA_NO_HASH               0
+
+/* RSA specific akcipher session parameters (spec 5.9.10). */
+struct virtio_crypto_rsa_session_para {
+    uint32_t padding_algo;
+    uint32_t hash_algo;
+} __attribute__((packed));
+
+/* Akcipher session parameters (spec 5.9.10). */
+struct virtio_crypto_akcipher_session_para {
+    uint32_t algo;
+    uint32_t keytype;
+    uint32_t keylen;
+    struct virtio_crypto_rsa_session_para rsa;
+} __attribute__((packed));
+
+/* Device-writable session create reply (spec 5.9.7). */
+struct virtio_crypto_session_input {
+    uint64_t session_id;
+    uint32_t status;
+    uint32_t padding;
+} __attribute__((packed));
+
+/* Control request. The header is followed by an opcode specific body
+ * padded to a fixed 56 bytes. A symmetric cipher create session fills
+ * the cipher parameters then the symmetric op type at offset 48; a
+ * destroy fills the session id at the start. */
+struct virtio_crypto_op_ctrl_req {
+    struct virtio_crypto_ctrl_header header;
+    union {
+        struct {
+            struct virtio_crypto_cipher_session_para para;
+            uint8_t cipher_padding[32];
+            uint32_t op_type;   /* VIRTIO_CRYPTO_SYM_OP_* */
+            uint32_t padding;
+        } sym_create;
+        struct {
+            struct virtio_crypto_hash_session_para para;
+            uint8_t padding[40];
+        } hash_create;
+        struct {
+            struct virtio_crypto_mac_session_para para;
+            uint8_t padding[40];
+        } mac_create;
+        struct {
+            struct virtio_crypto_akcipher_session_para para;
+            uint8_t padding[36];
+        } akcipher_create;
+        struct {
+            uint64_t session_id;
+            uint8_t padding[48];
+        } destroy;
+        uint8_t raw[56];
+    } u;
+} __attribute__((packed));
+
+/* Device-writable one byte status for a destroy request. */
+struct virtio_crypto_inhdr {
+    uint8_t status;
+} __attribute__((packed));
+
+/* Data queue request opcodes (spec 5.9.8). */
+#define VIRTIO_CRYPTO_CIPHER_ENCRYPT  0x0000
+#define VIRTIO_CRYPTO_CIPHER_DECRYPT  0x0001
+#define VIRTIO_CRYPTO_HASH            0x0100
+
+/* Data queue request header (spec 5.9.8). */
+struct virtio_crypto_op_header {
+    uint32_t opcode;
+    uint32_t algo;
+    uint64_t session_id;
+    uint32_t flag;
+    uint32_t padding;
+} __attribute__((packed));
+
+/* Cipher operation parameters (spec 5.9.8.4). */
+struct virtio_crypto_cipher_para {
+    uint32_t iv_len;
+    uint32_t src_data_len;
+    uint32_t dst_data_len;
+    uint32_t padding;
+} __attribute__((packed));
+
+/* Hash operation parameters (spec 5.9.8.6). */
+struct virtio_crypto_hash_para {
+    uint32_t src_data_len;
+    uint32_t hash_result_len;
+} __attribute__((packed));
+
+/* Data queue request. The header is followed by an op specific body
+ * padded to a fixed 48 bytes. A symmetric cipher op fills the cipher
+ * parameters then the symmetric op type at offset 40. */
+struct virtio_crypto_op_data_req {
+    struct virtio_crypto_op_header header;
+    union {
+        struct {
+            struct virtio_crypto_cipher_para para;
+            uint8_t cipher_padding[24];
+            uint32_t op_type;   /* VIRTIO_CRYPTO_SYM_OP_* */
+            uint32_t padding;
+        } sym_cipher;
+        struct {
+            struct virtio_crypto_hash_para para;
+            uint8_t padding[40];
+        } hash;
+        uint8_t raw[48];
+    } u;
+} __attribute__((packed));
+
 /* Admin command family (virtio spec 1.3 section 2.12). */
 
 /* Group administration command opcodes (spec 2.12.1). Verified

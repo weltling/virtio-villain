@@ -41,6 +41,7 @@
 #define VIRTIO_PCI_DEVICE_WATCHDOG 0x1063
 #define VIRTIO_PCI_DEVICE_RTC      0x1051
 #define VIRTIO_PCI_DEVICE_FS       0x105a
+#define VIRTIO_PCI_DEVICE_CRYPTO   0x1054
 
 /*
  * Central list of known modern virtio PCI device types. Iterate with
@@ -49,7 +50,7 @@
  */
 #define VIRTIO_PCI_DEVICE_IDS(X) \
     X(NET) X(BLK) X(CONSOLE) X(RNG) X(BALLOON) X(VSOCK) \
-    X(IOMMU) X(MEM) X(PMEM) X(WATCHDOG) X(RTC) X(FS)
+    X(IOMMU) X(MEM) X(PMEM) X(WATCHDOG) X(RTC) X(FS) X(CRYPTO)
 
 /*
  * Virtio PCI modern common configuration layout (spec 4.1.4.3).
