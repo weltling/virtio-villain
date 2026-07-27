@@ -127,4 +127,23 @@ static inline void *vv_alloc_page_near_ram_top(uint64_t ram_top,
     return best;
 }
 
+/*
+ * Same as vv_alloc_page_near_ram_top but falls back to a plain page when
+ * the top of RAM cannot be determined, so a caller that must run on
+ * every target still gets a usable buffer. Writes the guest physical
+ * base to *phys_out.
+ */
+static inline void *vv_alloc_page_high(uint64_t *phys_out)
+{
+    uint64_t ram_top = vv_parse_ram_top();
+    if (ram_top) {
+        void *near = vv_alloc_page_near_ram_top(ram_top, phys_out);
+        if (near)
+            return near;
+    }
+    void *p = vv_alloc_pages(1);
+    *phys_out = vv_virt_to_phys(p);
+    return p;
+}
+
 #endif /* VV_UTIL_H */

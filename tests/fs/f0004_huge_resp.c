@@ -27,7 +27,8 @@ static test_result_t test_fs_huge_resp(struct virtio_dev *dev,
     hdr->unique = 1;
 
     uint64_t hdr_phys  = vv_virt_to_phys(page);
-    uint64_t resp_phys = hdr_phys + 256;
+    uint64_t resp_phys;
+    vv_alloc_page_high(&resp_phys);
 
     vring_raw_set_desc(vr, 0, hdr_phys, hdr->len, VRING_DESC_F_NEXT, 1);
     vring_raw_set_desc(vr, 1, resp_phys, 1u << 30, VRING_DESC_F_WRITE, 0);

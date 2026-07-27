@@ -18,11 +18,12 @@ static test_result_t test_pmem_huge_resp(struct virtio_dev *dev,
 {
     struct virtio_pmem_req *req = vv_alloc_pages(1);
     req->type = VIRTIO_PMEM_REQ_TYPE_FLUSH;
-    void *r = vv_alloc_pages(1);
+    uint64_t r_phys;
+    vv_alloc_page_high(&r_phys);
 
     vring_raw_set_desc(vr, 0, vv_virt_to_phys(req), sizeof(*req),
                        VRING_DESC_F_NEXT, 1);
-    vring_raw_set_desc(vr, 1, vv_virt_to_phys(r), 1u << 30,
+    vring_raw_set_desc(vr, 1, r_phys, 1u << 30,
                        VRING_DESC_F_WRITE, 0);
     vring_raw_set_avail(vr, 0, 0);
     vring_raw_set_avail_idx(vr, 1);
