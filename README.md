@@ -41,10 +41,12 @@ multiple VMMs and comparing outcomes.
 
 ## Target VMMs
 
-Cloud Hypervisor and QEMU are supported today, both as PCI hosts.
-QEMU is also driven in microvm mode for the MMIO transport tests.
-The framework is VMM agnostic and any VMM exposing virtio PCI or
-MMIO devices can be added by implementing a backend in `run`.
+Cloud Hypervisor, QEMU, and OpenVMM are supported today, all as PCI
+hosts. QEMU is also driven in microvm mode for the MMIO transport
+tests. OpenVMM boots via Linux direct boot and places every virtio
+device on a native PCIe root port. The framework is VMM agnostic and
+any VMM exposing virtio PCI or MMIO devices can be added by
+implementing a backend in `run`.
 
 ## Architecture
 
@@ -296,6 +298,7 @@ Pipe to a file or through `| cat` to suppress colors.
 ./run -m ./cloud-hypervisor -d qcow2                       # use qcow2 backing
 ./run -m ./cloud-hypervisor M01                            # MMIO test, auto launches QEMU microvm if needed
 ./run -m ./qemu-system-x86_64                              # QEMU backend
+./run -m ./openvmm                                         # OpenVMM backend (Linux direct boot, native PCIe)
 ./run -m ./cloud-hypervisor -v T01                         # verbose, full test output
 ./run -m ./cloud-hypervisor -c T01                         # forward guest console to stdout
 ./run -m ./cloud-hypervisor --retries 4 T01               # retry a failure up to 4 times, list it retried if it recovers

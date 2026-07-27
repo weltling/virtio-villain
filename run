@@ -18,6 +18,8 @@ import signal
 import subprocess
 import sys
 import termios
+import fcntl
+import pty
 import shutil
 import tempfile
 import threading
@@ -641,7 +643,102 @@ class QemuMicrovm(VmmBackend):
         return cmd
 
 
-_VMM_BACKENDS = [CloudHypervisor, Qemu, QemuMicrovm]
+class OpenVmm(VmmBackend):
+    """Microsoft OpenVMM, booted via Linux direct boot.
+
+    OpenVMM direct boot has no legacy PCI bus, so every virtio device is
+    placed on a named port of an emulated native PCIe root complex. A
+    device left off a PCIe port would fall back to the legacy PCI bus and
+    fail VM startup, so all devices below carry an explicit pcie_port.
+
+    Runner output rides on COM1 (a legacy 16550 at ttyS0 on x86, a PL011
+    at ttyAMA0 on aarch64) via `--com1 console`, leaving the virtio-console
+    device free for the console tests to claim without hijacking the
+    runner stream.
+
+    virtio-vsock has no PCIe port option on the command line, so offering
+    it would crash the VM in direct boot. It is therefore omitted, and the
+    vsock tests report no device on this backend. OpenVMM also has no
+    virtio-balloon, virtio-mem, or virtio-watchdog device, so those
+    families are unavailable here too.
+    """
+    name = "openvmm"
+    console_device = "ttyAMA0" if platform.machine() == "aarch64" else "ttyS0"
+    mmio_transport = False
+
+    _ROOT_COMPLEX = "rc0"
+
+    @staticmethod
+    def _blk_arg(disk_path, port, opts, read_only=False):
+        """Build a --virtio-blk value for a disk on the given PCIe port.
+
+        Maps the cross backend --io-engine and --direct opts to OpenVMM's
+        `;direct` file modifier. The aio engine implies O_DIRECT.
+        """
+        engine = opts.get("io_engine", "default")
+        direct = bool(opts.get("direct")) or engine == "aio"
+        spec = f"file:{disk_path}"
+        if direct:
+            spec += ";direct"
+        parts = [spec]
+        if read_only:
+            parts.append("ro")
+        parts.append(f"pcie_port={port}")
+        return ",".join(parts)
+
+    def build_cmd(self, kernel, initramfs, disk_path, cmdline, opts=None):
+        opts = opts or {}
+        cpus = max(opts.get("cpus", 4), 1)
+        mem = opts.get("memory", "512M")
+        pmem_path = opts.get("pmem_path")
+        fs_socket = opts.get("fs_socket")
+
+        rc = self._ROOT_COMPLEX
+        # Declare a PCIe root port per virtio device that is present.
+        ports = ["disk", "net", "console", "rng"]
+        if pmem_path:
+            ports.append("pmem")
+        if fs_socket:
+            ports.append("fs")
+
+        cmd = [
+            self.binary,
+            "--hv",
+            # Run the VM in this process. By default OpenVMM launches the
+            # VM in a child worker process; the runner tracks and kills
+            # only the launcher, so the worker would linger and starve the
+            # host. Keeping it single process makes teardown a clean kill.
+            "--single-process",
+            "-k", kernel,
+            "-r", initramfs,
+            "-c", cmdline,
+            "-m", mem,
+            "-p", str(cpus),
+            "--pcie-root-complex", rc,
+        ]
+        for port in ports:
+            cmd += ["--pcie-root-port", f"{rc}:{port}"]
+
+        cmd += [
+            "--com1", "console",
+            "--virtio-blk", self._blk_arg(disk_path, "disk", opts),
+            "--virtio-net", "pcie_port=net:consomme",
+            # Present but idle, sunk to /dev/null so the console tests can
+            # claim it while the runner keeps COM1.
+            "--virtio-console", "file=/dev/null",
+            "--virtio-console-pcie-port", "console",
+            "--virtio-rng",
+            "--virtio-rng-pcie-port", "rng",
+        ]
+        if pmem_path:
+            cmd += ["--virtio-pmem", f"pcie_port=pmem:{pmem_path}"]
+        if fs_socket:
+            cmd += ["--vhost-user",
+                    f"{fs_socket},type=fs,tag=vvfs,pcie_port=fs"]
+        return cmd
+
+
+_VMM_BACKENDS = [CloudHypervisor, Qemu, QemuMicrovm, OpenVmm]
 
 
 def detect_vmm(vmm_path):
@@ -651,6 +748,8 @@ def detect_vmm(vmm_path):
         return CloudHypervisor(vmm_path)
     if base.startswith("qemu-system"):
         return Qemu(vmm_path)
+    if "openvmm" in base:
+        return OpenVmm(vmm_path)
     names = ", ".join(cls.name for cls in _VMM_BACKENDS)
     sys.exit(f"Cannot detect VMM type from '{base}'. "
              f"Supported: {names}")
@@ -1096,6 +1195,31 @@ def _merge_streams(stdout_text, err_chunks):
     return stdout_text + "\n" + err_text
 
 
+def _ctty_preexec(slave_name):
+    """Return a preexec_fn that starts a new session and claims *slave_name*
+    as the controlling terminal.
+
+    OpenVMM always runs its interactive REPL, whose input thread calls
+    crossterm enable_raw_mode on the controlling terminal. With no
+    controlling terminal that call fails with ENXIO and the resulting
+    thread panic tears the whole VMM down, which the runner would misread
+    as a guest triggered crash. Giving the child its own pty satisfies the
+    raw mode call while the verdict markers still ride the stdout pipe.
+
+    The body runs in the forked child before exec, so it stays limited to
+    plain syscalls and touches no Python level locks.
+    """
+    def _pre():
+        os.setsid()
+        fd = os.open(slave_name, os.O_RDWR)
+        try:
+            fcntl.ioctl(fd, termios.TIOCSCTTY, 0)
+        except OSError:
+            pass
+        os.close(fd)
+    return _pre
+
+
 def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
              disk_format="raw", opts=None):
     """Run one or more tests in a fresh VM.
@@ -1238,6 +1362,7 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
 
     saved_term = _save_term() if console else None
     proc = None
+    openvmm_master = None
     sidecar_thread = None
     sidecar_state = {"err": None}
     sidecar_stop = threading.Event()
@@ -1261,13 +1386,35 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
         old_sigint = None
         if console:
             old_sigint = signal.signal(signal.SIGINT, signal.SIG_IGN)
-        proc = subprocess.Popen(
-            cmd,
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=(subprocess.STDOUT if console else subprocess.PIPE),
-            start_new_session=not console,
-        )
+        # OpenVMM's interactive REPL needs a controlling terminal, so give
+        # it a private pty on stdin. The verdict markers still ride the
+        # stdout pipe, so the reader loop below is unchanged. Other
+        # backends keep stdin closed and start their own session.
+        stdin_arg = subprocess.DEVNULL
+        preexec = None
+        new_session = not console
+        if backend.name == "openvmm":
+            openvmm_master, slave_fd = pty.openpty()
+            stdin_arg = slave_fd
+            preexec = _ctty_preexec(os.ttyname(slave_fd).encode())
+            # setsid happens in the preexec, so do not ask Popen for it too
+            # (a second setsid would fail in the child and abort the spawn).
+            new_session = False
+        try:
+            proc = subprocess.Popen(
+                cmd,
+                stdin=stdin_arg,
+                stdout=subprocess.PIPE,
+                stderr=(subprocess.STDOUT if console else subprocess.PIPE),
+                start_new_session=new_session,
+                preexec_fn=preexec,
+            )
+        finally:
+            # The child now holds the slave; the parent keeps only the
+            # master, which it never reads (the guest sends no console
+            # input). Closing the slave here avoids leaking a descriptor.
+            if openvmm_master is not None:
+                os.close(slave_fd)
         _register_proc(proc)
         if not console and proc.stderr is not None:
             def _drain_stderr(stream, sink):
@@ -1423,6 +1570,11 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
                     pass
         if proc:
             _unregister_proc(proc)
+        if openvmm_master is not None:
+            try:
+                os.close(openvmm_master)
+            except OSError:
+                pass
         if err_thread is not None and err_thread.is_alive():
             err_thread.join(timeout=5)
         sidecar_stop.set()
@@ -2189,7 +2341,8 @@ def main():
                  f"backend")
 
     vm_opts = {
-        "cpus": args.cpus if args.cpus else (4 if backend.name == "ch" else 1),
+        "cpus": args.cpus if args.cpus else (
+            4 if backend.name in ("ch", "openvmm") else 1),
         "memory": args.memory,
         "blk_queues": args.blk_queues,
         "net_queues": args.net_queues,

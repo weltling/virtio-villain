@@ -530,6 +530,99 @@ def test_unit_ch_direct_adds_direct():
     assert "direct=on" in disk
 
 
+# ---------------------------------------------------------------------------
+# OpenVMM backend command construction.
+
+def _openvmm_opt(cmd, flag):
+    """Return the argument that follows the first occurrence of flag."""
+    return cmd[cmd.index(flag) + 1]
+
+
+def _openvmm_ports(cmd):
+    """Return every PCIe root port name declared on the command line."""
+    return [cmd[i + 1].split(":", 1)[1]
+            for i, a in enumerate(cmd) if a == "--pcie-root-port"]
+
+
+def test_unit_openvmm_detect_by_name():
+    be = RUN_MOD.detect_vmm("/opt/openvmm/openvmm")
+    assert isinstance(be, RUN_MOD.OpenVmm)
+    assert be.name == "openvmm"
+
+
+def test_unit_openvmm_build_cmd_direct_boot_layout():
+    """Every virtio device is placed on its own named PCIe root port."""
+    be = RUN_MOD.OpenVmm("/opt/openvmm/openvmm")
+    cmd = be.build_cmd("/k", "/i", "/d.raw", "console=ttyS0 vv.test=T0001",
+                       {"cpus": 2, "memory": "256M"})
+    assert _openvmm_opt(cmd, "-k") == "/k"
+    assert _openvmm_opt(cmd, "-r") == "/i"
+    assert _openvmm_opt(cmd, "-c") == "console=ttyS0 vv.test=T0001"
+    assert _openvmm_opt(cmd, "-m") == "256M"
+    assert _openvmm_opt(cmd, "-p") == "2"
+    assert _openvmm_opt(cmd, "--pcie-root-complex") == "rc0"
+    # Runner output rides on COM1, not the virtio-console device.
+    assert _openvmm_opt(cmd, "--com1") == "console"
+    # The VM must run in one process so the runner's kill reaps it.
+    assert "--single-process" in cmd
+    # The disk, net, console and rng ports are always declared.
+    assert set(_openvmm_ports(cmd)) >= {"disk", "net", "console", "rng"}
+
+
+def test_unit_openvmm_build_cmd_blk_on_pcie_port():
+    be = RUN_MOD.OpenVmm("/opt/openvmm/openvmm")
+    cmd = be.build_cmd("/k", "/i", "/d.raw", "c", {})
+    blk = _openvmm_opt(cmd, "--virtio-blk")
+    assert blk == "file:/d.raw,pcie_port=disk"
+
+
+def test_unit_openvmm_build_cmd_blk_direct():
+    be = RUN_MOD.OpenVmm("/opt/openvmm/openvmm")
+    cmd = be.build_cmd("/k", "/i", "/d.raw", "c", {"direct": True})
+    assert _openvmm_opt(cmd, "--virtio-blk") == "file:/d.raw;direct,pcie_port=disk"
+
+
+def test_unit_openvmm_build_cmd_blk_aio_forces_direct():
+    be = RUN_MOD.OpenVmm("/opt/openvmm/openvmm")
+    cmd = be.build_cmd("/k", "/i", "/d.raw", "c", {"io_engine": "aio"})
+    assert ";direct" in _openvmm_opt(cmd, "--virtio-blk")
+
+
+def test_unit_openvmm_build_cmd_net_consomme():
+    be = RUN_MOD.OpenVmm("/opt/openvmm/openvmm")
+    cmd = be.build_cmd("/k", "/i", "/d.raw", "c", {})
+    assert _openvmm_opt(cmd, "--virtio-net") == "pcie_port=net:consomme"
+
+
+def test_unit_openvmm_build_cmd_no_vsock():
+    """virtio-vsock has no PCIe port option, so it is never offered."""
+    be = RUN_MOD.OpenVmm("/opt/openvmm/openvmm")
+    cmd = be.build_cmd("/k", "/i", "/d.raw", "c", {})
+    assert not any("vsock" in a for a in cmd)
+
+
+def test_unit_openvmm_build_cmd_pmem_optional():
+    be = RUN_MOD.OpenVmm("/opt/openvmm/openvmm")
+    without = be.build_cmd("/k", "/i", "/d.raw", "c", {})
+    assert "--virtio-pmem" not in without
+    assert "pmem" not in _openvmm_ports(without)
+    with_pmem = be.build_cmd("/k", "/i", "/d.raw", "c",
+                             {"pmem_path": "/d.pmem"})
+    assert _openvmm_opt(with_pmem, "--virtio-pmem") == "pcie_port=pmem:/d.pmem"
+    assert "pmem" in _openvmm_ports(with_pmem)
+
+
+def test_unit_openvmm_build_cmd_fs_optional():
+    be = RUN_MOD.OpenVmm("/opt/openvmm/openvmm")
+    without = be.build_cmd("/k", "/i", "/d.raw", "c", {})
+    assert "--vhost-user" not in without
+    with_fs = be.build_cmd("/k", "/i", "/d.raw", "c",
+                           {"fs_socket": "/d.fsd"})
+    assert _openvmm_opt(with_fs, "--vhost-user") == \
+        "/d.fsd,type=fs,tag=vvfs,pcie_port=fs"
+    assert "fs" in _openvmm_ports(with_fs)
+
+
 def test_unit_qemu_aio_forces_direct_gating():
     """The aio direct IO nudge fires only for the QEMU backends."""
     f = RUN_MOD._qemu_aio_forces_direct
