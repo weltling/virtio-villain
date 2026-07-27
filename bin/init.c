@@ -458,18 +458,9 @@ int main(int argc, char **argv)
     if (strcmp(test_name, "probe") == 0) {
         /* Probe all known device types and report feature bits. */
         static const uint16_t dev_ids[] = {
-            VIRTIO_PCI_DEVICE_NET,
-            VIRTIO_PCI_DEVICE_BLK,
-            VIRTIO_PCI_DEVICE_CONSOLE,
-            VIRTIO_PCI_DEVICE_RNG,
-            VIRTIO_PCI_DEVICE_BALLOON,
-            VIRTIO_PCI_DEVICE_VSOCK,
-            VIRTIO_PCI_DEVICE_IOMMU,
-            VIRTIO_PCI_DEVICE_MEM,
-            VIRTIO_PCI_DEVICE_PMEM,
-            VIRTIO_PCI_DEVICE_WATCHDOG,
-            VIRTIO_PCI_DEVICE_RTC,
-            VIRTIO_PCI_DEVICE_FS,
+#define X(name) VIRTIO_PCI_DEVICE_##name,
+            VIRTIO_PCI_DEVICE_IDS(X)
+#undef X
         };
         for (size_t i = 0; i < sizeof(dev_ids) / sizeof(dev_ids[0]); i++) {
             struct virtio_dev dev;

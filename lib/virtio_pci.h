@@ -43,6 +43,15 @@
 #define VIRTIO_PCI_DEVICE_FS       0x105a
 
 /*
+ * Central list of known modern virtio PCI device types. Iterate with
+ * an X-macro so every consumer shares one source of truth. Add new
+ * device types here.
+ */
+#define VIRTIO_PCI_DEVICE_IDS(X) \
+    X(NET) X(BLK) X(CONSOLE) X(RNG) X(BALLOON) X(VSOCK) \
+    X(IOMMU) X(MEM) X(PMEM) X(WATCHDOG) X(RTC) X(FS)
+
+/*
  * Virtio PCI modern common configuration layout (spec 4.1.4.3).
  */
 struct virtio_pci_common_cfg {
