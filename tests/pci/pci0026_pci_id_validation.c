@@ -3,8 +3,9 @@
  * PCI0026: PCI vendor/device ID validation (spec 4.1.2)
  *
  * Verify the PCI device IDs match expected virtio modern conventions:
- * vendor 0x1AF4, device in the modern range 0x1040-0x107F.
- * Also verify subsystem vendor is 0x1AF4.
+ * vendor 0x1AF4, device in the modern range 0x1040-0x107F. The
+ * subsystem fields carry no MUST-level requirement per 4.1.2.1 and are
+ * not checked here.
  */
 #include "tests/test.h"
 #include "lib/util.h"
