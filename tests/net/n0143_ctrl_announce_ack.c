@@ -33,6 +33,23 @@ static test_result_t test_net_ctrl_announce(struct virtio_dev *dev,
     hdr->command = VIRTIO_NET_CTRL_ANNOUNCE_ACK;
     *ack = 0xFF;
 
+    /*
+     * The ack byte carries a defined status, VIRTIO_NET_OK or
+     * VIRTIO_NET_ERR. While an announce is pending, that is
+     * VIRTIO_NET_S_ANNOUNCE set in the config status, the device must
+     * ack OK. With no pending announce a VMM may ack OK or ERR: CH
+     * acks OK, QEMU acks ERR, both consume the command. Sample the
+     * bit before the ack, since the ack clears it.
+     */
+    int announce_pending = 0;
+    if (dev->device_cfg &&
+        dev->device_cfg_length >= VIRTIO_NET_CFG_STATUS_OFFSET + 2) {
+        volatile uint16_t *status = (volatile uint16_t *)(
+            (uint8_t *)dev->device_cfg + VIRTIO_NET_CFG_STATUS_OFFSET);
+        __sync_synchronize();
+        announce_pending = (*status & VIRTIO_NET_S_ANNOUNCE) != 0;
+    }
+
     /* ANNOUNCE_ACK has no data payload, just hdr + ack */
     vring_raw_set_desc(vr, 0, vv_virt_to_phys(hdr), sizeof(*hdr),
                        VRING_DESC_F_NEXT, 1);
@@ -44,8 +61,12 @@ static test_result_t test_net_ctrl_announce(struct virtio_dev *dev,
     test_result_t r = vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
     if (r != TEST_PASS) return r;
 
-    if (*ack != VIRTIO_NET_OK)
-        TFAIL("ack %u, expected VIRTIO_NET_OK", *ack);
+    if (*ack != VIRTIO_NET_OK && *ack != VIRTIO_NET_ERR)
+        TFAIL("ack 0x%02x, expected VIRTIO_NET_OK or VIRTIO_NET_ERR",
+              *ack);
+    if (announce_pending && *ack != VIRTIO_NET_OK)
+        TFAIL("ack %u, expected VIRTIO_NET_OK for a pending announce",
+              *ack);
 
     return TEST_PASS;
 }
