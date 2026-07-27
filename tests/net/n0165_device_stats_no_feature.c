@@ -42,7 +42,7 @@ static test_result_t test_net_device_stats_no_feature(struct virtio_dev *dev,
     vring_raw_set_desc(vr, 0, vv_virt_to_phys(h), sizeof(*h),
                        VRING_DESC_F_NEXT, 1);
     vring_raw_set_desc(vr, 1, vv_virt_to_phys(payload), 256,
-                       VRING_DESC_F_NEXT | VRING_DESC_F_WRITE, 2);
+                       VRING_DESC_F_NEXT, 2);
     vring_raw_set_desc(vr, 2, vv_virt_to_phys(ack), 1,
                        VRING_DESC_F_WRITE, 0);
     vring_raw_set_avail(vr, 0, 0);
