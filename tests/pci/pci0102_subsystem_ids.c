@@ -1,10 +1,21 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * PCI0102: PCI subsystem vendor and device IDs are virtio.
+ * PCI0102: PCI subsystem IDs are informational for modern devices.
  *
- * Spec 4.1.2.1: Non-transitional virtio PCI devices have subsystem
- * vendor ID 0x1AF4 (Red Hat) and subsystem device ID matching the
- * virtio device type. Read PCI config at offsets 0x2C and 0x2E.
+ * Spec 4.1.2.1 places no MUST-level requirement on the PCI Subsystem
+ * Vendor ID or Subsystem Device ID of a non-transitional device. The
+ * subsystem fields MAY reflect the vendor and device ID of the
+ * environment, and 4.1.2.2 states that drivers MAY match any subsystem
+ * vendor or device ID. So a modern device may use a vendor-specific
+ * subsystem vendor ID to identify its implementation; only the PCI
+ * Vendor ID 0x1AF4 and the PCI Device ID are constrained at MUST level.
+ *
+ * The only subsystem guidance for a non-transitional device is the
+ * SHOULD in 4.1.2.1 that the Subsystem Device ID be 0x40 or higher, to
+ * reduce the chance of a legacy driver attaching. This test reads the
+ * subsystem fields at offsets 0x2C and 0x2E and reports them, treating
+ * the SHOULD as a non-fatal note. It does not fail on the subsystem
+ * vendor ID.
  */
 #include "tests/test.h"
 #include "lib/util.h"
@@ -27,16 +38,21 @@ static test_result_t test_pci_subsystem(struct virtio_dev *dev,
     uint16_t sub_device = pci_cfg_read16(fd, 0x2E);
     close(fd);
 
-    if (sub_vendor != 0x1AF4)
-        TFAIL("subsystem vendor 0x%04x, expected 0x1AF4", sub_vendor);
+    /*
+     * Subsystem device ID 0x40 or higher is a SHOULD, not a MUST, so a
+     * lower value is reported but does not fail the test.
+     */
+    if (sub_device < 0x40)
+        printf("vv-note %s:%d: subsystem device 0x%04x below 0x40 "
+               "(SHOULD per 4.1.2.1)\n", __FILE__, __LINE__, sub_device);
 
-    /* For modern devices, subsystem device ID >= 0x40 */
-    if (sub_device < 0x0001)
-        TFAIL("subsystem device 0x%04x is zero", sub_device);
+    printf("vv-note %s:%d: subsystem vendor 0x%04x device 0x%04x\n",
+           __FILE__, __LINE__, sub_vendor, sub_device);
+    fflush(stdout);
 
     return TEST_PASS;
 }
 
 REGISTER_TEST(PCI0102, VIRTIO_PCI_DEVICE_BLK, test_pci_subsystem,
-              "PCI subsystem vendor is 0x1AF4",
+              "PCI subsystem IDs are informational for modern devices",
               VIRTIO_SPEC_V1_2, "4.1.2.1");
