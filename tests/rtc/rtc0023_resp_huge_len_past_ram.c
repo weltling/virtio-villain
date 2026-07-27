@@ -29,8 +29,8 @@ static test_result_t test_rtc_resp_huge_len_past_ram(struct virtio_dev *dev,
     struct rtc_req_read *req = (void *)buf;
     req->msg_type = VIRTIO_RTC_REQ_READ;
     uint64_t base = vv_virt_to_phys(buf);
-    uint64_t resp_phys = base + 64;
-    if (resp_phys >= ram_top)
+    uint64_t resp_phys;
+    if (!vv_alloc_page_near_ram_top(ram_top, &resp_phys))
         return TEST_SKIP;
 
     uint64_t overshoot = (ram_top - resp_phys) + (1ULL << 30);

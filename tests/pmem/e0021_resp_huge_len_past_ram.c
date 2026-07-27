@@ -28,9 +28,8 @@ static test_result_t test_pmem_resp_huge_len_past_ram(struct virtio_dev *dev,
 
     struct virtio_pmem_req *req = vv_alloc_pages(1);
     req->type = VIRTIO_PMEM_REQ_TYPE_FLUSH;
-    void *r = vv_alloc_pages(1);
-    uint64_t r_phys = vv_virt_to_phys(r);
-    if (r_phys >= ram_top)
+    uint64_t r_phys;
+    if (!vv_alloc_page_near_ram_top(ram_top, &r_phys))
         return TEST_SKIP;
 
     uint64_t overshoot = (ram_top - r_phys) + (1ULL << 30);

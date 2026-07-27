@@ -72,4 +72,59 @@ static inline uint64_t vv_parse_ram_top(void)
     return top;
 }
 
+/*
+ * Allocate one locked, zeroed page whose guest physical base sits as
+ * close as possible below ram_top. On a device that fills a writable
+ * descriptor front to back before it faults on the part past the end of
+ * RAM, the in-range prefix it writes is [base, ram_top). Placing base
+ * near the top keeps that prefix small and high in RAM, away from the
+ * init image low in RAM, so a "huge len past RAM" descriptor cannot
+ * clobber init and crash the guest before the test reports its verdict.
+ *
+ * Writes the guest physical base to *phys_out. Returns NULL if no page
+ * below ram_top could be obtained, in which case the caller should skip.
+ */
+static inline void *vv_alloc_page_near_ram_top(uint64_t ram_top,
+                                               uint64_t *phys_out)
+{
+    /*
+     * Grab a chunk of pages and keep the one with the highest PFN still
+     * below ram_top. A larger chunk raises the odds of landing near the
+     * top; shrink on failure so a small guest can still satisfy it.
+     */
+    static const size_t try_pages[] = {
+        16384, 8192, 4096, 2048, 1024, 256, 1,
+    };
+    uint8_t *region = MAP_FAILED;
+    size_t region_pages = 0;
+
+    for (size_t t = 0; t < sizeof(try_pages) / sizeof(try_pages[0]); t++) {
+        region = mmap(NULL, try_pages[t] * PAGE_SIZE, PROT_READ | PROT_WRITE,
+                      MAP_PRIVATE | MAP_ANONYMOUS | MAP_LOCKED, -1, 0);
+        if (region != MAP_FAILED) {
+            region_pages = try_pages[t];
+            break;
+        }
+    }
+    if (region == MAP_FAILED)
+        return NULL;
+    memset(region, 0, region_pages * PAGE_SIZE);
+
+    void *best = NULL;
+    uint64_t best_phys = 0;
+    for (size_t i = 0; i < region_pages; i++) {
+        uint8_t *pg = region + i * PAGE_SIZE;
+        uint64_t phys = vv_virt_to_phys(pg);
+        if (phys < ram_top && phys > best_phys) {
+            best_phys = phys;
+            best = pg;
+        }
+    }
+    if (!best)
+        return NULL;
+
+    *phys_out = best_phys;
+    return best;
+}
+
 #endif /* VV_UTIL_H */

@@ -32,9 +32,8 @@ static test_result_t test_mem_huge_len_past_ram(struct virtio_dev *dev,
 
     uint64_t req_phys = vv_virt_to_phys(req);
 
-    uint8_t *resp_buf = vv_alloc_pages(1);
-    uint64_t resp_phys = vv_virt_to_phys(resp_buf);
-    if (resp_phys >= ram_top)
+    uint64_t resp_phys;
+    if (!vv_alloc_page_near_ram_top(ram_top, &resp_phys))
         return TEST_SKIP;
 
     uint64_t overshoot = (ram_top - resp_phys) + (1ULL << 30);

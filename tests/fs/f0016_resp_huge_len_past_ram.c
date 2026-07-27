@@ -32,8 +32,8 @@ static test_result_t test_fs_resp_huge_len_past_ram(struct virtio_dev *dev,
     hdr->unique = 1;
 
     uint64_t hdr_phys  = vv_virt_to_phys(page);
-    uint64_t resp_phys = hdr_phys + 256;
-    if (resp_phys >= ram_top)
+    uint64_t resp_phys;
+    if (!vv_alloc_page_near_ram_top(ram_top, &resp_phys))
         return TEST_SKIP;
 
     uint64_t overshoot = (ram_top - resp_phys) + (1ULL << 30);

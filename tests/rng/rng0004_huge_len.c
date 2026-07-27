@@ -14,9 +14,12 @@
  * outside the guest's mapping or crash the VMM.
  *
  * This test uses vv_parse_ram_top() to locate the top of System RAM,
- * allocates a one page buffer, and programs a writable descriptor
- * whose base sits inside that buffer but whose length crosses far
- * past the end of guest RAM. Pass means the device completed the
+ * allocates a page whose base sits as close as possible below that
+ * top, and programs a writable descriptor whose base is that page but
+ * whose length crosses far past the end of guest RAM. Placing the base
+ * near the top keeps the in-range prefix a "write then fault" device
+ * fills small and away from the init image. Pass means the device
+ * completed the
  * request, silently rejected it, or wedged the queue. Any of those
  * is acceptable. Triple faulting the guest or crashing the VMM is
  * not.
@@ -37,9 +40,9 @@ static test_result_t test_rng_huge_len(struct virtio_dev *dev,
     if (ram_top == 0)
         return TEST_SKIP;
 
-    uint8_t *buf = vv_alloc_pages(1);
-    uint64_t buf_phys = vv_virt_to_phys(buf);
-    if (buf_phys >= ram_top)
+    uint64_t buf_phys;
+    uint8_t *buf = vv_alloc_page_near_ram_top(ram_top, &buf_phys);
+    if (!buf)
         return TEST_SKIP;
 
     /*

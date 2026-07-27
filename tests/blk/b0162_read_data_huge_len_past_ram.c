@@ -27,7 +27,6 @@ static test_result_t test_blk_read_huge_len_past_ram(struct virtio_dev *dev,
         return TEST_SKIP;
 
     struct virtio_blk_outhdr *hdr = vv_alloc_pages(1);
-    uint8_t *data = vv_alloc_pages(1);
     uint8_t *status = vv_alloc_pages(1);
 
     hdr->type = VIRTIO_BLK_T_IN;
@@ -36,9 +35,10 @@ static test_result_t test_blk_read_huge_len_past_ram(struct virtio_dev *dev,
     *status = 0xFF;
 
     uint64_t hdr_phys = vv_virt_to_phys(hdr);
-    uint64_t data_phys = vv_virt_to_phys(data);
     uint64_t status_phys = vv_virt_to_phys(status);
-    if (data_phys >= ram_top)
+
+    uint64_t data_phys;
+    if (!vv_alloc_page_near_ram_top(ram_top, &data_phys))
         return TEST_SKIP;
 
     uint64_t overshoot = (ram_top - data_phys) + (1ULL << 30);

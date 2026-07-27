@@ -35,8 +35,8 @@ static test_result_t test_iommu_probe_huge_len_past_ram(struct virtio_dev *dev,
 
     uint64_t req_phys = vv_virt_to_phys(req);
     size_t   in_len   = (size_t)((uint8_t *)&req->properties - (uint8_t *)req);
-    uint64_t out_phys = req_phys + in_len;
-    if (out_phys >= ram_top)
+    uint64_t out_phys;
+    if (!vv_alloc_page_near_ram_top(ram_top, &out_phys))
         return TEST_SKIP;
 
     uint64_t overshoot = (ram_top - out_phys) + (1ULL << 30);
