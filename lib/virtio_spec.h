@@ -251,6 +251,23 @@ struct virtio_blk_zone_report_hdr_wide {
 #define VIRTIO_NET_CTRL_STATS_QUERY      0
 #define VIRTIO_NET_CTRL_STATS_GET        1
 
+/* Device statistics types (spec 5.1.6.5.9). Bits in the capabilities
+ * bitmap returned by STATS_QUERY and requested in STATS_GET. */
+#define VIRTIO_NET_STATS_TYPE_RX_BASIC  (1ULL << 0)
+#define VIRTIO_NET_STATS_TYPE_RX_CSUM   (1ULL << 1)
+#define VIRTIO_NET_STATS_TYPE_RX_GSO    (1ULL << 2)
+#define VIRTIO_NET_STATS_TYPE_RX_SPEED  (1ULL << 3)
+#define VIRTIO_NET_STATS_TYPE_TX_BASIC  (1ULL << 16)
+#define VIRTIO_NET_STATS_TYPE_TX_CSUM   (1ULL << 17)
+#define VIRTIO_NET_STATS_TYPE_TX_GSO    (1ULL << 18)
+#define VIRTIO_NET_STATS_TYPE_TX_SPEED  (1ULL << 19)
+#define VIRTIO_NET_STATS_TYPE_CVQ       (1ULL << 32)
+
+/* STATS_QUERY reply. */
+struct virtio_net_stats_capabilities {
+    uint64_t supported_stats_types;
+} __attribute__((packed));
+
 /* CTRL_RSS_CTX commands (spec VIRTNET_RSS_CTX_CTRL). */
 #define VIRTIO_NET_CTRL_RSS_CTX_CAP_GET  0
 #define VIRTIO_NET_CTRL_RSS_CTX_ADD      1
