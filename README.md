@@ -432,11 +432,17 @@ A subset of upstream Cloud Hypervisor fixes surfaced by this harness:
 - [#7852](https://github.com/cloud-hypervisor/cloud-hypervisor/pull/7852) virtio-devices: block: Populate discard and write zeroes config
 - [#7805](https://github.com/cloud-hypervisor/cloud-hypervisor/pull/7805) virtio: Spec compliance fixes
 
-All in cloud-hypervisor/cloud-hypervisor, all merged.
-
 ### QEMU
 
 - [#3968](https://gitlab.com/qemu-project/qemu/-/work_items/3968) virtio: Malformed packed descriptor livelocks the device at 100% host CPU (guest triggered DoS), reproducer P0040
+
+### OpenVMM
+
+- [#4049](https://github.com/microsoft/openvmm/issues/4049) virtio-pci: Spurious configuration change interrupt (ISR bit 1) raised at DRIVER_OK, reproducer PCI0114
+- [#4048](https://github.com/microsoft/openvmm/issues/4048) virtio-pmem: Device reports start 0 and size 0 without negotiating VIRTIO_PMEM_F_SHMEM_REGION, reproducers E0028, E0032
+- [#4047](https://github.com/microsoft/openvmm/issues/4047) virtio: Unchecked descriptor address plus length arithmetic panics on 64-bit wrap in checked builds, reproducer T0008
+- [#4046](https://github.com/microsoft/openvmm/issues/4046) virtio-blk: Guest LBA not bounds checked before the disk backend, out of range reads and writes and a panic in checked builds, reproducers B0002, B0081, B0091
+- [#4045](https://github.com/microsoft/openvmm/issues/4045) virtio: Malformed virtqueue descriptor chain wedges the device worker in an unrecoverable busy loop, reproducers T0001, T0002, T0003, T0025, T0054, T0082, T0084, B0125, P0003
 
 ## Acknowledgments
 
