@@ -774,7 +774,9 @@ struct virtio_crypto_mac_session_para {
 #define VIRTIO_CRYPTO_AKCIPHER_KEY_TYPE_PUBLIC  1
 #define VIRTIO_CRYPTO_AKCIPHER_KEY_TYPE_PRIVATE 2
 #define VIRTIO_CRYPTO_RSA_RAW_PADDING           0
+#define VIRTIO_CRYPTO_RSA_PKCS1_PADDING         1
 #define VIRTIO_CRYPTO_RSA_NO_HASH               0
+#define VIRTIO_CRYPTO_RSA_SHA1                  5
 
 /* RSA specific akcipher session parameters (spec 5.9.10). */
 struct virtio_crypto_rsa_session_para {
