@@ -839,6 +839,10 @@ struct virtio_crypto_inhdr {
 #define VIRTIO_CRYPTO_CIPHER_ENCRYPT  0x0000
 #define VIRTIO_CRYPTO_CIPHER_DECRYPT  0x0001
 #define VIRTIO_CRYPTO_HASH            0x0100
+#define VIRTIO_CRYPTO_AKCIPHER_ENCRYPT  0x0400
+#define VIRTIO_CRYPTO_AKCIPHER_DECRYPT  0x0401
+#define VIRTIO_CRYPTO_AKCIPHER_SIGN     0x0402
+#define VIRTIO_CRYPTO_AKCIPHER_VERIFY   0x0403
 
 /* Data queue request header (spec 5.9.8). */
 struct virtio_crypto_op_header {
@@ -863,6 +867,12 @@ struct virtio_crypto_hash_para {
     uint32_t hash_result_len;
 } __attribute__((packed));
 
+/* Akcipher operation parameters (spec 5.9.8.7). */
+struct virtio_crypto_akcipher_para {
+    uint32_t src_data_len;
+    uint32_t dst_data_len;
+} __attribute__((packed));
+
 /* Data queue request. The header is followed by an op specific body
  * padded to a fixed 48 bytes. A symmetric cipher op fills the cipher
  * parameters then the symmetric op type at offset 40. */
@@ -879,6 +889,10 @@ struct virtio_crypto_op_data_req {
             struct virtio_crypto_hash_para para;
             uint8_t padding[40];
         } hash;
+        struct {
+            struct virtio_crypto_akcipher_para para;
+            uint8_t padding[40];
+        } akcipher;
         uint8_t raw[48];
     } u;
 } __attribute__((packed));
