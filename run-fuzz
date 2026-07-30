@@ -812,6 +812,7 @@ def cmd_decode(args):
 _DEVICE_MAP = {
     "blk":      ("B",   "VIRTIO_PCI_DEVICE_BLK"),
     "net":      ("N",   "VIRTIO_PCI_DEVICE_NET"),
+    "scsi":     ("SCSI", "VIRTIO_PCI_DEVICE_SCSI"),
     "console":  ("C",   "VIRTIO_PCI_DEVICE_CONSOLE"),
     "rng":      ("RNG", "VIRTIO_PCI_DEVICE_RNG"),
     "balloon":  ("L",   "VIRTIO_PCI_DEVICE_BALLOON"),

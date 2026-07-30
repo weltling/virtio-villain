@@ -602,6 +602,28 @@ class Qemu(VmmBackend):
             "-device",
             f"virtio-crypto-pci,id=crypto0,cryptodev=cryptodev0,packed={packed_flag}",
         ]
+        # virtio-scsi with backing scsi-hd LUNs. CH has no virtio-scsi
+        # device model, so scsi tests only run under QEMU. A real LUN is
+        # needed so a SCSI READ reaches the block backend. A second LUN
+        # with a 4K logical block exercises multi LUN addressing and non
+        # 512 geometry, and multiple request queues are advertised.
+        scsi_path = opts.get("scsi_path")
+        if scsi_path:
+            scsi_path2 = opts.get("scsi_path2")
+            cmd += [
+                "-drive", f"file={scsi_path},if=none,id=scsidisk,format=raw",
+                "-drive", f"file={scsi_path2},if=none,id=scsidisk2,format=raw",
+                "-device",
+                f"virtio-scsi-pci-non-transitional,id=scsi0"
+                f",packed={packed_flag},num_queues=4",
+                "-device",
+                "scsi-hd,drive=scsidisk,bus=scsi0.0,channel=0"
+                ",scsi-id=0,lun=0,serial=vvscsi0",
+                "-device",
+                "scsi-hd,drive=scsidisk2,bus=scsi0.0,channel=0"
+                ",scsi-id=0,lun=1,logical_block_size=4096"
+                ",physical_block_size=4096,serial=vvscsi1",
+            ]
         if api_socket:
             cmd += ["-qmp", f"unix:{api_socket},server=on,wait=off"]
         cmd[1:1] = self.trace_args(opts)
@@ -1277,6 +1299,7 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
     # example the net repro that owns the net and iommu devices itself).
     skip_initcalls = [
         "virtio_blk_init",
+        "virtio_scsi_init",
         "virtio_net_driver_init",
         "virtio_console_init",
         "virtio_balloon_driver_init",
@@ -1310,6 +1333,18 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
     # dict that the caller reuses across every test.
     opts = dict(opts) if opts else {}
     opts["pmem_path"] = pmem_path
+
+    # Create the virtio-scsi backing file so a SCSI READ has real data
+    # to return from the block backend.
+    scsi_path = disk_path.rsplit(".", 1)[0] + ".scsi"
+    with open(scsi_path, "wb") as f:
+        f.truncate(DISK_SIZE)
+    opts["scsi_path"] = scsi_path
+    # Second backing file for the 4K block LUN at LUN 1.
+    scsi_path2 = disk_path.rsplit(".", 1)[0] + ".scsi2"
+    with open(scsi_path2, "wb") as f:
+        f.truncate(DISK_SIZE)
+    opts["scsi_path2"] = scsi_path2
 
     api_socket = None
     if opts.get("api_enabled") and backend.name in ("ch", "qemu"):
@@ -1630,6 +1665,14 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
             os.unlink(pmem_path)
         except FileNotFoundError:
             pass
+        try:
+            os.unlink(scsi_path)
+        except FileNotFoundError:
+            pass
+        try:
+            os.unlink(scsi_path2)
+        except FileNotFoundError:
+            pass
         if api_socket:
             try:
                 os.unlink(api_socket)
@@ -1702,6 +1745,7 @@ PREFIX_DIR = {
     "A": "admin",
     "B": "blk",
     "Z": "blk",
+    "SCSI": "scsi",
     "N": "net",
     "C": "console",
     "RNG": "rng",
@@ -1725,6 +1769,7 @@ for _p, _d in PREFIX_DIR.items():
 # Transport tests (T, PCI, S) use BLK as the default probe device.
 PREFIX_DEVICE_ID = {
     "B": 0x1042, "Z": 0x1042,   # blk
+    "SCSI": 0x1048,             # scsi
     "N": 0x1041,                 # net
     "C": 0x1043,                 # console
     "RNG": 0x1044,               # rng
@@ -2481,12 +2526,21 @@ def main():
         probe_pmem = probe_disk.rsplit(".", 1)[0] + ".pmem"
         with open(probe_pmem, "wb") as f:
             f.truncate(128 * 1024 * 1024)
+        probe_scsi = probe_disk.rsplit(".", 1)[0] + ".scsi"
+        with open(probe_scsi, "wb") as f:
+            f.truncate(DISK_SIZE)
+        probe_scsi2 = probe_disk.rsplit(".", 1)[0] + ".scsi2"
+        with open(probe_scsi2, "wb") as f:
+            f.truncate(DISK_SIZE)
         probe_opts = dict(vm_opts)
         probe_opts["pmem_path"] = probe_pmem
+        probe_opts["scsi_path"] = probe_scsi
+        probe_opts["scsi_path2"] = probe_scsi2
         probe_opts.pop("api_enabled", None)
         probe_opts.pop("api_socket", None)
         skip_ic = [
-            "virtio_blk_init", "virtio_net_driver_init",
+            "virtio_blk_init", "virtio_scsi_init",
+            "virtio_net_driver_init",
             "virtio_console_init", "virtio_balloon_driver_init",
             "virtio_rng_driver_init", "virtio_mem_driver_init",
             "virtio_pmem_driver_init", "virtio_iommu_drv_init",
@@ -2530,6 +2584,14 @@ def main():
                 pass
             try:
                 os.unlink(probe_pmem)
+            except FileNotFoundError:
+                pass
+            try:
+                os.unlink(probe_scsi)
+            except FileNotFoundError:
+                pass
+            try:
+                os.unlink(probe_scsi2)
             except FileNotFoundError:
                 pass
 

@@ -156,6 +156,136 @@ struct virtio_blk_zone_report_hdr_wide {
     uint64_t nr_zones;
 } __attribute__((packed));
 
+/* SCSI host device / virtio-scsi (virtio spec 5.6) */
+
+/* Feature bits (spec 5.6.3). */
+#define VIRTIO_SCSI_F_INOUT          0
+#define VIRTIO_SCSI_F_HOTPLUG        1
+#define VIRTIO_SCSI_F_CHANGE         2
+#define VIRTIO_SCSI_F_T10_PI         3
+
+/* Default CDB and sense buffer sizes (spec 5.6.4). */
+#define VIRTIO_SCSI_CDB_SIZE         32
+#define VIRTIO_SCSI_SENSE_SIZE       96
+
+/* Response byte values (spec 5.6.6.1). */
+#define VIRTIO_SCSI_S_OK             0
+#define VIRTIO_SCSI_S_OVERRUN        1
+#define VIRTIO_SCSI_S_ABORTED        2
+#define VIRTIO_SCSI_S_BAD_TARGET     3
+#define VIRTIO_SCSI_S_RESET          4
+#define VIRTIO_SCSI_S_BUSY           5
+#define VIRTIO_SCSI_S_TRANSPORT_FAILURE 6
+#define VIRTIO_SCSI_S_TARGET_FAILURE 7
+#define VIRTIO_SCSI_S_NEXUS_FAILURE  8
+#define VIRTIO_SCSI_S_FAILURE        9
+
+/* task_attr values (spec 5.6.6.1). */
+#define VIRTIO_SCSI_S_SIMPLE         0
+#define VIRTIO_SCSI_S_ORDERED        1
+#define VIRTIO_SCSI_S_HEAD           2
+#define VIRTIO_SCSI_S_ACA            3
+
+/* Device configuration layout (spec 5.6.4). */
+struct virtio_scsi_config {
+    uint32_t num_queues;
+    uint32_t seg_max;
+    uint32_t max_sectors;
+    uint32_t cmd_per_lun;
+    uint32_t event_info_size;
+    uint32_t sense_size;
+    uint32_t cdb_size;
+    uint16_t max_channel;
+    uint16_t max_target;
+    uint32_t max_lun;
+} __attribute__((packed));
+
+/* Request queue command header, device readable (spec 5.6.6.1). */
+struct virtio_scsi_cmd_req {
+    uint8_t  lun[8];
+    uint64_t tag;
+    uint8_t  task_attr;
+    uint8_t  prio;
+    uint8_t  crn;
+    uint8_t  cdb[VIRTIO_SCSI_CDB_SIZE];
+} __attribute__((packed));
+
+/* Request queue response header, device writable (spec 5.6.6.1). */
+struct virtio_scsi_cmd_resp {
+    uint32_t sense_len;
+    uint32_t resid;
+    uint16_t status_qualifier;
+    uint8_t  status;
+    uint8_t  response;
+    uint8_t  sense[VIRTIO_SCSI_SENSE_SIZE];
+} __attribute__((packed));
+
+/* Control queue request types (spec 5.6.6.2). */
+#define VIRTIO_SCSI_T_TMF                    0
+#define VIRTIO_SCSI_T_AN_QUERY               1
+#define VIRTIO_SCSI_T_AN_SUBSCRIBE           2
+
+/* Task management function subtypes (spec 5.6.6.2). */
+#define VIRTIO_SCSI_T_TMF_ABORT_TASK         0
+#define VIRTIO_SCSI_T_TMF_ABORT_TASK_SET     1
+#define VIRTIO_SCSI_T_TMF_CLEAR_ACA          2
+#define VIRTIO_SCSI_T_TMF_CLEAR_TASK_SET     3
+#define VIRTIO_SCSI_T_TMF_I_T_NEXUS_RESET    4
+#define VIRTIO_SCSI_T_TMF_LOGICAL_UNIT_RESET 5
+#define VIRTIO_SCSI_T_TMF_QUERY_TASK         6
+#define VIRTIO_SCSI_T_TMF_QUERY_TASK_SET     7
+
+/* Control queue response codes (spec 5.6.6.2). */
+#define VIRTIO_SCSI_S_FUNCTION_COMPLETE      0
+#define VIRTIO_SCSI_S_FUNCTION_SUCCEEDED     10
+#define VIRTIO_SCSI_S_FUNCTION_REJECTED      11
+#define VIRTIO_SCSI_S_INCORRECT_LUN          12
+
+/* Task management function request, device readable (spec 5.6.6.2). */
+struct virtio_scsi_ctrl_tmf_req {
+    uint32_t type;
+    uint32_t subtype;
+    uint8_t  lun[8];
+    uint64_t tag;
+} __attribute__((packed));
+
+/* Task management function response, device writable (spec 5.6.6.2). */
+struct virtio_scsi_ctrl_tmf_resp {
+    uint8_t  response;
+} __attribute__((packed));
+
+/* Asynchronous notification request, device readable (spec 5.6.6.2). */
+struct virtio_scsi_ctrl_an_req {
+    uint32_t type;
+    uint8_t  lun[8];
+    uint32_t event_requested;
+} __attribute__((packed));
+
+/* Asynchronous notification response, device writable (spec 5.6.6.2). */
+struct virtio_scsi_ctrl_an_resp {
+    uint32_t event_actual;
+    uint8_t  response;
+} __attribute__((packed));
+
+/* Event queue event codes (spec 5.6.6.3). */
+#define VIRTIO_SCSI_T_NO_EVENT           0
+#define VIRTIO_SCSI_T_TRANSPORT_RESET    1
+#define VIRTIO_SCSI_T_ASYNC_NOTIFY       2
+#define VIRTIO_SCSI_T_PARAM_CHANGE       3
+#define VIRTIO_SCSI_T_EVENTS_MISSED      0x80000000u
+
+/* Transport reset event reasons (spec 5.6.6.3). */
+#define VIRTIO_SCSI_EVT_RESET_HARD       0
+#define VIRTIO_SCSI_EVT_RESET_RESCAN     1
+#define VIRTIO_SCSI_EVT_RESET_REMOVED    2
+
+/* Event queue element, device writable (spec 5.6.6.3). */
+struct virtio_scsi_event {
+    uint32_t event;
+    uint8_t  lun[8];
+    uint32_t reason;
+} __attribute__((packed));
+
 /* Network device (virtio spec 5.1) */
 
 /* Feature bits (spec 5.1.3). */
