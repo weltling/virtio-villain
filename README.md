@@ -434,7 +434,7 @@ A subset of upstream Cloud Hypervisor fixes surfaced by this harness:
 
 ### QEMU
 
-- [#3968](https://gitlab.com/qemu-project/qemu/-/work_items/3968) virtio: Malformed packed descriptor livelocks the device at 100% host CPU (guest triggered DoS), reproducer P0040
+- [#3968](https://gitlab.com/qemu-project/qemu/-/work_items/3968) [CVE-2026-16457](https://www.cve.org/CVERecord?id=CVE-2026-16457) virtio: Malformed packed descriptor livelocks the device at 100% host CPU (guest triggered DoS), reproducer P0040
 
 ### OpenVMM
 
