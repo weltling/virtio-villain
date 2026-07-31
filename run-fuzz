@@ -878,6 +878,11 @@ def _resolve_fuzz_device():
 
     m = re.search(r"virtio_pci_find\(\s*(VIRTIO_PCI_DEVICE_[A-Z_]+)", text)
     if not m:
+        # The harness selects the device through a build time macro; fall
+        # back to its default define.
+        m = re.search(r"define\s+FUZZ_DEVICE_ID\s+(VIRTIO_PCI_DEVICE_[A-Z_]+)",
+                      text)
+    if not m:
         sys.exit(f"cannot determine target device from {fuzz_src}")
     macro = m.group(1)
     for name, (_prefix, dev_macro) in _DEVICE_MAP.items():

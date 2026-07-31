@@ -17,6 +17,18 @@
 #include "lib/fuzz_input.h"
 
 /*
+ * Target device and queue are selectable at build time so the same
+ * harness can drive different virtio devices. The default targets
+ * virtio-blk on queue 0. A scsi build sets the request queue index.
+ */
+#ifndef FUZZ_DEVICE_ID
+#define FUZZ_DEVICE_ID VIRTIO_PCI_DEVICE_BLK
+#endif
+#ifndef FUZZ_QUEUE
+#define FUZZ_QUEUE 0
+#endif
+
+/*
  * The fuzz input blob lives in a dedicated ELF section.
  * The orchestrator patches these bytes between runs.
  */
@@ -73,10 +85,10 @@ int main(void)
     if (ac > qs)
         ac = qs;
 
-    /* Find and init virtio-blk device */
+    /* Find and init the target virtio device */
     struct virtio_dev dev;
-    if (virtio_pci_find(VIRTIO_PCI_DEVICE_BLK, &dev) < 0) {
-        printf("FUZZ: no blk device\n");
+    if (virtio_pci_find(FUZZ_DEVICE_ID, &dev) < 0) {
+        printf("FUZZ: no target device\n");
         shutdown();
     }
     if (virtio_pci_init(&dev) < 0) {
@@ -84,10 +96,23 @@ int main(void)
         shutdown();
     }
 
-    /* Allocate vring */
+    /*
+     * Attach filler vrings for any queues before the target so the
+     * target queue is enabled. A scsi request queue at index 2 needs
+     * the control and event queues to exist first.
+     */
+#if FUZZ_QUEUE > 0
+    struct vring filler[FUZZ_QUEUE];
+    for (uint16_t q = 0; q < FUZZ_QUEUE; q++) {
+        vring_alloc(&filler[q], 16);
+        vring_attach(&dev, &filler[q], q);
+    }
+#endif
+
+    /* Allocate the fuzzed vring on the target queue */
     struct vring vr;
     vring_alloc(&vr, qs);
-    vring_attach(&dev, &vr, 0);
+    vring_attach(&dev, &vr, FUZZ_QUEUE);
 
     /* DRIVER_OK */
     dev.common->device_status |= VIRTIO_STATUS_DRIVER_OK;
@@ -132,8 +157,8 @@ int main(void)
 
     vring_raw_set_avail_idx(&vr, hdr->avail_idx);
 
-    /* Kick */
-    virtio_pci_kick(&dev, 0);
+    /* Kick the target queue */
+    virtio_pci_kick(&dev, FUZZ_QUEUE);
 
     /* Wait for device to process */
     usleep(50000);

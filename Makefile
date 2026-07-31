@@ -97,6 +97,32 @@ fuzz-initramfs: $(TARGET)/fuzz
 	@rm -rf $(TARGET)/.fuzzfs
 	@echo "$(TARGET)/fuzz-initramfs.cpio.gz ($$(du -h $(TARGET)/fuzz-initramfs.cpio.gz | cut -f1))"
 
+# virtio-scsi fuzz variant. Same harness compiled to target the scsi
+# request queue, linked against the device independent lib objects.
+FUZZ_SCSI_LIB_OBJS = $(filter-out $(OBJDIR)/fuzz/bin/fuzz.o,$(FUZZ_OBJS))
+FUZZ_SCSI_FLAGS = -DFUZZ_DEVICE_ID=VIRTIO_PCI_DEVICE_SCSI -DFUZZ_QUEUE=2
+
+$(OBJDIR)/fuzz/bin/fuzz-scsi.o: bin/fuzz.c
+	@mkdir -p $(dir $@)
+	@echo "  CC    $< (scsi)"
+	$(Q)$(CC) $(CFLAGS) $(DEPFLAGS) $(FUZZ_SCSI_FLAGS) -I. -c -o $@ $<
+
+$(TARGET)/fuzz-scsi: $(OBJDIR)/fuzz/bin/fuzz-scsi.o $(FUZZ_SCSI_LIB_OBJS)
+	@mkdir -p $(TARGET)
+	@echo "  LINK  $@"
+	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -I. -o $@ $^
+
+fuzz-scsi: $(TARGET)/fuzz-scsi
+
+fuzz-scsi-initramfs: $(TARGET)/fuzz-scsi
+	@rm -rf $(TARGET)/.fuzzscsifs
+	@mkdir -p $(TARGET)/.fuzzscsifs/proc $(TARGET)/.fuzzscsifs/sys $(TARGET)/.fuzzscsifs/dev
+	@cp $(TARGET)/fuzz-scsi $(TARGET)/.fuzzscsifs/init
+	@strip $(TARGET)/.fuzzscsifs/init
+	@cd $(TARGET)/.fuzzscsifs && find . | cpio -o -H newc 2>/dev/null | gzip > ../fuzz-scsi-initramfs.cpio.gz
+	@rm -rf $(TARGET)/.fuzzscsifs
+	@echo "$(TARGET)/fuzz-scsi-initramfs.cpio.gz ($$(du -h $(TARGET)/fuzz-scsi-initramfs.cpio.gz | cut -f1))"
+
 clean:
 	rm -rf $(TARGET) selftest/test_lib selftest/cloud-hypervisor
 
@@ -127,16 +153,18 @@ fuzz: $(TARGET)/fuzz
 
 help:
 	@echo "Targets:"
-	@echo "  init              Build the guest init binary at $(TARGET)/init"
-	@echo "  initramfs         Pack init into $(TARGET)/initramfs.cpio.gz"
-	@echo "  fuzz              Build the fuzz guest at $(TARGET)/fuzz"
-	@echo "  fuzz-initramfs    Pack fuzz into $(TARGET)/fuzz-initramfs.cpio.gz"
-	@echo "  selftest          Build and run runner and lib self tests"
-	@echo "  flake8            Run flake8 across run, run-fuzz, selftest, tests"
-	@echo "  deps-check        Verify build dependencies are present"
-	@echo "  fuzz-deps-check   Verify fuzz build dependencies are present"
-	@echo "  flake8-deps-check Verify flake8 is present"
-	@echo "  clean             Remove build outputs"
-	@echo "  help              Show this message"
+	@echo "  init                Build the guest init binary at $(TARGET)/init"
+	@echo "  initramfs           Pack init into $(TARGET)/initramfs.cpio.gz"
+	@echo "  fuzz                Build the fuzz guest at $(TARGET)/fuzz"
+	@echo "  fuzz-initramfs      Pack fuzz into $(TARGET)/fuzz-initramfs.cpio.gz"
+	@echo "  fuzz-scsi           Build the virtio-scsi fuzz guest at $(TARGET)/fuzz-scsi"
+	@echo "  fuzz-scsi-initramfs Pack the scsi fuzz guest into $(TARGET)/fuzz-scsi-initramfs.cpio.gz"
+	@echo "  selftest            Build and run runner and lib self tests"
+	@echo "  flake8              Run flake8 across run, run-fuzz, selftest, tests"
+	@echo "  deps-check          Verify build dependencies are present"
+	@echo "  fuzz-deps-check     Verify fuzz build dependencies are present"
+	@echo "  flake8-deps-check   Verify flake8 is present"
+	@echo "  clean               Remove build outputs"
+	@echo "  help                Show this message"
 
-.PHONY: init fuzz initramfs fuzz-initramfs clean selftest flake8 flake8-deps-check help
+.PHONY: init fuzz initramfs fuzz-initramfs fuzz-scsi fuzz-scsi-initramfs clean selftest flake8 flake8-deps-check help
