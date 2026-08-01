@@ -44,12 +44,6 @@ static test_result_t test_in_order_packed(struct virtio_dev *dev,
     uint8_t wrap = vr->wrap_counter;
 
     for (int i = 0; i < 3; i++) {
-        uint16_t flags = VRING_PACKED_DESC_F_AVAIL;
-        if (wrap)
-            flags |= VRING_PACKED_DESC_F_AVAIL;
-        else
-            flags &= ~VRING_PACKED_DESC_F_AVAIL;
-
         /* Use AVAIL matching current wrap counter, !USED */
         uint16_t avail_flag = wrap ? VRING_PACKED_DESC_F_AVAIL : 0;
         uint16_t used_flag = wrap ? 0 : VRING_PACKED_DESC_F_USED;
