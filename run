@@ -2197,14 +2197,20 @@ def format_results_junit(doc):
 
 
 def _normalize_mem(value):
-    """Uppercase the size unit so lowercase input is accepted.
+    """Normalize a memory size to a single letter unit suffix.
 
     Some VMM size parsers only take uppercase unit suffixes (512M, 1G);
     a lowercase 512m then fails config parsing and aborts every test
-    before boot. Uppercasing the value at the CLI boundary is safe
-    across backends, so both forms work.
+    before boot. QEMU also rejects a two letter suffix and treats the
+    single letter as binary (M is mebibytes), so drop a trailing B or
+    iB to turn 256MB and 256MiB into 256M. Doing this at the CLI
+    boundary is safe across backends, so all forms work.
     """
-    return value.strip().upper()
+    v = value.strip().upper()
+    m = re.fullmatch(r"(\d+)\s*([KMGTPE])(?:I?B)?", v)
+    if m:
+        return f"{m.group(1)}{m.group(2)}"
+    return v
 
 
 def _desc_column_width(cols, longest_desc, fixed):

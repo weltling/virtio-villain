@@ -448,6 +448,30 @@ def test_unit_qemu_build_cmd_omits_qmp():
 
 
 # ---------------------------------------------------------------------------
+# Memory size normalization.
+
+def test_unit_normalize_mem_uppercases_unit():
+    assert RUN_MOD._normalize_mem("512m") == "512M"
+    assert RUN_MOD._normalize_mem("1g") == "1G"
+
+
+def test_unit_normalize_mem_drops_two_letter_suffix():
+    assert RUN_MOD._normalize_mem("256mb") == "256M"
+    assert RUN_MOD._normalize_mem("256MB") == "256M"
+    assert RUN_MOD._normalize_mem("2gb") == "2G"
+
+
+def test_unit_normalize_mem_drops_iec_suffix():
+    assert RUN_MOD._normalize_mem("256mib") == "256M"
+    assert RUN_MOD._normalize_mem("1GiB") == "1G"
+
+
+def test_unit_normalize_mem_passes_plain_and_single_letter():
+    assert RUN_MOD._normalize_mem("512M") == "512M"
+    assert RUN_MOD._normalize_mem("1024") == "1024"
+
+
+# ---------------------------------------------------------------------------
 # Block IO engine and direct IO mapping.
 
 def _qemu_drive(cmd):
