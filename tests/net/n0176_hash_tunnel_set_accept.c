@@ -1,0 +1,68 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/*
+ * N0176: net_hash_tunnel_set_accept
+ *
+ * With VIRTIO_NET_F_HASH_TUNNEL (bit 51) negotiated, send the
+ * VIRTIO_NET_CTRL_HASH_TUNNEL_SET command with enabled_tunnel_types
+ * set to 0 and confirm the device acks VIRTIO_NET_OK. Spec 5.1.6.5.4:
+ * setting enabled_tunnel_types to 0 disables the inner header hash and
+ * is always valid, so it must be accepted. The feature requires
+ * CTRL_VQ along with RSS or HASH_REPORT. n0019 covers the negative
+ * path where the feature is absent; this is the positive command.
+ * Skips when the device does not offer HASH_TUNNEL, as CH does not.
+ */
+#include "tests/test.h"
+#include "lib/util.h"
+#include "lib/vring.h"
+#include "lib/virtio_pci.h"
+#include "lib/virtio_spec.h"
+
+#include <string.h>
+
+static test_result_t test_net_hash_tunnel_set_accept(struct virtio_dev *dev,
+                                                     struct vring *vr)
+{
+    if (!virtio_pci_feature_offered(dev, VIRTIO_NET_F_CTRL_VQ) ||
+        !virtio_pci_feature_offered(dev, VIRTIO_NET_F_HASH_TUNNEL))
+        return TEST_SKIP;
+
+    struct virtio_net_ctrl_hdr *ctrl = vv_alloc_pages(1);
+    uint32_t *tunnel_types = (uint32_t *)((uint8_t *)ctrl + sizeof(*ctrl));
+    uint8_t *status = vv_alloc_pages(1);
+
+    ctrl->class = VIRTIO_NET_CTRL_HASH_TUNNEL;
+    ctrl->command = VIRTIO_NET_CTRL_HASH_TUNNEL_SET;
+    *tunnel_types = 0;
+    *status = 0xFF;
+
+    uint64_t ctrl_phys = vv_virt_to_phys(ctrl);
+    uint64_t status_phys = vv_virt_to_phys(status);
+
+    vring_raw_set_desc(vr, 0, ctrl_phys, sizeof(*ctrl),
+                       VRING_DESC_F_NEXT, 1);
+    vring_raw_set_desc(vr, 1, ctrl_phys + sizeof(*ctrl), sizeof(uint32_t),
+                       VRING_DESC_F_NEXT, 2);
+    vring_raw_set_desc(vr, 2, status_phys, 1,
+                       VRING_DESC_F_WRITE, 0);
+
+    vring_raw_set_avail(vr, 0, 0);
+    vring_raw_set_avail_idx(vr, 1);
+
+    test_result_t r = vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
+    if (r != TEST_PASS)
+        return r;
+
+    if (*status != VIRTIO_NET_OK)
+        TFAIL("HASH_TUNNEL_SET acked 0x%02x, expected VIRTIO_NET_OK",
+              *status);
+
+    return TEST_PASS;
+}
+
+REGISTER_TEST_Q_REQUIRES(N0176, VIRTIO_PCI_DEVICE_NET,
+                         test_net_hash_tunnel_set_accept,
+                         "HASH_TUNNEL_SET with zero types is accepted",
+                         VIRTIO_SPEC_V1_4, "5.1.6.5.4", VV_QUEUE_LAST,
+                         VV_FEATURE_BIT(VIRTIO_NET_F_CTRL_VQ) |
+                         VV_FEATURE_BIT(VIRTIO_NET_F_HASH_REPORT) |
+                         VV_FEATURE_BIT(VIRTIO_NET_F_HASH_TUNNEL), 0);

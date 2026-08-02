@@ -313,6 +313,7 @@ struct virtio_scsi_event {
 #define VIRTIO_NET_F_MQ                  22
 #define VIRTIO_NET_F_CTRL_MAC_ADDR       23
 #define VIRTIO_NET_F_DEVICE_STATS        50
+#define VIRTIO_NET_F_HASH_TUNNEL         51
 #define VIRTIO_NET_F_VQ_NOTF_COAL        52
 #define VIRTIO_NET_F_NOTF_COAL           53
 #define VIRTIO_NET_F_GUEST_USO4          54
