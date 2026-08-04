@@ -837,6 +837,21 @@ def get_test_list(init_binary=os.path.join(_SCRIPT_DIR, "target", "init")):
     return tests, info, meta
 
 
+def _canonicalize_tests(tests, known):
+    """Map user supplied test names to their registered ids.
+
+    The guest matches vv.test case sensitively and prints the registered
+    id, so a name given in a different case would match no test, run
+    nothing, and be misreported as WEDGED. Returns a tuple of the
+    canonical names for the ones that match a known id and the list of
+    names that match none.
+    """
+    canon = {t.upper(): t for t in known}
+    canonical = [canon[t.upper()] for t in tests if t.upper() in canon]
+    unknown = [t for t in tests if t.upper() not in canon]
+    return canonical, unknown
+
+
 # Registry of live VMM subprocess handles. We track every Popen we
 # create so a Ctrl+C or unexpected exception path can SIGKILL them all
 # before the runner exits, instead of leaving CH/QEMU instances
@@ -2480,8 +2495,7 @@ def main():
         except (FileNotFoundError, OSError, SystemExit):
             known, test_info, _test_meta = [], {}, {}
         if known and not os.environ.get("VV_ALLOW_UNKNOWN_TESTS"):
-            known_set = {t.upper() for t in known}
-            unknown = [t for t in tests if t.upper() not in known_set]
+            tests, unknown = _canonicalize_tests(tests, known)
             if unknown:
                 sys.exit(f"Unknown test name(s): {', '.join(unknown)}")
     else:

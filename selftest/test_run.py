@@ -337,6 +337,21 @@ def test_unit_filter_exclude_lowercase_pattern():
     assert out == ["T01"]
 
 
+def test_unit_canonicalize_tests_lowercase_maps_to_registered():
+    """A lowercase name resolves to the registered id the guest prints."""
+    known = ["T0129", "P0062", "B0001"]
+    canonical, unknown = RUN_MOD._canonicalize_tests(["t0129", "p0062"], known)
+    assert canonical == ["T0129", "P0062"]
+    assert unknown == []
+
+
+def test_unit_canonicalize_tests_reports_unknown():
+    known = ["T0129", "B0001"]
+    canonical, unknown = RUN_MOD._canonicalize_tests(["t0129", "zz9999"], known)
+    assert canonical == ["T0129"]
+    assert unknown == ["zz9999"]
+
+
 # ---------------------------------------------------------------------------
 # Integration tests for filter flags driving the actual runner.
 
