@@ -587,7 +587,7 @@ class Qemu(VmmBackend):
         ]
         if arch != "aarch64":
             cmd += ["-device", "isa-debug-exit,iobase=0x501,iosize=1"]
-        if pmem_path:
+        if pmem_path and arch == "x86_64":
             cmd += [
                 "-object", f"memory-backend-file,id=pmem0,mem-path={pmem_path},size=128M",
                 "-device", f"virtio-pmem-pci,memdev=pmem0,packed={packed_flag}",

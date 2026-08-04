@@ -467,12 +467,15 @@ def test_unit_qemu_aarch64_build_cmd_sets_machine():
     try:
         RUN_MOD.platform.machine = lambda: "aarch64"
         be = RUN_MOD.Qemu("/usr/bin/qemu-system-aarch64")
-        cmd = be.build_cmd("/k", "/i", "/d.raw", "console=ttyAMA0", {})
+        cmd = be.build_cmd("/k", "/i", "/d.raw", "console=ttyAMA0",
+                           {"pmem_path": "/d.pmem"})
     finally:
         RUN_MOD.platform.machine = original
     assert cmd[cmd.index("-M") + 1] == "virt"
     assert cmd[cmd.index("-cpu") + 1] == "host"
     assert "isa-debug-exit,iobase=0x501,iosize=1" not in cmd
+    assert not any("pmem0" in arg for arg in cmd)
+    assert not any("virtio-pmem" in arg for arg in cmd)
 
 
 # ---------------------------------------------------------------------------
