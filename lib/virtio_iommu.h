@@ -100,7 +100,7 @@ struct virtio_iommu_req_probe {
 
 /* Truncated device config view used by capability boundary tests. */
 struct iommu_config {
-    uint32_t page_size_mask;
+    uint64_t page_size_mask;
     struct { uint64_t start, end; } input_range;
     struct { uint32_t start, end; } domain_range;
 } __attribute__((packed));
