@@ -416,6 +416,10 @@ struct virtio_net_stats_capabilities {
 #define VIRTIO_NET_HDR_F_NEEDS_CSUM      1
 #define VIRTIO_NET_HDR_F_DATA_VALID      2
 #define VIRTIO_NET_HDR_F_RSC_INFO        4
+#define VIRTIO_NET_HDR_F_UDP_TUNNEL_CSUM 8
+#define VIRTIO_NET_HDR_F_SECURITY        16
+#define VIRTIO_NET_HDR_F_SECURITY_ERR    32
+#define VIRTIO_NET_HDR_F_SECURITY_SA_SOFT_EXPIRY_WARN 64
 
 /* Header GSO types (spec 5.1.6). */
 #define VIRTIO_NET_HDR_GSO_NONE          0
@@ -423,6 +427,8 @@ struct virtio_net_stats_capabilities {
 #define VIRTIO_NET_HDR_GSO_UDP           3
 #define VIRTIO_NET_HDR_GSO_TCPV6         4
 #define VIRTIO_NET_HDR_GSO_UDP_L4        5
+#define VIRTIO_NET_HDR_GSO_UDP_TUNNEL_IPV4 0x20
+#define VIRTIO_NET_HDR_GSO_UDP_TUNNEL_IPV6 0x40
 #define VIRTIO_NET_HDR_GSO_ECN           0x80
 
 /* Config status bits (spec 5.1.4). */
