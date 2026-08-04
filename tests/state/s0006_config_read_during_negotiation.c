@@ -78,14 +78,17 @@ static test_result_t test_config_read_during_negotiation(struct virtio_dev *dev,
 
     /* Read device config fields while still in DRIVER state */
     volatile uint8_t *dev_cfg = (volatile uint8_t *)dev->bar + dev_cfg_offset;
+    uint32_t cfg_len = dev->device_cfg_length;
 
-    /* Read capacity (always valid, 8 bytes at offset 0) */
-    volatile uint64_t *cap_ptr_field = (volatile uint64_t *)dev_cfg;
-    uint64_t capacity = *cap_ptr_field;
-    (void)capacity;
+    /* Read capacity (8 bytes at offset 0) if mapped. */
+    if (cfg_len >= 8) {
+        volatile uint64_t *cap_field = (volatile uint64_t *)dev_cfg;
+        uint64_t capacity = *cap_field;
+        (void)capacity;
+    }
 
-    /* Read beyond capacity into feature-gated fields */
-    for (int i = 8; i < 64; i += 4) {
+    /* Read the feature-gated fields, bounded to the mapped region. */
+    for (uint32_t i = 8; i + 4 <= cfg_len; i += 4) {
         volatile uint32_t *p = (volatile uint32_t *)(dev_cfg + i);
         uint32_t val = *p;
         (void)val;
