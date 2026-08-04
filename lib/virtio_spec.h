@@ -41,7 +41,7 @@
 #define VIRTIO_F_NOTIF_CONFIG_DATA   39
 #define VIRTIO_F_RING_RESET          40
 #define VIRTIO_F_ADMIN_VQ            41
-#define VIRTIO_F_SUSPEND             43   /* proposal, not in a released spec */
+#define VIRTIO_F_SUSPEND             43   /* virtio 1.4 */
 
 /* Block device (virtio spec 5.2) */
 
@@ -341,7 +341,7 @@ struct virtio_scsi_event {
 #define VIRTIO_NET_CTRL_MQ               4
 #define VIRTIO_NET_CTRL_GUEST_OFFLOADS   5
 #define VIRTIO_NET_CTRL_NOTF_COAL        6
-#define VIRTIO_NET_CTRL_HASH_TUNNEL      7   /* proposal, not in a released spec */
+#define VIRTIO_NET_CTRL_HASH_TUNNEL      7   /* virtio 1.4 */
 #define VIRTIO_NET_CTRL_STATS            8
 #define VIRTIO_NET_CTRL_RSS_CTX          9   /* spec VIRTNET_RSS_CTX_CTRL */
 
@@ -405,7 +405,7 @@ struct virtio_net_stats_capabilities {
 #define VIRTIO_NET_CTRL_RSS_CTX_MOD      2
 #define VIRTIO_NET_CTRL_RSS_CTX_DEL      3
 
-/* CTRL_HASH_TUNNEL commands (proposal, not in a released spec). */
+/* CTRL_HASH_TUNNEL commands (virtio 1.4). */
 #define VIRTIO_NET_CTRL_HASH_TUNNEL_SET  0
 
 /* Control ack values. */

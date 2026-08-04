@@ -21,7 +21,7 @@
 #define VIRTIO_STATUS_DRIVER       2
 #define VIRTIO_STATUS_DRIVER_OK    4
 #define VIRTIO_STATUS_FEATURES_OK  8
-#define VIRTIO_STATUS_SUSPEND      16  /* proposal, not in a released spec */
+#define VIRTIO_STATUS_SUSPEND      16  /* virtio 1.4 */
 #define VIRTIO_STATUS_NEEDS_RESET  64
 #define VIRTIO_STATUS_FAILED       128
 
