@@ -30,13 +30,14 @@ static test_result_t test_blk_read_config_no_feature(struct virtio_dev *dev,
     volatile uint8_t gen = dev->common->config_generation;
     (void)gen;
 
-    /* Stay inside the mapped device config so the access is valid
-     * device memory on every architecture. */
-    if (dev->device_cfg && dev->device_cfg_length > 0) {
-        volatile uint8_t *cfg = (volatile uint8_t *)dev->device_cfg;
-        volatile uint8_t val;
-        for (uint32_t i = 0; i < dev->device_cfg_length; i++) {
-            val = cfg[i];
+    /* Read the device config in aligned 32-bit words bounded to the
+     * mapped region. A byte wide scan of this region aborts the guest
+     * on AArch64, where an aligned word read works. */
+    if (dev->device_cfg && dev->device_cfg_length >= 4) {
+        volatile uint32_t *cfg = (volatile uint32_t *)dev->device_cfg;
+        volatile uint32_t val;
+        for (uint32_t i = 0; i + 4 <= dev->device_cfg_length; i += 4) {
+            val = cfg[i / 4];
             (void)val;
         }
     }
