@@ -524,7 +524,7 @@ class CloudHypervisor(VmmBackend):
 
 class Qemu(VmmBackend):
     name = "qemu"
-    console_device = "ttyS0"
+    console_device = "ttyAMA0" if platform.machine() == "aarch64" else "ttyS0"
     supports_trace = True
     _cid_counter = 2  # start above reserved CIDs (0=hypervisor, 1=local, 2=host)
     _cid_lock = threading.Lock()
@@ -540,6 +540,7 @@ class Qemu(VmmBackend):
 
     def build_cmd(self, kernel, initramfs, disk_path, cmdline, opts=None):
         opts = opts or {}
+        arch = platform.machine()
         cpus = opts.get("cpus", 1)
         mem = opts.get("memory", "512M")
         blk_queues = opts.get("blk_queues", 4)
@@ -561,8 +562,10 @@ class Qemu(VmmBackend):
         net_dev = (f"virtio-net-pci-non-transitional,netdev=net0"
                    f",packed={packed_flag}")
         netdev = "user,id=net0"
+        machine_args = ["-M", "virt", "-cpu", "host"] if arch == "aarch64" else []
         cmd = [
             self.binary,
+            *machine_args,
             "-enable-kvm",
             "-kernel", kernel,
             "-initrd", initramfs,
@@ -576,13 +579,14 @@ class Qemu(VmmBackend):
             "-device", f"virtio-serial-pci-non-transitional,packed={packed_flag}",
             "-object", "rng-random,id=rng0,filename=/dev/urandom",
             "-device", f"virtio-rng-pci-non-transitional,rng=rng0,packed={packed_flag}",
-            "-device", "isa-debug-exit,iobase=0x501,iosize=1",
             "-append", cmdline,
             "-nographic",
             "-no-reboot",
             "-m", f"{mem},maxmem={_bump_maxmem(mem)},slots=2",
             "-smp", str(cpus),
         ]
+        if arch != "aarch64":
+            cmd += ["-device", "isa-debug-exit,iobase=0x501,iosize=1"]
         if pmem_path:
             cmd += [
                 "-object", f"memory-backend-file,id=pmem0,mem-path={pmem_path},size=128M",

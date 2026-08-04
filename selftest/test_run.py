@@ -462,6 +462,19 @@ def test_unit_qemu_build_cmd_omits_qmp():
     assert "-qmp" not in cmd
 
 
+def test_unit_qemu_aarch64_build_cmd_sets_machine():
+    original = RUN_MOD.platform.machine
+    try:
+        RUN_MOD.platform.machine = lambda: "aarch64"
+        be = RUN_MOD.Qemu("/usr/bin/qemu-system-aarch64")
+        cmd = be.build_cmd("/k", "/i", "/d.raw", "console=ttyAMA0", {})
+    finally:
+        RUN_MOD.platform.machine = original
+    assert cmd[cmd.index("-M") + 1] == "virt"
+    assert cmd[cmd.index("-cpu") + 1] == "host"
+    assert "isa-debug-exit,iobase=0x501,iosize=1" not in cmd
+
+
 # ---------------------------------------------------------------------------
 # Memory size normalization.
 
