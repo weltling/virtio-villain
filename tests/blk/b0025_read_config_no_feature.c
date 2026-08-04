@@ -4,9 +4,8 @@
  *
  * Access device-specific config space bytes beyond the base capacity
  * field without having negotiated the features that gate them.
- * We read raw bytes from the BAR area past common_cfg. If the device
- * has a device_cfg capability, those bytes are config fields gated by
- * un-negotiated features. Must not crash the VMM.
+ * The gated fields live in the device config region, so read every
+ * mapped byte of it. Must not crash the VMM.
  */
 #include "tests/test.h"
 #include "lib/util.h"
@@ -31,12 +30,15 @@ static test_result_t test_blk_read_config_no_feature(struct virtio_dev *dev,
     volatile uint8_t gen = dev->common->config_generation;
     (void)gen;
 
-    /* Read well beyond common_cfg struct into adjacent BAR space */
-    volatile uint8_t *base = (volatile uint8_t *)dev->common;
-    volatile uint8_t val;
-    for (int i = 0; i < 256; i++) {
-        val = base[i];
-        (void)val;
+    /* Stay inside the mapped device config so the access is valid
+     * device memory on every architecture. */
+    if (dev->device_cfg && dev->device_cfg_length > 0) {
+        volatile uint8_t *cfg = (volatile uint8_t *)dev->device_cfg;
+        volatile uint8_t val;
+        for (uint32_t i = 0; i < dev->device_cfg_length; i++) {
+            val = cfg[i];
+            (void)val;
+        }
     }
 
     /* Survival is enough */
