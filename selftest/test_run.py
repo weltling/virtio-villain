@@ -462,6 +462,14 @@ def test_unit_qemu_build_cmd_omits_qmp():
     assert "-qmp" not in cmd
 
 
+def test_unit_qemu_net_device_disables_option_rom():
+    be = RUN_MOD.Qemu("/usr/bin/qemu-system-x86_64")
+    cmd = be.build_cmd("/k", "/i", "/d.raw", "console=ttyS0", {})
+    net_dev = next(arg for arg in cmd
+                   if arg.startswith("virtio-net-pci-non-transitional,"))
+    assert net_dev.endswith(",romfile=")
+
+
 def test_unit_qemu_aarch64_build_cmd_sets_machine():
     original = RUN_MOD.platform.machine
     try:

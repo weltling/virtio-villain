@@ -560,7 +560,7 @@ class Qemu(VmmBackend):
         # cannot be given extra capabilities, we use the unprivileged
         # user netdev which only supports a single queue.
         net_dev = (f"virtio-net-pci-non-transitional,netdev=net0"
-                   f",packed={packed_flag}")
+                   f",packed={packed_flag},romfile=")
         netdev = "user,id=net0"
         machine_args = ["-M", "virt", "-cpu", "host"] if arch == "aarch64" else []
         cmd = [
