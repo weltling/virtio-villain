@@ -13,6 +13,7 @@
 #include "lib/virtio_spec.h"
 
 #include <string.h>
+#include <unistd.h>
 
 /* Fill an 8-byte virtio-scsi LUN for the given target and logical unit. */
 static inline void scsi_set_lun(uint8_t *lun, uint8_t target, uint16_t l)
@@ -133,6 +134,70 @@ static inline int scsi_tmf_response_valid(uint8_t response)
 static inline int scsi_status_defined(uint8_t status)
 {
     return status == 0x00 || status == 0x02;
+}
+
+/*
+ * Submit one command on the request queue without waiting for the
+ * completion, so the caller can leave it in flight and act on it from
+ * another queue. Returns the used ring index captured just before the
+ * kick, which scsi_wait_used polls against. dir selects the data
+ * direction as in scsi_do_cmd.
+ */
+static inline uint16_t scsi_submit_async(struct virtio_dev *dev,
+                                         struct vring *vr,
+                                         struct virtio_scsi_cmd_req *req,
+                                         struct virtio_scsi_cmd_resp *resp,
+                                         void *data, uint32_t datalen,
+                                         int dir, uint16_t seq)
+{
+    resp->response = 0xFF;
+    resp->status = 0xFF;
+
+    if (dir == SCSI_DATA_OUT && data) {
+        vring_raw_set_desc(vr, 0, vv_virt_to_phys(req), sizeof(*req),
+                           VRING_DESC_F_NEXT, 1);
+        vring_raw_set_desc(vr, 1, vv_virt_to_phys(data), datalen,
+                           VRING_DESC_F_NEXT, 2);
+        vring_raw_set_desc(vr, 2, vv_virt_to_phys(resp), sizeof(*resp),
+                           VRING_DESC_F_WRITE, 0);
+    } else if (dir == SCSI_DATA_IN && data) {
+        vring_raw_set_desc(vr, 0, vv_virt_to_phys(req), sizeof(*req),
+                           VRING_DESC_F_NEXT, 1);
+        vring_raw_set_desc(vr, 1, vv_virt_to_phys(resp), sizeof(*resp),
+                           VRING_DESC_F_NEXT | VRING_DESC_F_WRITE, 2);
+        vring_raw_set_desc(vr, 2, vv_virt_to_phys(data), datalen,
+                           VRING_DESC_F_WRITE, 0);
+    } else {
+        vring_raw_set_desc(vr, 0, vv_virt_to_phys(req), sizeof(*req),
+                           VRING_DESC_F_NEXT, 1);
+        vring_raw_set_desc(vr, 1, vv_virt_to_phys(resp), sizeof(*resp),
+                           VRING_DESC_F_WRITE, 0);
+    }
+
+    vring_raw_set_avail(vr, seq, 0);
+    vring_raw_set_avail_idx(vr, seq + 1);
+    uint16_t before = vr->used->idx;
+    __sync_synchronize();
+    virtio_pci_kick(dev, vr->queue);
+    return before;
+}
+
+/*
+ * Poll the used ring until it advances past *before* or the timeout
+ * in microseconds elapses. Returns 1 if it advanced, 0 on timeout.
+ */
+static inline int scsi_wait_used(struct vring *vr, uint16_t before,
+                                 int timeout_us)
+{
+    int elapsed = 0;
+    while (elapsed < timeout_us) {
+        usleep(20000);
+        __sync_synchronize();
+        if (vr->used->idx != before)
+            return 1;
+        elapsed += 20000;
+    }
+    return 0;
 }
 
 /*
