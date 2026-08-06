@@ -641,10 +641,19 @@ def find_llvm_tool(name):
     return None
 
 
-def _require_llvm_tools(context):
-    """Return (profdata, cov) absolute paths or exit with a hint."""
-    profdata = find_llvm_tool("llvm-profdata")
-    cov = find_llvm_tool("llvm-cov")
+def _require_llvm_tools(context, vmm=None):
+    """Return (profdata, cov) absolute paths or exit with a hint.
+
+    When vmm is given, prefer tools that can actually read that binary's
+    profraw (matching the toolchain it was built with) instead of the
+    default toolchain, which may emit an incompatible raw profile version.
+    """
+    profdata = cov = None
+    if vmm is not None:
+        profdata, cov = select_coverage_tools(vmm)
+    if not profdata or not cov:
+        profdata = find_llvm_tool("llvm-profdata")
+        cov = find_llvm_tool("llvm-cov")
     if not profdata or not cov:
         where = _rustlib_bin() or "<rustc sysroot>/lib/rustlib/<host>/bin"
         sys.exit(
@@ -1685,7 +1694,7 @@ def _select_minimal_corpus(entry_edges):
 
 def cmd_minimize(args):
     """Remove corpus entries that don't contribute unique coverage."""
-    _require_llvm_tools("minimize")
+    _require_llvm_tools("minimize", args.vmm)
 
     corpus_files = sorted(glob.glob(os.path.join(args.corpus_dir, "*.bin")))
     if not corpus_files:
@@ -1765,7 +1774,7 @@ def cmd_minimize(args):
 
 def cmd_cov_report(args):
     """Generate an HTML coverage report from the corpus."""
-    profdata_tool, cov_tool = _require_llvm_tools("cov-report")
+    profdata_tool, cov_tool = _require_llvm_tools("cov-report", args.vmm)
 
     corpus_files = sorted(glob.glob(os.path.join(args.corpus_dir, "*.bin")))
     profraw_dir = os.path.join(_SCRIPT_DIR, "target", "profraw")
