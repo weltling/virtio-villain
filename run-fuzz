@@ -9,6 +9,7 @@ Coverage data from an instrumented VMM guides corpus expansion.
 """
 
 import argparse
+import functools
 import glob
 import hashlib
 import json
@@ -600,6 +601,60 @@ def _structural_mutate(data):
 
 # --- Coverage ---
 
+# rustup ships llvm-profdata and llvm-cov via the llvm-tools component but
+# installs them in the toolchain private rustlib bin and does not shim
+# them onto PATH. Resolve them there so coverage guided fuzzing works on a
+# stock rustup setup instead of silently downgrading to dumb fuzzing.
+@functools.lru_cache(maxsize=None)
+def _rustlib_bin():
+    try:
+        sysroot = subprocess.check_output(
+            ["rustc", "--print", "sysroot"], text=True).strip()
+        host = next(
+            line.split("host: ", 1)[1].strip()
+            for line in subprocess.check_output(
+                ["rustc", "-vV"], text=True).splitlines()
+            if line.startswith("host: "))
+        return os.path.join(sysroot, "lib", "rustlib", host, "bin")
+    except Exception:
+        return None
+
+
+@functools.lru_cache(maxsize=None)
+def find_llvm_tool(name):
+    """Resolve an llvm tool absolute path.
+
+    Honors an env override (LLVM_PROFDATA / LLVM_COV), then PATH, then
+    rustup private rustlib bin. Returns None when not found.
+    """
+    override = os.environ.get(name.upper().replace("-", "_"))
+    if override and os.access(override, os.X_OK):
+        return override
+    found = shutil.which(name)
+    if found:
+        return found
+    rustlib = _rustlib_bin()
+    if rustlib:
+        candidate = os.path.join(rustlib, name)
+        if os.access(candidate, os.X_OK):
+            return candidate
+    return None
+
+
+def _require_llvm_tools(context):
+    """Return (profdata, cov) absolute paths or exit with a hint."""
+    profdata = find_llvm_tool("llvm-profdata")
+    cov = find_llvm_tool("llvm-cov")
+    if not profdata or not cov:
+        where = _rustlib_bin() or "<rustc sysroot>/lib/rustlib/<host>/bin"
+        sys.exit(
+            f"llvm-profdata and llvm-cov are required for {context}.\n"
+            "Install them with: rustup component add llvm-tools-preview\n"
+            f"They live in {where} (not on PATH by default). The fuzzer "
+            "looks there automatically, or set LLVM_PROFDATA / LLVM_COV.")
+    return profdata, cov
+
+
 def collect_coverage(vmm_binary, profdata_path, profraw_dir):
     """Merge profraw files and return set of covered regions."""
     profraw_files = [
@@ -610,8 +665,13 @@ def collect_coverage(vmm_binary, profdata_path, profraw_dir):
     if not profraw_files:
         return set()
 
+    profdata_tool = find_llvm_tool("llvm-profdata")
+    cov_tool = find_llvm_tool("llvm-cov")
+    if not profdata_tool or not cov_tool:
+        return set()
+
     merge_cmd = [
-        "llvm-profdata", "merge", "-sparse",
+        profdata_tool, "merge", "-sparse",
         *profraw_files, "-o", profdata_path
     ]
     result = subprocess.run(merge_cmd, capture_output=True)
@@ -619,7 +679,7 @@ def collect_coverage(vmm_binary, profdata_path, profraw_dir):
         return set()
 
     export_cmd = [
-        "llvm-cov", "export", vmm_binary,
+        cov_tool, "export", vmm_binary,
         f"-instr-profile={profdata_path}",
         "-format=text"
     ]
@@ -1518,8 +1578,7 @@ def _select_minimal_corpus(entry_edges):
 
 def cmd_minimize(args):
     """Remove corpus entries that don't contribute unique coverage."""
-    if not shutil.which("llvm-profdata") or not shutil.which("llvm-cov"):
-        sys.exit("llvm-profdata and llvm-cov are required for minimize")
+    _require_llvm_tools("minimize")
 
     corpus_files = sorted(glob.glob(os.path.join(args.corpus_dir, "*.bin")))
     if not corpus_files:
@@ -1599,8 +1658,7 @@ def cmd_minimize(args):
 
 def cmd_cov_report(args):
     """Generate an HTML coverage report from the corpus."""
-    if not shutil.which("llvm-profdata") or not shutil.which("llvm-cov"):
-        sys.exit("llvm-profdata and llvm-cov are required for cov-report")
+    profdata_tool, cov_tool = _require_llvm_tools("cov-report")
 
     corpus_files = sorted(glob.glob(os.path.join(args.corpus_dir, "*.bin")))
     profraw_dir = os.path.join(_SCRIPT_DIR, "target", "profraw")
@@ -1665,17 +1723,17 @@ def cmd_cov_report(args):
     # Merge all profraw into one profdata
     merged = os.path.join(tmpdir, "all.profdata")
     subprocess.run(
-        ["llvm-profdata", "merge", "--sparse", "-o", merged] + profraw_files,
+        [profdata_tool, "merge", "--sparse", "-o", merged] + profraw_files,
         capture_output=True)
 
     # Generate HTML report
     os.makedirs(args.output, exist_ok=True)
     ignore_regex = r"(\.cargo/|\.rustup/|/rustc/)"
-    cov_cmd = ["llvm-cov", "show", args.vmm, f"--instr-profile={merged}",
+    cov_cmd = [cov_tool, "show", args.vmm, f"--instr-profile={merged}",
                "--format=html", f"--output-dir={args.output}",
                "--show-line-counts-or-regions",
                f"--ignore-filename-regex={ignore_regex}"]
-    report_cmd = ["llvm-cov", "report", args.vmm, f"--instr-profile={merged}",
+    report_cmd = [cov_tool, "report", args.vmm, f"--instr-profile={merged}",
                   f"--ignore-filename-regex={ignore_regex}"]
 
     result = subprocess.run(cov_cmd, capture_output=True, text=True)
@@ -1714,7 +1772,8 @@ def cmd_fuzz(args):
 
     # Check for coverage tools; fall back to dumb fuzzing if missing
     if not args.no_coverage:
-        if not shutil.which("llvm-profdata") or not shutil.which("llvm-cov"):
+        if (not find_llvm_tool("llvm-profdata")
+                or not find_llvm_tool("llvm-cov")):
             print("[!] llvm-profdata/llvm-cov not found; "
                   "disabling coverage feedback")
             args.no_coverage = True

@@ -2301,6 +2301,34 @@ def test_classify_signal_death_labeled():
 
 
 # ---------------------------------------------------------------------------
+# run-fuzz llvm tool discovery (rustup keeps llvm-profdata/llvm-cov off PATH).
+
+def test_find_llvm_tool_env_override():
+    FUZZ_MOD.find_llvm_tool.cache_clear()
+    old = os.environ.get("LLVM_PROFDATA")
+    os.environ["LLVM_PROFDATA"] = "/bin/sh"
+    try:
+        assert FUZZ_MOD.find_llvm_tool("llvm-profdata") == "/bin/sh"
+    finally:
+        if old is None:
+            os.environ.pop("LLVM_PROFDATA", None)
+        else:
+            os.environ["LLVM_PROFDATA"] = old
+        FUZZ_MOD.find_llvm_tool.cache_clear()
+
+
+def test_find_llvm_tool_unknown_returns_none():
+    FUZZ_MOD.find_llvm_tool.cache_clear()
+    assert FUZZ_MOD.find_llvm_tool("llvm-does-not-exist-zzz") is None
+    FUZZ_MOD.find_llvm_tool.cache_clear()
+
+
+def test_rustlib_bin_shape():
+    rb = FUZZ_MOD._rustlib_bin()
+    assert rb is None or rb.endswith(os.path.join("bin"))
+
+
+# ---------------------------------------------------------------------------
 # run-fuzz security severity triage.
 #
 # Each replay outcome maps to a severity tier so a crash corpus can be
