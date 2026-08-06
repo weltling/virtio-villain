@@ -2025,6 +2025,33 @@ def test_vqblob_roundtrip_preserves_fields():
     assert again.avail_ring == vq.avail_ring
 
 
+def test_fuzz_vmm_command_provisions_auxiliary_devices():
+    """Fuzz commands include every device targeted by the guest format."""
+    cmd = FUZZ_MOD._fuzz_vmm_cmd(
+        "/vmm", "/kernel", "/initramfs", "/disk", "/pmem", "/work",
+        1, "128M")
+    assert ["--disk", "path=/disk,num_queues=1"] == cmd[5:7]
+    assert ["--net", "tap=,num_queues=2"] == cmd[7:9]
+    assert "--vsock" in cmd
+    assert ["--balloon", "size=0"] == cmd[11:13]
+    assert "--watchdog" in cmd
+    assert ["--rng", "src=/dev/urandom"] == cmd[14:16]
+    assert ["--console", "null"] == cmd[16:18]
+    assert ["--pmem", "file=/pmem,size=128M,discard_writes=on"] == cmd[18:20]
+    assert "hotplug_method=virtio-mem" in cmd[23]
+
+
+def test_fuzz_vmm_command_assigns_unique_vsock_cids():
+    """Parallel fuzz VMs must not share a vsock CID."""
+    first = FUZZ_MOD._fuzz_vmm_cmd(
+        "/vmm", "/kernel", "/initramfs", "/disk", "/pmem", "/work",
+        1, "128M")
+    second = FUZZ_MOD._fuzz_vmm_cmd(
+        "/vmm", "/kernel", "/initramfs", "/disk", "/pmem", "/work",
+        1, "128M")
+    assert first[10] != second[10]
+
+
 def test_vqblob_serialize_is_blob_size():
     """serialize always emits exactly BLOB_SIZE bytes."""
     vq = FUZZ_MOD.VqBlob.parse(FUZZ_MOD.make_seed())

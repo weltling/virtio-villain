@@ -27,6 +27,8 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_fuzz_vsock_cid = 3
+_fuzz_vsock_cid_lock = threading.Lock()
 
 
 # Reuse the banner helper from the test runner so the artwork is
@@ -892,6 +894,36 @@ def _fetch_kernel():
     return result.stdout.strip()
 
 
+def _fuzz_vmm_cmd(vmm_path, kernel, initramfs_path, disk, pmem_path,
+                  profraw_dir, cpus, memory):
+    """Build the Cloud Hypervisor command used for a fuzz iteration."""
+    global _fuzz_vsock_cid
+
+    with _fuzz_vsock_cid_lock:
+        cid = _fuzz_vsock_cid
+        _fuzz_vsock_cid += 1
+    vsock_path = os.path.join(profraw_dir, "fuzz.vsock")
+    return [
+        vmm_path,
+        "--kernel", kernel,
+        "--initramfs", initramfs_path,
+        "--disk", f"path={disk},num_queues={cpus}",
+        "--net", "tap=,num_queues=2",
+        "--vsock", f"cid={cid},socket={vsock_path}",
+        "--balloon", "size=0",
+        "--watchdog",
+        "--rng", "src=/dev/urandom",
+        "--console", "null",
+        "--pmem", f"file={pmem_path},size=128M,discard_writes=on",
+        "--cpus", f"boot={cpus}",
+        "--memory", (f"size={memory},hotplug_size=256M,"
+                     "hotplug_method=virtio-mem"),
+        "--serial", "off",
+        "--cmdline", "console=hvc0 initcall_blacklist=virtio_blk_init",
+        "--seccomp", "false",
+    ]
+
+
 def run_vmm(vmm_path, initramfs_path, profraw_dir, timeout=3,
             kernel_path=None, disk_path=None, cpus=1, memory="128M"):
     """Boot the VMM with the fuzz initramfs. Returns (exit_code, crashed)."""
@@ -910,21 +942,17 @@ def run_vmm(vmm_path, initramfs_path, profraw_dir, timeout=3,
             f.seek(64 * 1024 * 1024 - 1)
             f.write(b"\x00")
 
+    pmem_path = os.path.join(profraw_dir, "pmem.raw")
+    if not os.path.exists(pmem_path):
+        with open(pmem_path, "wb") as f:
+            f.seek(128 * 1024 * 1024 - 1)
+            f.write(b"\x00")
+
     env = os.environ.copy()
     env["LLVM_PROFILE_FILE"] = os.path.join(profraw_dir, "%p.profraw")
 
-    cmd = [
-        vmm_path,
-        "--kernel", kernel,
-        "--initramfs", initramfs_path,
-        "--disk", f"path={disk}",
-        "--cpus", f"boot={cpus}",
-        "--memory", f"size={memory}",
-        "--serial", "off",
-        "--console", "off",
-        "--cmdline", "console=hvc0 initcall_blacklist=virtio_blk_init",
-        "--seccomp", "false",
-    ]
+    cmd = _fuzz_vmm_cmd(vmm_path, kernel, initramfs_path, disk, pmem_path,
+                         profraw_dir, cpus, memory)
 
     try:
         result = subprocess.run(
