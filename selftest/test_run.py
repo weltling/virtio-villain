@@ -2016,13 +2016,54 @@ def test_minimize_no_entries_raises():
 
 def test_vqblob_roundtrip_preserves_fields():
     """parse(serialize(x)) is a fixed point for a well-formed blob."""
-    blob = FUZZ_MOD.make_seed()
-    vq = FUZZ_MOD.VqBlob.parse(blob)
+    vq = FUZZ_MOD.FuzzBlob.parse(FUZZ_MOD.make_seed()).segments[0].vq
     again = FUZZ_MOD.VqBlob.parse(vq.serialize())
     assert again.queue_size == vq.queue_size
     assert again.avail_idx == vq.avail_idx
     assert again.descs == vq.descs
     assert again.avail_ring == vq.avail_ring
+
+
+def test_fuzzblob_seed_is_single_blk_segment():
+    """A seed blob is one blk queue zero segment in the versioned frame."""
+    parsed = FUZZ_MOD.FuzzBlob.parse(FUZZ_MOD.make_seed())
+    assert len(parsed.segments) == 1
+    assert parsed.segments[0].device_id == FUZZ_MOD.VIRTIO_PCI_DEVICE_BLK
+    assert parsed.segments[0].queue_index == 0
+
+
+def test_fuzzblob_parse_rejects_unframed_blob():
+    """A blob without the magic is rejected, no legacy fallback."""
+    try:
+        FUZZ_MOD.FuzzBlob.parse(b"\x00" * 4096)
+    except ValueError:
+        return
+    raise AssertionError("expected ValueError for an unframed blob")
+
+
+def test_fuzzblob_segment_roundtrip_preserves_targets():
+    """Versioned framing keeps each segment device and queue target."""
+    seed = FUZZ_MOD.FuzzBlob.parse(FUZZ_MOD.make_seed()).segments[0].vq
+    blob = FUZZ_MOD.FuzzBlob([
+        FUZZ_MOD.FuzzSegment(FUZZ_MOD.VIRTIO_PCI_DEVICE_BLK, 1, seed),
+        FUZZ_MOD.FuzzSegment(0x1041, 2, seed),
+    ]).serialize()
+    parsed = FUZZ_MOD.FuzzBlob.parse(blob)
+    assert len(blob) == FUZZ_MOD.INPUT_SIZE
+    assert [(s.device_id, s.queue_index) for s in parsed.segments] == [
+        (FUZZ_MOD.VIRTIO_PCI_DEVICE_BLK, 1), (0x1041, 2)]
+    assert parsed.segments[0].vq.descs == seed.descs
+
+
+def test_mutate_returns_versioned_container():
+    """mutate consumes and returns a valid versioned blob."""
+    random.seed(7)
+    blob = FUZZ_MOD.make_seed()
+    for _ in range(50):
+        blob = FUZZ_MOD.mutate(blob)
+        assert len(blob) == FUZZ_MOD.INPUT_SIZE
+        parsed = FUZZ_MOD.FuzzBlob.parse(blob)
+        assert parsed.segments
 
 
 def test_fuzz_vmm_command_provisions_auxiliary_devices():
@@ -2054,7 +2095,7 @@ def test_fuzz_vmm_command_assigns_unique_vsock_cids():
 
 def test_vqblob_serialize_is_blob_size():
     """serialize always emits exactly BLOB_SIZE bytes."""
-    vq = FUZZ_MOD.VqBlob.parse(FUZZ_MOD.make_seed())
+    vq = FUZZ_MOD.FuzzBlob.parse(FUZZ_MOD.make_seed()).segments[0].vq
     assert len(vq.serialize()) == FUZZ_MOD.BLOB_SIZE
 
 
@@ -2067,7 +2108,7 @@ def test_vqblob_parse_tolerates_short_blob():
 
 def test_op_make_chain_links_all_but_last():
     """make_chain sets NEXT on every descriptor except the tail."""
-    vq = FUZZ_MOD.VqBlob.parse(FUZZ_MOD.make_seed())
+    vq = FUZZ_MOD.FuzzBlob.parse(FUZZ_MOD.make_seed()).segments[0].vq
     # Ensure at least three descriptors to exercise the chain.
     vq.descs = [[16, 0, 0], [16, 0, 0], [16, 0, 0]]
     FUZZ_MOD._op_make_chain(vq)
@@ -2079,7 +2120,7 @@ def test_op_make_chain_links_all_but_last():
 
 def test_op_make_loop_sets_next_in_range():
     """make_loop sets NEXT and points within the descriptor table."""
-    vq = FUZZ_MOD.VqBlob.parse(FUZZ_MOD.make_seed())
+    vq = FUZZ_MOD.FuzzBlob.parse(FUZZ_MOD.make_seed()).segments[0].vq
     vq.descs = [[16, 0, 9], [16, 0, 9]]
     FUZZ_MOD._op_make_loop(vq)
     looped = [d for d in vq.descs if d[1] & FUZZ_MOD._F_NEXT]
@@ -2091,7 +2132,7 @@ def test_op_make_loop_sets_next_in_range():
 
 def test_op_make_indirect_clears_next():
     """make_indirect sets INDIRECT and clears NEXT on the target."""
-    vq = FUZZ_MOD.VqBlob.parse(FUZZ_MOD.make_seed())
+    vq = FUZZ_MOD.FuzzBlob.parse(FUZZ_MOD.make_seed()).segments[0].vq
     vq.descs = [[16, FUZZ_MOD._F_NEXT, 1]]
     FUZZ_MOD._op_make_indirect(vq)
     assert vq.descs[0][1] & FUZZ_MOD._F_INDIRECT
@@ -2100,7 +2141,7 @@ def test_op_make_indirect_clears_next():
 
 def test_op_clone_desc_aliases():
     """clone_desc duplicates a descriptor so two slots match."""
-    vq = FUZZ_MOD.VqBlob.parse(FUZZ_MOD.make_seed())
+    vq = FUZZ_MOD.FuzzBlob.parse(FUZZ_MOD.make_seed()).segments[0].vq
     vq.descs = [[512, FUZZ_MOD._F_WRITE, 0]]
     FUZZ_MOD._op_clone_desc(vq)
     assert len(vq.descs) == 2
@@ -2110,7 +2151,7 @@ def test_op_clone_desc_aliases():
 def test_structural_mutate_stays_well_framed():
     """structural mutation always yields a parseable BLOB_SIZE blob."""
     random.seed(1234)
-    blob = FUZZ_MOD.make_seed()
+    blob = FUZZ_MOD.FuzzBlob.parse(FUZZ_MOD.make_seed()).segments[0].vq.serialize()
     for _ in range(200):
         blob = bytes(FUZZ_MOD._structural_mutate(blob))
         assert len(blob) == FUZZ_MOD.BLOB_SIZE
@@ -2127,7 +2168,7 @@ def test_structural_mutate_stays_light():
     case cheap while chains and indirect tables stay expressible.
     """
     random.seed(99)
-    blob = FUZZ_MOD.make_seed()
+    blob = FUZZ_MOD.FuzzBlob.parse(FUZZ_MOD.make_seed()).segments[0].vq.serialize()
     for _ in range(500):
         blob = bytes(FUZZ_MOD._structural_mutate(blob))
         vq = FUZZ_MOD.VqBlob.parse(blob)
@@ -2137,7 +2178,7 @@ def test_structural_mutate_stays_light():
 
 def test_serialize_masks_oversized_fields():
     """Out of range field values are masked, never crashing struct.pack."""
-    vq = FUZZ_MOD.VqBlob.parse(FUZZ_MOD.make_seed())
+    vq = FUZZ_MOD.FuzzBlob.parse(FUZZ_MOD.make_seed()).segments[0].vq
     vq.descs = [[0x1_0000_0000, 0x1_FFFF, 0x9_9999]]
     vq.avail_ring = [0x1_2345]
     vq.queue_size = 0x9_0000

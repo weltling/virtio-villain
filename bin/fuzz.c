@@ -61,14 +61,24 @@ int main(void)
     const struct fuzz_desc *descs;
     const uint16_t *avail_entries;
     const uint8_t *payload;
+    const uint8_t *segment;
     uint32_t payload_len;
+    uint32_t segment_len;
+    uint16_t segment_device;
+    uint16_t segment_queue;
 
-    if (fuzz_parse(fuzz_blob, FUZZ_BLOB_SIZE,
+    if (fuzz_blob_first(fuzz_blob, FUZZ_BLOB_SIZE,
+                         &segment_device, &segment_queue,
+                         &segment, &segment_len) < 0 ||
+        fuzz_parse(segment, segment_len,
                    &hdr, &descs, &avail_entries,
                    &payload, &payload_len) < 0) {
         printf("FUZZ: invalid blob\n");
         shutdown();
     }
+
+    (void)segment_device;
+    (void)segment_queue;
 
     /* Sanity: need at least 1 descriptor and valid queue size */
     uint16_t qs = hdr->queue_size;

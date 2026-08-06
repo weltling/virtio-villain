@@ -47,6 +47,14 @@ ShortFirstHelpFormatter = _run_mod.ShortFirstHelpFormatter
 # --- Blob Format ---
 
 BLOB_SIZE = 4096
+INPUT_SIZE = 64 * 1024
+FUZZ_BLOB_MAGIC = b"VVFZ"
+FUZZ_BLOB_VERSION = 1
+FUZZ_BLOB_HEADER_FMT = "<4sHH"
+FUZZ_BLOB_HEADER_SIZE = struct.calcsize(FUZZ_BLOB_HEADER_FMT)
+FUZZ_SEGMENT_HEADER_FMT = "<HHI"
+FUZZ_SEGMENT_HEADER_SIZE = struct.calcsize(FUZZ_SEGMENT_HEADER_FMT)
+VIRTIO_PCI_DEVICE_BLK = 0x1042
 HEADER_FMT = "<HHHH"  # queue_size, num_descs, avail_idx, avail_count
 HEADER_SIZE = struct.calcsize(HEADER_FMT)
 DESC_FMT = "<HHI"  # next, flags, len  -- wait, actual struct is: u32 len, u16 flags, u16 next
@@ -89,14 +97,84 @@ def make_seed():
     ]
     avail_ring = [0]  # head at desc 0
 
-    return make_blob(16, descs, 1, avail_ring, payload)
+    return make_blk_blob(make_blob(16, descs, 1, avail_ring, payload))
+
+
+class FuzzSegment:
+    """A queue blob and the virtio device queue it targets."""
+
+    def __init__(self, device_id, queue_index, vq):
+        self.device_id = device_id
+        self.queue_index = queue_index
+        self.vq = vq
+
+
+class FuzzBlob:
+    """Versioned outer framing for one or more virtqueue segments."""
+
+    def __init__(self, segments):
+        self.segments = segments
+
+    @classmethod
+    def parse(cls, blob):
+        blob = bytes(blob)
+        if not blob.startswith(FUZZ_BLOB_MAGIC):
+            raise ValueError("missing fuzz blob magic")
+        if len(blob) < FUZZ_BLOB_HEADER_SIZE:
+            raise ValueError("truncated fuzz blob header")
+        _magic, version, count = struct.unpack_from(FUZZ_BLOB_HEADER_FMT,
+                                                    blob, 0)
+        if version != FUZZ_BLOB_VERSION:
+            raise ValueError(f"unsupported fuzz blob version {version}")
+        offset = FUZZ_BLOB_HEADER_SIZE
+        segments = []
+        for _ in range(count):
+            if offset + FUZZ_SEGMENT_HEADER_SIZE > len(blob):
+                raise ValueError("truncated fuzz segment header")
+            device_id, queue_index, length = struct.unpack_from(
+                FUZZ_SEGMENT_HEADER_FMT, blob, offset)
+            offset += FUZZ_SEGMENT_HEADER_SIZE
+            if length > len(blob) - offset:
+                raise ValueError("truncated fuzz segment")
+            segments.append(FuzzSegment(device_id, queue_index,
+                                        VqBlob.parse(blob[offset:offset + length])))
+            offset += length
+        if not segments:
+            raise ValueError("fuzz blob has no segments")
+        return cls(segments)
+
+    def serialize(self):
+        if not self.segments:
+            raise ValueError("fuzz blob has no segments")
+        data = bytearray(struct.pack(FUZZ_BLOB_HEADER_FMT, FUZZ_BLOB_MAGIC,
+                                     FUZZ_BLOB_VERSION, len(self.segments)))
+        for segment in self.segments:
+            vq_blob = segment.vq.serialize()
+            data.extend(struct.pack(FUZZ_SEGMENT_HEADER_FMT,
+                                    segment.device_id & 0xffff,
+                                    segment.queue_index & 0xffff,
+                                    len(vq_blob)))
+            data.extend(vq_blob)
+        if len(data) > INPUT_SIZE:
+            raise ValueError("fuzz blob exceeds input section")
+        data.extend(b"\x00" * (INPUT_SIZE - len(data)))
+        return bytes(data)
+
+
+def make_blk_blob(vring):
+    """Wrap a single virtqueue blob as a blk queue zero segment."""
+    return FuzzBlob(
+        [FuzzSegment(VIRTIO_PCI_DEVICE_BLK, 0, VqBlob.parse(vring))]
+    ).serialize()
 
 
 # --- Mutation Engine ---
 
 def mutate(blob):
-    """Apply a random mutation to a blob."""
-    data = bytearray(blob)
+    """Mutate one segment of a versioned blob, returning a versioned blob."""
+    fb = FuzzBlob.parse(blob)
+    segment = random.choice(fb.segments)
+    data = bytearray(segment.vq.serialize())
     strategy = random.choice([
         _bit_flip,
         _byte_arith,
@@ -119,7 +197,8 @@ def mutate(blob):
         _structural_mutate,
         _multi_strategy,
     ])
-    return bytes(strategy(data))
+    segment.vq = VqBlob.parse(bytes(strategy(data)))
+    return fb.serialize()
 
 
 def _bit_flip(data):
@@ -202,10 +281,14 @@ _corpus_ref = []
 
 
 def _splice_corpus(data):
-    """Crossover with another corpus entry at a random boundary."""
+    """Crossover with another corpus segment at a random boundary."""
     if not _corpus_ref:
         return _bit_flip(data)
-    other = bytearray(random.choice(_corpus_ref))
+    try:
+        other_fb = FuzzBlob.parse(random.choice(_corpus_ref))
+    except ValueError:
+        return _bit_flip(data)
+    other = bytearray(random.choice(other_fb.segments).vq.serialize())
     if len(other) != len(data):
         other = (other + bytearray(len(data)))[:len(data)]
     # Pick a crossover point
@@ -978,34 +1061,43 @@ def run_vmm(vmm_path, initramfs_path, profraw_dir, timeout=3,
 def cmd_decode(args):
     """Decode and print the contents of a fuzz blob."""
     for path in args.blobs:
-        blob = open(path, "rb").read()
-        qs, nd, ai, ac = struct.unpack_from("<HHHH", blob)
+        container = open(path, "rb").read()
         print(f"{path}:")
-        print(f"  queue_size={qs} num_descs={nd} avail_idx={ai} avail_count={ac}")
-        off = 8
-        for i in range(nd):
-            if off + 8 > len(blob):
-                print(f"  desc[{i}]: <truncated>")
-                break
-            l, f, n = struct.unpack_from("<IHH", blob, off)
-            print(f"  desc[{i}]: len={l} flags=0x{f:04x} next={n}")
-            off += 8
-        avail_off = off
-        for i in range(ac):
-            if avail_off + 2 > len(blob):
-                break
-            v, = struct.unpack_from("<H", blob, avail_off)
-            print(f"  avail[{i}]: {v}")
-            avail_off += 2
-        payload_off = avail_off
-        payload_len = len(blob) - payload_off
-        nonzero = sum(1 for b in blob[payload_off:] if b != 0)
-        print(f"  payload: {payload_len} bytes ({nonzero} non-zero)")
-        # Annotations
-        notes = _annotate_blob(blob)
-        if notes:
-            for note in notes:
-                print(f"  ⚠ {note}")
+        try:
+            fb = FuzzBlob.parse(container)
+        except ValueError as e:
+            print(f"  invalid blob: {e}")
+            print()
+            continue
+        print(f"  segments={len(fb.segments)}")
+        for si, seg in enumerate(fb.segments):
+            blob = seg.vq.serialize()
+            qs, nd, ai, ac = struct.unpack_from(HEADER_FMT, blob, 0)
+            print(f"  segment[{si}] device=0x{seg.device_id:04x} "
+                  f"queue={seg.queue_index}")
+            print(f"    queue_size={qs} num_descs={nd} "
+                  f"avail_idx={ai} avail_count={ac}")
+            off = HEADER_SIZE
+            for i in range(nd):
+                if off + DESC_SIZE > len(blob):
+                    print(f"    desc[{i}]: <truncated>")
+                    break
+                dl, df, dn = struct.unpack_from(DESC_FMT, blob, off)
+                print(f"    desc[{i}]: len={dl} flags=0x{df:04x} next={dn}")
+                off += DESC_SIZE
+            avail_off = HEADER_SIZE + nd * DESC_SIZE
+            for i in range(ac):
+                if avail_off + 2 > len(blob):
+                    break
+                v, = struct.unpack_from("<H", blob, avail_off)
+                print(f"    avail[{i}]: {v}")
+                avail_off += 2
+            payload_off = HEADER_SIZE + nd * DESC_SIZE + ac * 2
+            payload_len = len(blob) - payload_off
+            nonzero = sum(1 for b in blob[payload_off:] if b != 0)
+            print(f"    payload: {payload_len} bytes ({nonzero} non-zero)")
+            for note in _annotate_blob(blob):
+                print(f"    \u26a0 {note}")
         print()
 
 
@@ -1103,9 +1195,12 @@ def cmd_gen_test(args):
                  f"for device '{device}'")
     test_id = test_id.upper()
 
-    blob = open(args.blob, "rb").read()
-    if len(blob) < HEADER_SIZE:
-        sys.exit(f"blob too short: {len(blob)} bytes")
+    container = open(args.blob, "rb").read()
+    try:
+        fb = FuzzBlob.parse(container)
+    except ValueError as e:
+        sys.exit(f"invalid blob: {e}")
+    blob = fb.segments[0].vq.serialize()
 
     qs, nd, ai, ac = struct.unpack_from(HEADER_FMT, blob, 0)
     nd = min(nd, 128)
@@ -1583,7 +1678,7 @@ def _extract_seeds_from_file(path):
     cap = BLOB_SIZE - HEADER_SIZE - len(descs) * DESC_SIZE - len(avail_ring) * 2
     payload = b"\x00" * min(total_payload, cap)
 
-    return make_blob(qs, descs, avail_idx, avail_ring, payload)
+    return make_blk_blob(make_blob(qs, descs, avail_idx, avail_ring, payload))
 
 
 def cmd_seed(args):
@@ -1931,10 +2026,20 @@ def cmd_fuzz(args):
 
     # Load or seed corpus
     corpus = []
+    skipped = 0
     for f in os.listdir(args.corpus_dir):
         path = os.path.join(args.corpus_dir, f)
         with open(path, "rb") as fh:
-            corpus.append(fh.read())
+            entry = fh.read()
+        try:
+            FuzzBlob.parse(entry)
+        except ValueError:
+            skipped += 1
+            continue
+        corpus.append(entry)
+    if skipped:
+        print(f"[*] Skipped {skipped} corpus entries not in the "
+              "current blob format")
     if not corpus:
         seed = make_seed()
         corpus.append(seed)

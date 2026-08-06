@@ -3,10 +3,14 @@
 #define FUZZ_INPUT_H
 
 #include <stdint.h>
+#include <string.h>
 
-#define FUZZ_BLOB_SIZE 4096
+#define FUZZ_BLOB_SIZE (64 * 1024)
 #define FUZZ_MAX_DESCS 128
 #define FUZZ_MAX_QUEUE_SIZE 256
+#define FUZZ_BLOB_VERSION 1
+
+static const uint8_t fuzz_blob_magic[4] = {'V', 'V', 'F', 'Z'};
 
 /*
  * On-disk descriptor (no address — guest assigns addresses at runtime).
@@ -29,6 +33,50 @@ struct fuzz_input {
     uint16_t avail_idx;
     uint16_t avail_count;
 } __attribute__((packed));
+
+struct fuzz_blob_header {
+    uint8_t magic[4];
+    uint16_t version;
+    uint16_t segment_count;
+} __attribute__((packed));
+
+struct fuzz_segment_header {
+    uint16_t device_id;
+    uint16_t queue_index;
+    uint32_t length;
+} __attribute__((packed));
+
+/*
+ * Return the first segment of a versioned blob. Returns -1 unless the
+ * blob carries the magic, a supported version, and at least one segment.
+ */
+static inline int fuzz_blob_first(const uint8_t *blob, uint32_t blob_len,
+                                  uint16_t *device_id,
+                                  uint16_t *queue_index,
+                                  const uint8_t **segment,
+                                  uint32_t *segment_len)
+{
+    if (blob_len < sizeof(struct fuzz_blob_header) ||
+        memcmp(blob, fuzz_blob_magic, sizeof(fuzz_blob_magic)))
+        return -1;
+
+    const struct fuzz_blob_header *h = (const struct fuzz_blob_header *)blob;
+    if (h->version != FUZZ_BLOB_VERSION || h->segment_count == 0 ||
+        blob_len < sizeof(*h) + sizeof(struct fuzz_segment_header))
+        return -1;
+
+    const struct fuzz_segment_header *s =
+        (const struct fuzz_segment_header *)(blob + sizeof(*h));
+    uint32_t offset = sizeof(*h) + sizeof(*s);
+    if (s->length > blob_len - offset)
+        return -1;
+
+    *device_id = s->device_id;
+    *queue_index = s->queue_index;
+    *segment = blob + offset;
+    *segment_len = s->length;
+    return 0;
+}
 
 /*
  * Parse a fuzz blob. Returns pointers into the blob for each section.
