@@ -1035,7 +1035,7 @@ def run_vmm(vmm_path, initramfs_path, profraw_dir, timeout=3,
     env["LLVM_PROFILE_FILE"] = os.path.join(profraw_dir, "%p.profraw")
 
     cmd = _fuzz_vmm_cmd(vmm_path, kernel, initramfs_path, disk, pmem_path,
-                         profraw_dir, cpus, memory)
+                        profraw_dir, cpus, memory)
 
     try:
         result = subprocess.run(
@@ -1102,21 +1102,23 @@ def cmd_decode(args):
 
 
 # Mapping from short device name (used as test directory and CLI option)
-# to (test name prefix, VIRTIO_PCI_DEVICE_* macro). The prefix must match
-# the convention enforced by the run script's PREFIX_DIR table.
+# to (test name prefix, VIRTIO_PCI_DEVICE_* macro, device id). The prefix
+# must match the convention enforced by the run script's PREFIX_DIR table.
+# The macro is emitted verbatim into generated C; the id matches a fuzz
+# blob segment back to a device.
 _DEVICE_MAP = {
-    "blk":      ("B",   "VIRTIO_PCI_DEVICE_BLK"),
-    "net":      ("N",   "VIRTIO_PCI_DEVICE_NET"),
-    "console":  ("C",   "VIRTIO_PCI_DEVICE_CONSOLE"),
-    "rng":      ("RNG", "VIRTIO_PCI_DEVICE_RNG"),
-    "balloon":  ("L",   "VIRTIO_PCI_DEVICE_BALLOON"),
-    "vsock":    ("V",   "VIRTIO_PCI_DEVICE_VSOCK"),
-    "iommu":    ("I",   "VIRTIO_PCI_DEVICE_IOMMU"),
-    "mem":      ("R",   "VIRTIO_PCI_DEVICE_MEM"),
-    "pmem":     ("E",   "VIRTIO_PCI_DEVICE_PMEM"),
-    "watchdog": ("D",   "VIRTIO_PCI_DEVICE_WATCHDOG"),
-    "rtc":      ("RTC", "VIRTIO_PCI_DEVICE_RTC"),
-    "fs":       ("F",   "VIRTIO_PCI_DEVICE_FS"),
+    "blk":      ("B",   "VIRTIO_PCI_DEVICE_BLK",      0x1042),
+    "net":      ("N",   "VIRTIO_PCI_DEVICE_NET",      0x1041),
+    "console":  ("C",   "VIRTIO_PCI_DEVICE_CONSOLE",  0x1043),
+    "rng":      ("RNG", "VIRTIO_PCI_DEVICE_RNG",      0x1044),
+    "balloon":  ("L",   "VIRTIO_PCI_DEVICE_BALLOON",  0x1045),
+    "vsock":    ("V",   "VIRTIO_PCI_DEVICE_VSOCK",    0x1053),
+    "iommu":    ("I",   "VIRTIO_PCI_DEVICE_IOMMU",    0x1057),
+    "mem":      ("R",   "VIRTIO_PCI_DEVICE_MEM",      0x1058),
+    "pmem":     ("E",   "VIRTIO_PCI_DEVICE_PMEM",     0x105b),
+    "watchdog": ("D",   "VIRTIO_PCI_DEVICE_WATCHDOG", 0x1063),
+    "rtc":      ("RTC", "VIRTIO_PCI_DEVICE_RTC",      0x1051),
+    "fs":       ("F",   "VIRTIO_PCI_DEVICE_FS",       0x105a),
 }
 
 # Fuzz-generated tests continue the per-device numbering. They live in a
@@ -1155,39 +1157,34 @@ def _format_payload_bytes(payload):
     return "\n".join(lines)
 
 
-def _resolve_fuzz_device():
-    """Return the short device name the fuzz harness currently targets.
-
-    Parses bin/fuzz.c for the virtio_pci_find(VIRTIO_PCI_DEVICE_*) call
-    and reverse-maps the macro through _DEVICE_MAP. Fails loudly if the
-    harness does not match a known device, so a future multi-device
-    fuzz harness gets a clear error instead of a silent wrong mapping.
-    """
-    fuzz_src = os.path.join(_SCRIPT_DIR, "bin", "fuzz.c")
-    try:
-        with open(fuzz_src) as fh:
-            text = fh.read()
-    except OSError as e:
-        sys.exit(f"cannot read {fuzz_src}: {e}")
-
-    m = re.search(r"virtio_pci_find\(\s*(VIRTIO_PCI_DEVICE_[A-Z_]+)", text)
-    if not m:
-        sys.exit(f"cannot determine target device from {fuzz_src}")
-    macro = m.group(1)
-    for name, (_prefix, dev_macro) in _DEVICE_MAP.items():
-        if dev_macro == macro:
+def _device_from_segment(segment):
+    """Return the device name for a fuzz blob segment."""
+    for name, (_prefix, _macro, device_id) in _DEVICE_MAP.items():
+        if device_id == segment.device_id:
             return name
-    sys.exit(f"fuzz harness targets {macro}, not in _DEVICE_MAP")
+    raise ValueError(f"unknown virtio device id 0x{segment.device_id:04x}")
 
 
 def cmd_gen_test(args):
     """Generate a C test from a fuzz blob, mirroring fuzz.c semantics."""
-    device = args.device or _resolve_fuzz_device()
+    container = open(args.blob, "rb").read()
+    try:
+        fb = FuzzBlob.parse(container)
+    except ValueError as e:
+        sys.exit(f"invalid blob: {e}")
+
+    if args.device:
+        device = args.device
+    else:
+        try:
+            device = _device_from_segment(fb.segments[0])
+        except ValueError as e:
+            sys.exit(str(e))
     entry = _DEVICE_MAP.get(device)
     if entry is None:
         sys.exit(f"unknown device '{device}'. Known: "
                  + ", ".join(sorted(_DEVICE_MAP)))
-    prefix, device_macro = entry
+    prefix, device_macro, _device_id = entry
 
     test_id = args.id or _next_fuzz_id(device, prefix)
     if not test_id.upper().startswith(prefix):
@@ -1195,11 +1192,6 @@ def cmd_gen_test(args):
                  f"for device '{device}'")
     test_id = test_id.upper()
 
-    container = open(args.blob, "rb").read()
-    try:
-        fb = FuzzBlob.parse(container)
-    except ValueError as e:
-        sys.exit(f"invalid blob: {e}")
     blob = fb.segments[0].vq.serialize()
 
     qs, nd, ai, ac = struct.unpack_from(HEADER_FMT, blob, 0)
@@ -2366,8 +2358,8 @@ def main():
                        help="Fuzz blob to convert")
     p_gen.add_argument("--device", default=None,
                        choices=sorted(_DEVICE_MAP), metavar="DEV",
-                       help="Target virtio device, from bin/fuzz.c if "
-                            "omitted")
+                       help="Target virtio device, from first blob segment "
+                            "if omitted")
     p_gen.add_argument("--id", default=None, metavar="ID",
                        help="Test ID like B9000, auto-picked if omitted")
     p_gen.add_argument("--force", action="store_true",

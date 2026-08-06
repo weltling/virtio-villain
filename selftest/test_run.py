@@ -2055,6 +2055,14 @@ def test_fuzzblob_segment_roundtrip_preserves_targets():
     assert parsed.segments[0].vq.descs == seed.descs
 
 
+def test_fuzzblob_segment_selects_test_device():
+    """Generated tests select the device from the first blob segment."""
+    seed = FUZZ_MOD.FuzzBlob.parse(FUZZ_MOD.make_seed()).segments[0].vq
+    rng_id = FUZZ_MOD._DEVICE_MAP["rng"][2]
+    segment = FUZZ_MOD.FuzzSegment(rng_id, 0, seed)
+    assert FUZZ_MOD._device_from_segment(segment) == "rng"
+
+
 def test_mutate_returns_versioned_container():
     """mutate consumes and returns a valid versioned blob."""
     random.seed(7)
