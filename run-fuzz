@@ -655,6 +655,113 @@ def _require_llvm_tools(context):
     return profdata, cov
 
 
+# Coverage tools chosen by select_coverage_tools() to match the VMM's raw
+# profile version; consulted by collect_coverage() before the generic lookup.
+_SELECTED_PROFDATA = None
+_SELECTED_COV = None
+
+
+def _iter_toolchain_bins():
+    """Yield rustlib bin dirs for every installed rustup toolchain."""
+    seen = set()
+    default = _rustlib_bin()
+    if default:
+        seen.add(default)
+        yield default
+    try:
+        listing = subprocess.check_output(
+            ["rustup", "toolchain", "list"], text=True).splitlines()
+    except Exception:
+        return
+    for raw in listing:
+        tc = raw.split(" ", 1)[0].strip()
+        if not tc:
+            continue
+        try:
+            sysroot = subprocess.check_output(
+                ["rustc", f"+{tc}", "--print", "sysroot"], text=True,
+                stderr=subprocess.DEVNULL).strip()
+            host = next(
+                line.split("host: ", 1)[1].strip()
+                for line in subprocess.check_output(
+                    ["rustc", f"+{tc}", "-vV"], text=True,
+                    stderr=subprocess.DEVNULL).splitlines()
+                if line.startswith("host: "))
+        except Exception:
+            continue
+        cand = os.path.join(sysroot, "lib", "rustlib", host, "bin")
+        if cand not in seen:
+            seen.add(cand)
+            yield cand
+
+
+def _profraw_probe(vmm):
+    """Emit a probe profraw via a clean, fast VMM exit (--version)."""
+    fd, path = tempfile.mkstemp(suffix=".profraw", prefix="vvfuzz_probe_")
+    os.close(fd)
+    env = os.environ.copy()
+    env["LLVM_PROFILE_FILE"] = path
+    try:
+        subprocess.run([vmm, "--version"], env=env,
+                       capture_output=True, timeout=30)
+    except Exception:
+        return None
+    if os.path.exists(path) and os.path.getsize(path) > 0:
+        return path
+    return None
+
+
+def select_coverage_tools(vmm):
+    """Pick llvm-profdata/llvm-cov that can actually read the VMM's profraw.
+
+    The raw profile format version is tied to the toolchain that built the
+    VMM, so tools from a different toolchain (stable vs nightly) silently fail
+    to merge and yield zero edges. Probe with a real profraw and choose a
+    matching pair. Returns (profdata, cov) or (None, None).
+    """
+    global _SELECTED_PROFDATA, _SELECTED_COV
+
+    candidates = []
+    env_pd = os.environ.get("LLVM_PROFDATA")
+    env_cov = os.environ.get("LLVM_COV")
+    if (env_pd and env_cov and os.access(env_pd, os.X_OK)
+            and os.access(env_cov, os.X_OK)):
+        candidates.append((env_pd, env_cov))
+    path_pd = shutil.which("llvm-profdata")
+    path_cov = shutil.which("llvm-cov")
+    if path_pd and path_cov:
+        candidates.append((path_pd, path_cov))
+    for bindir in _iter_toolchain_bins():
+        pd = os.path.join(bindir, "llvm-profdata")
+        cov = os.path.join(bindir, "llvm-cov")
+        if os.access(pd, os.X_OK) and os.access(cov, os.X_OK):
+            candidates.append((pd, cov))
+
+    if not candidates:
+        return None, None
+
+    probe = _profraw_probe(vmm)
+    if probe is None:
+        # Cannot validate; fall back to the first available pair.
+        _SELECTED_PROFDATA, _SELECTED_COV = candidates[0]
+        return candidates[0]
+
+    try:
+        for pd, cov in candidates:
+            fd, out = tempfile.mkstemp(suffix=".profdata")
+            os.close(fd)
+            result = subprocess.run(
+                [pd, "merge", "-sparse", probe, "-o", out],
+                capture_output=True)
+            os.path.exists(out) and os.unlink(out)
+            if result.returncode == 0:
+                _SELECTED_PROFDATA, _SELECTED_COV = pd, cov
+                return pd, cov
+    finally:
+        os.unlink(probe)
+    return None, None
+
+
 def collect_coverage(vmm_binary, profdata_path, profraw_dir):
     """Merge profraw files and return set of covered regions."""
     profraw_files = [
@@ -665,8 +772,8 @@ def collect_coverage(vmm_binary, profdata_path, profraw_dir):
     if not profraw_files:
         return set()
 
-    profdata_tool = find_llvm_tool("llvm-profdata")
-    cov_tool = find_llvm_tool("llvm-cov")
+    profdata_tool = _SELECTED_PROFDATA or find_llvm_tool("llvm-profdata")
+    cov_tool = _SELECTED_COV or find_llvm_tool("llvm-cov")
     if not profdata_tool or not cov_tool:
         return set()
 
@@ -1770,13 +1877,20 @@ def cmd_fuzz(args):
 
     print(f"[*] .fuzz_input section at offset 0x{section_offset:x}")
 
-    # Check for coverage tools; fall back to dumb fuzzing if missing
+    # Select coverage tools that can actually read this VMM's profraw; fall
+    # back to dumb fuzzing if none match (avoids silent edges=0 runs).
     if not args.no_coverage:
-        if (not find_llvm_tool("llvm-profdata")
-                or not find_llvm_tool("llvm-cov")):
-            print("[!] llvm-profdata/llvm-cov not found; "
-                  "disabling coverage feedback")
+        profdata_tool, cov_tool = select_coverage_tools(args.vmm)
+        if not profdata_tool or not cov_tool:
+            print("[!] no llvm-profdata/llvm-cov able to read this VMM's "
+                  "coverage data; disabling coverage feedback.\n"
+                  "    Install tools matching the toolchain that built the "
+                  "VMM, e.g. for a nightly build:\n"
+                  "    rustup component add llvm-tools-preview "
+                  "--toolchain nightly")
             args.no_coverage = True
+        else:
+            print(f"[*] Coverage tools: {profdata_tool}")
 
     # Load or seed corpus
     corpus = []
