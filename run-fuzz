@@ -16,6 +16,7 @@ import os
 import random
 import re
 import shutil
+import signal
 import struct
 import subprocess
 import sys
@@ -753,18 +754,16 @@ def run_vmm(vmm_path, initramfs_path, profraw_dir, timeout=3,
         result = subprocess.run(
             cmd, timeout=timeout, capture_output=True, env=env
         )
-        crashed = result.returncode not in (0, 3)  # 3 = isa-debug-exit
         output = result.stderr.decode(errors="replace")
-        # A VMM built with LeakSanitizer aborts its own atexit leak scan
-        # when its StopTheWorld ptrace attach is denied (the VMM is non
-        # dumpable, so a same uid tracer gets EPERM), exiting non zero
-        # even though the run was clean. Do not count that teardown
-        # artifact as a crash. A genuine sanitizer finding is preserved
-        # because _is_sanitizer_ptrace_artifact only matches when no real
-        # error report is present. Run with --apply-sysconfig to grant
-        # CAP_SYS_PTRACE and remove the artifact at the source.
-        if crashed and _is_sanitizer_ptrace_artifact(output):
-            crashed = False
+        # A non zero exit on its own is not a fault. The fuzz guest
+        # reboots on a VMM without isa-debug-exit, and the VMM correctly
+        # rejects malformed rings with NEEDS_RESET or a handled ERROR
+        # log. Only a fatal signal, a sanitizer report, or a panic is a
+        # genuine fault. _fault_class also filters the LeakSanitizer
+        # ptrace teardown abort, which is a same uid ptrace EPERM at exit
+        # rather than a real finding. Run with --apply-sysconfig to grant
+        # CAP_SYS_PTRACE and remove that artifact at the source.
+        crashed = _fault_class(result.returncode, output) is not None
         return result.returncode, crashed, output
     except subprocess.TimeoutExpired:
         return -1, True, ""
@@ -812,7 +811,6 @@ def cmd_decode(args):
 _DEVICE_MAP = {
     "blk":      ("B",   "VIRTIO_PCI_DEVICE_BLK"),
     "net":      ("N",   "VIRTIO_PCI_DEVICE_NET"),
-    "scsi":     ("SCSI", "VIRTIO_PCI_DEVICE_SCSI"),
     "console":  ("C",   "VIRTIO_PCI_DEVICE_CONSOLE"),
     "rng":      ("RNG", "VIRTIO_PCI_DEVICE_RNG"),
     "balloon":  ("L",   "VIRTIO_PCI_DEVICE_BALLOON"),
@@ -877,11 +875,6 @@ def _resolve_fuzz_device():
         sys.exit(f"cannot read {fuzz_src}: {e}")
 
     m = re.search(r"virtio_pci_find\(\s*(VIRTIO_PCI_DEVICE_[A-Z_]+)", text)
-    if not m:
-        # The harness selects the device through a build time macro; fall
-        # back to its default define.
-        m = re.search(r"define\s+FUZZ_DEVICE_ID\s+(VIRTIO_PCI_DEVICE_[A-Z_]+)",
-                      text)
     if not m:
         sys.exit(f"cannot determine target device from {fuzz_src}")
     macro = m.group(1)
@@ -1148,9 +1141,54 @@ def _is_sanitizer_ptrace_artifact(output):
     return has_ptrace_abort
 
 
-def _classify_vmm_output(output):
-    """Extract a short error class from VMM stderr output."""
+# Signals that mean the VMM process genuinely died rather than exited.
+_FATAL_SIGNALS = {
+    signal.SIGSEGV: "SIGSEGV",
+    signal.SIGABRT: "SIGABRT",
+    signal.SIGBUS: "SIGBUS",
+    signal.SIGILL: "SIGILL",
+    signal.SIGFPE: "SIGFPE",
+}
+
+
+def _fault_class(returncode, output):
+    """Return a short fault class if the VMM genuinely faulted, else None.
+
+    A genuine fault is a Rust panic, a sanitizer report (AddressSanitizer
+    or a UBSan runtime error), a guest controlled corruption marker, or
+    death by a fatal signal (SIGSEGV, SIGABRT, SIGBUS, SIGILL, SIGFPE).
+    A clean exit, a guest reboot with a non zero code, a device
+    NEEDS_RESET, and a handled ERROR log are not faults, because the
+    fuzz guest feeds malformed input the VMM is meant to reject. The
+    LeakSanitizer ptrace teardown abort is filtered as noise.
+    """
+    if output:
+        if _is_sanitizer_ptrace_artifact(output):
+            return None
+        for line in output.splitlines():
+            if _is_sanitizer_noise_line(line):
+                continue
+            low = line.lower()
+            if "panic" in low:
+                return line.strip()[:160]
+            if ("addresssanitizer" in low
+                    or "runtime error:" in low
+                    or any(marker in line for marker in _CORRUPTION_MARKERS)):
+                return line.strip()[:160]
+    if returncode is not None and returncode < 0:
+        name = _FATAL_SIGNALS.get(-returncode)
+        if name:
+            return f"fatal signal {name}"
+    return None
+
+
+def _classify_vmm_output(output, returncode=None):
+    """Extract a short error class from VMM output for triage grouping."""
     if not output:
+        if returncode is not None and returncode < 0:
+            name = _FATAL_SIGNALS.get(-returncode)
+            if name:
+                return f"fatal signal {name}"
         return "timeout"
     if _is_sanitizer_ptrace_artifact(output):
         return "sanitizer ptrace teardown (not a crash)"
@@ -1168,6 +1206,10 @@ def _classify_vmm_output(output):
             parts = line.split("ERROR:")
             if len(parts) > 1:
                 return parts[-1].strip()[:120]
+    if returncode is not None and returncode < 0:
+        name = _FATAL_SIGNALS.get(-returncode)
+        if name:
+            return f"fatal signal {name}"
     return "exit code non-zero"
 
 
@@ -1408,7 +1450,8 @@ def cmd_triage(args):
             args.vmm, initramfs_path, profraw_dir, args.timeout,
             kernel_path=args.kernel, disk_path=args.disk
         )
-        error_class = _classify_vmm_output(output) if crashed else "NO CRASH (fixed?)"
+        error_class = (_classify_vmm_output(output, exit_code)
+                       if crashed else "NO CRASH (fixed?)")
         notes = _annotate_blob(blob)
         tier, _ = _security_triage(output, exit_code)
         severity[tier] += 1

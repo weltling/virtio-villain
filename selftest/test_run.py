@@ -2253,6 +2253,54 @@ def test_sanitizer_artifact_recovered_run_is_not_a_crash():
 
 
 # ---------------------------------------------------------------------------
+# run-fuzz genuine fault decider. run_vmm saves a crash only when this
+# returns a class, so a non zero exit, a guest reboot, a NEEDS_RESET, and
+# a handled ERROR log must all read as not a fault.
+
+def test_fault_class_rust_panic():
+    out = "thread 'vcpu0' panicked at src/foo.rs:42:\nindex out of bounds\n"
+    assert FUZZ_MOD._fault_class(1, out) is not None
+
+
+def test_fault_class_address_sanitizer():
+    out = "==1==ERROR: AddressSanitizer: heap-buffer-overflow on 0xdead\n"
+    assert FUZZ_MOD._fault_class(-6, out) is not None
+
+
+def test_fault_class_fatal_signal_empty_output():
+    assert FUZZ_MOD._fault_class(-11, "") == "fatal signal SIGSEGV"
+
+
+def test_fault_class_needs_reset_is_not_a_fault():
+    out = "cloud-hypervisor: <vcpu0> ERROR: device set to NEEDS_RESET\n"
+    assert FUZZ_MOD._fault_class(1, out) is None
+
+
+def test_fault_class_handled_block_error_is_not_a_fault():
+    out = ("cloud-hypervisor: ERROR:block/src/io/request.rs:117 -- "
+           "Only head descriptor present\n")
+    assert FUZZ_MOD._fault_class(1, out) is None
+
+
+def test_fault_class_guest_reboot_nonzero_exit_is_not_a_fault():
+    assert FUZZ_MOD._fault_class(1, "some benign guest reboot log\n") is None
+
+
+def test_fault_class_invalid_queue_size_error_is_not_a_fault():
+    out = ("cloud-hypervisor: <vcpu0> ERROR:virtio-queue-0.18.0/src/queue.rs:"
+           "368 -- virtio queue with invalid size: 256\n")
+    assert FUZZ_MOD._fault_class(1, out) is None
+
+
+def test_fault_class_ptrace_artifact_is_not_a_fault():
+    assert FUZZ_MOD._fault_class(-6, _LSAN_PTRACE_NOISE) is None
+
+
+def test_classify_signal_death_labeled():
+    assert FUZZ_MOD._classify_vmm_output("", -11) == "fatal signal SIGSEGV"
+
+
+# ---------------------------------------------------------------------------
 # run-fuzz security severity triage.
 #
 # Each replay outcome maps to a severity tier so a crash corpus can be
