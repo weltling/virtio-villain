@@ -8,6 +8,7 @@
 #define FUZZ_BLOB_SIZE (64 * 1024)
 #define FUZZ_MAX_DESCS 128
 #define FUZZ_MAX_QUEUE_SIZE 256
+#define FUZZ_MAX_SEGMENTS 16
 #define FUZZ_BLOB_VERSION 1
 
 static const uint8_t fuzz_blob_magic[4] = {'V', 'V', 'F', 'Z'};
@@ -47,14 +48,13 @@ struct fuzz_segment_header {
 } __attribute__((packed));
 
 /*
- * Return the first segment of a versioned blob. Returns -1 unless the
- * blob carries the magic, a supported version, and at least one segment.
+ * Return one segment of a versioned blob by index.
  */
-static inline int fuzz_blob_first(const uint8_t *blob, uint32_t blob_len,
-                                  uint16_t *device_id,
-                                  uint16_t *queue_index,
-                                  const uint8_t **segment,
-                                  uint32_t *segment_len)
+static inline int fuzz_blob_segment(const uint8_t *blob, uint32_t blob_len,
+                                    uint16_t index, uint16_t *device_id,
+                                    uint16_t *queue_index,
+                                    const uint8_t **segment,
+                                    uint32_t *segment_len)
 {
     if (blob_len < sizeof(struct fuzz_blob_header) ||
         memcmp(blob, fuzz_blob_magic, sizeof(fuzz_blob_magic)))
@@ -62,20 +62,40 @@ static inline int fuzz_blob_first(const uint8_t *blob, uint32_t blob_len,
 
     const struct fuzz_blob_header *h = (const struct fuzz_blob_header *)blob;
     if (h->version != FUZZ_BLOB_VERSION || h->segment_count == 0 ||
-        blob_len < sizeof(*h) + sizeof(struct fuzz_segment_header))
+        h->segment_count > FUZZ_MAX_SEGMENTS || index >= h->segment_count)
         return -1;
 
-    const struct fuzz_segment_header *s =
-        (const struct fuzz_segment_header *)(blob + sizeof(*h));
-    uint32_t offset = sizeof(*h) + sizeof(*s);
-    if (s->length > blob_len - offset)
-        return -1;
+    uint32_t offset = sizeof(*h);
+    for (uint16_t i = 0; i <= index; i++) {
+        if (offset > blob_len || blob_len - offset < sizeof(struct fuzz_segment_header))
+            return -1;
+        const struct fuzz_segment_header *s =
+            (const struct fuzz_segment_header *)(blob + offset);
+        offset += sizeof(*s);
+        if (s->length > blob_len - offset)
+            return -1;
+        if (i == index) {
+            *device_id = s->device_id;
+            *queue_index = s->queue_index;
+            *segment = blob + offset;
+            *segment_len = s->length;
+            return 0;
+        }
+        offset += s->length;
+    }
+    return -1;
+}
 
-    *device_id = s->device_id;
-    *queue_index = s->queue_index;
-    *segment = blob + offset;
-    *segment_len = s->length;
-    return 0;
+static inline uint16_t fuzz_blob_segment_count(const uint8_t *blob,
+                                                uint32_t blob_len)
+{
+    if (blob_len < sizeof(struct fuzz_blob_header) ||
+        memcmp(blob, fuzz_blob_magic, sizeof(fuzz_blob_magic)))
+        return 0;
+    const struct fuzz_blob_header *h = (const struct fuzz_blob_header *)blob;
+    if (h->version != FUZZ_BLOB_VERSION || h->segment_count > FUZZ_MAX_SEGMENTS)
+        return 0;
+    return h->segment_count;
 }
 
 /*
