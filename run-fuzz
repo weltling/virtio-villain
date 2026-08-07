@@ -724,11 +724,45 @@ def _op_queue_size(vq):
         [0, 1, 3, 7, 15, 127, 256, 512, 1024, 32768, 65535])
 
 
+# The fuzz worker disk is 64 MiB, so valid sectors are 0.._BLK_DISK_SECTORS-1.
+_BLK_DISK_SECTORS = (64 * 1024 * 1024) // 512
+_BLK_VALID_TYPES = [
+    VIRTIO_BLK_T_IN, VIRTIO_BLK_T_OUT, VIRTIO_BLK_T_FLUSH,
+    VIRTIO_BLK_T_GET_ID, VIRTIO_BLK_T_GET_LIFETIME,
+    VIRTIO_BLK_T_DISCARD, VIRTIO_BLK_T_WRITE_ZEROES,
+]
+
+
+def _op_blk_valid_header(vq):
+    """Shape the outhdr with a valid blk type and an in-range sector."""
+    if len(vq.payload) < 16:
+        return
+    payload = bytearray(vq.payload)
+    struct.pack_into("<IIQ", payload, 0, random.choice(_BLK_VALID_TYPES), 0,
+                     random.randint(0, _BLK_DISK_SECTORS - 1))
+    vq.payload = bytes(payload)
+
+
+def _op_blk_oob_sector(vq):
+    """Shape the outhdr with a valid type but an out-of-range sector."""
+    if len(vq.payload) < 16:
+        return
+    sector = random.choice([
+        _BLK_DISK_SECTORS,
+        _BLK_DISK_SECTORS + random.randint(1, 1 << 20),
+        0xFFFFFFFFFFFFFFFF,
+    ])
+    payload = bytearray(vq.payload)
+    struct.pack_into("<IIQ", payload, 0, random.choice(_BLK_VALID_TYPES), 0,
+                     sector)
+    vq.payload = bytes(payload)
+
+
 _STRUCT_OPS = [
     _op_set_len, _op_set_flags, _op_make_chain, _op_make_loop,
     _op_make_indirect, _op_insert_desc, _op_clone_desc, _op_remove_desc,
     _op_avail_point, _op_dup_avail, _op_remove_avail, _op_avail_idx,
-    _op_queue_size,
+    _op_queue_size, _op_blk_valid_header, _op_blk_oob_sector,
 ]
 
 

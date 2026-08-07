@@ -2109,6 +2109,30 @@ def test_blk_request_seeds_have_valid_headers():
         assert len(vq.descs) == (2 if name == "flush" else 3)
 
 
+def test_op_blk_valid_header_shapes_in_range():
+    """The valid-header operator writes a known type and in-range sector."""
+    random.seed(3)
+    vq = FUZZ_MOD.FuzzBlob.parse(FUZZ_MOD.make_seed()).segments[0].vq
+    for _ in range(20):
+        FUZZ_MOD._op_blk_valid_header(vq)
+        req_type, _res, sector = FUZZ_MOD.struct.unpack_from(
+            "<IIQ", vq.payload, 0)
+        assert req_type in FUZZ_MOD._BLK_VALID_TYPES
+        assert sector < FUZZ_MOD._BLK_DISK_SECTORS
+
+
+def test_op_blk_oob_sector_shapes_out_of_range():
+    """The out-of-range operator keeps a valid type but a bad sector."""
+    random.seed(4)
+    vq = FUZZ_MOD.FuzzBlob.parse(FUZZ_MOD.make_seed()).segments[0].vq
+    for _ in range(20):
+        FUZZ_MOD._op_blk_oob_sector(vq)
+        req_type, _res, sector = FUZZ_MOD.struct.unpack_from(
+            "<IIQ", vq.payload, 0)
+        assert req_type in FUZZ_MOD._BLK_VALID_TYPES
+        assert sector >= FUZZ_MOD._BLK_DISK_SECTORS
+
+
 def test_mutate_returns_versioned_container():
     """mutate consumes and returns a valid versioned blob."""
     random.seed(7)
