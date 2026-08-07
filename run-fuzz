@@ -168,6 +168,66 @@ def make_blk_blob(vring):
     ).serialize()
 
 
+# virtio_blk request types (lib/virtio_spec.h)
+VIRTIO_BLK_T_IN = 0
+VIRTIO_BLK_T_OUT = 1
+VIRTIO_BLK_T_FLUSH = 4
+VIRTIO_BLK_T_GET_ID = 8
+VIRTIO_BLK_T_GET_LIFETIME = 10
+VIRTIO_BLK_T_DISCARD = 11
+VIRTIO_BLK_T_WRITE_ZEROES = 13
+
+# Data buffer sizes the device fills or reads for each shaped request.
+VIRTIO_BLK_ID_BYTES = 20        # GET_ID string length
+_BLK_LIFETIME_LEN = 12          # virtio_blk_lifetime struct
+_BLK_DISCARD_SEG_LEN = 16       # virtio_blk_discard_write_zeroes struct
+_BLK_DESC_F_NEXT = 0x01
+_BLK_DESC_F_WRITE = 0x02
+
+
+def _blk_request_blob(req_type, sector, data, data_writable):
+    """Build a valid blk request: header, optional data, status byte.
+
+    data is the middle descriptor bytes, or None for a header plus status
+    request like FLUSH. data_writable marks the data buffer as device
+    filled rather than guest supplied.
+    """
+    payload = bytearray(struct.pack("<IIQ", req_type, 0, sector))
+    if data is None:
+        descs = [[16, _BLK_DESC_F_NEXT, 1], [1, _BLK_DESC_F_WRITE, 0]]
+        payload += b"\xff"
+    else:
+        data_flags = _BLK_DESC_F_NEXT
+        if data_writable:
+            data_flags |= _BLK_DESC_F_WRITE
+        descs = [
+            [16, _BLK_DESC_F_NEXT, 1],
+            [len(data), data_flags, 2],
+            [1, _BLK_DESC_F_WRITE, 0],
+        ]
+        payload += bytes(data)
+        payload += b"\xff"
+    return make_blk_blob(make_blob(16, descs, 1, [0], bytes(payload)))
+
+
+def blk_request_seeds():
+    """One valid blob per blk request type, keyed by a short name."""
+    discard_seg = struct.pack("<QII", 0, 1, 0)  # sector, num_sectors, flags
+    return {
+        "in": _blk_request_blob(VIRTIO_BLK_T_IN, 0, b"\x00" * 512, True),
+        "out": _blk_request_blob(VIRTIO_BLK_T_OUT, 0, b"\x00" * 512, False),
+        "flush": _blk_request_blob(VIRTIO_BLK_T_FLUSH, 0, None, False),
+        "get_id": _blk_request_blob(VIRTIO_BLK_T_GET_ID, 0,
+                                    b"\x00" * VIRTIO_BLK_ID_BYTES, True),
+        "get_lifetime": _blk_request_blob(VIRTIO_BLK_T_GET_LIFETIME, 0,
+                                          b"\x00" * _BLK_LIFETIME_LEN, True),
+        "discard": _blk_request_blob(VIRTIO_BLK_T_DISCARD, 0,
+                                     discard_seg, False),
+        "write_zeroes": _blk_request_blob(VIRTIO_BLK_T_WRITE_ZEROES, 0,
+                                          discard_seg, False),
+    }
+
+
 # --- Mutation Engine ---
 
 def mutate(blob):
@@ -1730,6 +1790,17 @@ def cmd_seed(args):
             count += 1
 
     print(f"[*] Extracted {count} seeds from {len(test_files)} test files into {args.corpus_dir}/")
+
+    blk_dir = _device_dir(args.corpus_dir, "blk")
+    os.makedirs(blk_dir, exist_ok=True)
+    typed = 0
+    for name, blob in blk_request_seeds().items():
+        out_path = os.path.join(blk_dir, f"blk_req_{name}.bin")
+        if not os.path.exists(out_path):
+            with open(out_path, "wb") as fh:
+                fh.write(blob)
+            typed += 1
+    print(f"[*] Wrote {typed} valid blk request seeds into {blk_dir}/")
 
 
 def cmd_triage(args):

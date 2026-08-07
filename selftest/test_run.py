@@ -2091,6 +2091,24 @@ def test_corpus_path_routes_by_device():
         assert os.path.basename(path).startswith("gen_000007_")
 
 
+def test_blk_request_seeds_have_valid_headers():
+    """Each blk request seed carries a coherent outhdr type on blk."""
+    expected = {
+        "in": 0, "out": 1, "flush": 4, "get_id": 8,
+        "get_lifetime": 10, "discard": 11, "write_zeroes": 13,
+    }
+    seeds = FUZZ_MOD.blk_request_seeds()
+    assert set(seeds) == set(expected)
+    for name, blob in seeds.items():
+        assert FUZZ_MOD._blob_device_name(blob) == "blk"
+        vq = FUZZ_MOD.FuzzBlob.parse(blob).segments[0].vq
+        req_type = FUZZ_MOD.struct.unpack_from("<I", vq.payload, 0)[0]
+        assert req_type == expected[name]
+        assert vq.descs[0][1] & 0x01       # header has NEXT
+        assert vq.descs[-1][1] & 0x02      # status is writable
+        assert len(vq.descs) == (2 if name == "flush" else 3)
+
+
 def test_mutate_returns_versioned_container():
     """mutate consumes and returns a valid versioned blob."""
     random.seed(7)
