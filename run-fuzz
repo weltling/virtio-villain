@@ -161,10 +161,10 @@ class FuzzBlob:
         return bytes(data)
 
 
-def make_blk_blob(vring):
-    """Wrap a single virtqueue blob as a blk queue zero segment."""
+def make_blk_blob(vring, queue_index=0):
+    """Wrap a single virtqueue blob as a blk segment on a request queue."""
     return FuzzBlob(
-        [FuzzSegment(VIRTIO_PCI_DEVICE_BLK, 0, VqBlob.parse(vring))]
+        [FuzzSegment(VIRTIO_PCI_DEVICE_BLK, queue_index, VqBlob.parse(vring))]
     ).serialize()
 
 
@@ -185,12 +185,13 @@ _BLK_DESC_F_NEXT = 0x01
 _BLK_DESC_F_WRITE = 0x02
 
 
-def _blk_request_blob(req_type, sector, data, data_writable):
+def _blk_request_blob(req_type, sector, data, data_writable, queue_index=0):
     """Build a valid blk request: header, optional data, status byte.
 
     data is the middle descriptor bytes, or None for a header plus status
     request like FLUSH. data_writable marks the data buffer as device
-    filled rather than guest supplied.
+    filled rather than guest supplied. queue_index selects the request
+    queue the segment targets.
     """
     payload = bytearray(struct.pack("<IIQ", req_type, 0, sector))
     if data is None:
@@ -207,13 +208,18 @@ def _blk_request_blob(req_type, sector, data, data_writable):
         ]
         payload += bytes(data)
         payload += b"\xff"
-    return make_blk_blob(make_blob(16, descs, 1, [0], bytes(payload)))
+    return make_blk_blob(make_blob(16, descs, 1, [0], bytes(payload)),
+                         queue_index)
 
 
 def blk_request_seeds():
-    """One valid blob per blk request type, keyed by a short name."""
+    """One valid blob per blk request type, keyed by a short name.
+
+    Every type seeds request queue 0, and read and write seed the second
+    request queue so the higher queue steering path runs.
+    """
     discard_seg = struct.pack("<QII", 0, 1, 0)  # sector, num_sectors, flags
-    return {
+    seeds = {
         "in": _blk_request_blob(VIRTIO_BLK_T_IN, 0, b"\x00" * 512, True),
         "out": _blk_request_blob(VIRTIO_BLK_T_OUT, 0, b"\x00" * 512, False),
         "flush": _blk_request_blob(VIRTIO_BLK_T_FLUSH, 0, None, False),
@@ -225,7 +231,12 @@ def blk_request_seeds():
                                      discard_seg, False),
         "write_zeroes": _blk_request_blob(VIRTIO_BLK_T_WRITE_ZEROES, 0,
                                           discard_seg, False),
+        "in_q1": _blk_request_blob(VIRTIO_BLK_T_IN, 0, b"\x00" * 512, True,
+                                   queue_index=1),
+        "out_q1": _blk_request_blob(VIRTIO_BLK_T_OUT, 0, b"\x00" * 512, False,
+                                    queue_index=1),
     }
+    return seeds
 
 
 # --- Mutation Engine ---
@@ -1084,7 +1095,7 @@ def _fuzz_vmm_cmd(vmm_path, kernel, initramfs_path, disk, pmem_path,
         vmm_path,
         "--kernel", kernel,
         "--initramfs", initramfs_path,
-        "--disk", f"path={disk},num_queues={cpus}",
+        "--disk", f"path={disk},num_queues={max(cpus, 2)}",
         "--net", "tap=,num_queues=2",
         "--vsock", f"cid={cid},socket={vsock_path}",
         "--balloon", "size=0",

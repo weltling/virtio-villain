@@ -2096,17 +2096,20 @@ def test_blk_request_seeds_have_valid_headers():
     expected = {
         "in": 0, "out": 1, "flush": 4, "get_id": 8,
         "get_lifetime": 10, "discard": 11, "write_zeroes": 13,
+        "in_q1": 0, "out_q1": 1,
     }
     seeds = FUZZ_MOD.blk_request_seeds()
     assert set(seeds) == set(expected)
     for name, blob in seeds.items():
         assert FUZZ_MOD._blob_device_name(blob) == "blk"
-        vq = FUZZ_MOD.FuzzBlob.parse(blob).segments[0].vq
+        segment = FUZZ_MOD.FuzzBlob.parse(blob).segments[0]
+        vq = segment.vq
         req_type = FUZZ_MOD.struct.unpack_from("<I", vq.payload, 0)[0]
         assert req_type == expected[name]
         assert vq.descs[0][1] & 0x01       # header has NEXT
         assert vq.descs[-1][1] & 0x02      # status is writable
         assert len(vq.descs) == (2 if name == "flush" else 3)
+        assert segment.queue_index == (1 if name.endswith("_q1") else 0)
 
 
 def test_op_blk_valid_header_shapes_in_range():
@@ -2149,7 +2152,7 @@ def test_fuzz_vmm_command_provisions_auxiliary_devices():
     cmd = FUZZ_MOD._fuzz_vmm_cmd(
         "/vmm", "/kernel", "/initramfs", "/disk", "/pmem", "/work",
         1, "128M")
-    assert ["--disk", "path=/disk,num_queues=1"] == cmd[5:7]
+    assert ["--disk", "path=/disk,num_queues=2"] == cmd[5:7]
     assert ["--net", "tap=,num_queues=2"] == cmd[7:9]
     assert "--vsock" in cmd
     assert ["--balloon", "size=0"] == cmd[11:13]
