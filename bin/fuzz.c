@@ -14,6 +14,7 @@
 #include "lib/util.h"
 #include "lib/virtio_pci.h"
 #include "lib/vring.h"
+#include "lib/virtio_spec.h"
 #include "lib/fuzz_input.h"
 
 /*
@@ -169,6 +170,25 @@ found_device:
         }
         device->dev.common->device_status |= VIRTIO_STATUS_DRIVER_OK;
         __sync_synchronize();
+    }
+
+    /* Drive the blk config read and writeback cache mode branches by
+     * reading the capacity and toggling the WCE byte before the kicks. */
+    for (uint16_t d = 0; d < device_count; d++) {
+        struct fuzz_device *device = &devices[d];
+        if (device->device_id != VIRTIO_PCI_DEVICE_BLK)
+            continue;
+        volatile uint8_t *cfg = device->dev.device_cfg;
+        if (!cfg)
+            continue;
+        if (device->dev.device_cfg_length >= 8) {
+            volatile uint64_t *capacity = (volatile uint64_t *)cfg;
+            (void)*capacity;
+        }
+        if (device->dev.device_cfg_length > VIRTIO_BLK_CFG_WCE_OFFSET) {
+            uint8_t wce = cfg[VIRTIO_BLK_CFG_WCE_OFFSET];
+            cfg[VIRTIO_BLK_CFG_WCE_OFFSET] = wce ? 0 : 1;
+        }
     }
 
     for (uint16_t i = 0; i < target_count; i++)
