@@ -1165,6 +1165,39 @@ def _device_from_segment(segment):
     raise ValueError(f"unknown virtio device id 0x{segment.device_id:04x}")
 
 
+def _blob_device_name(blob):
+    """Return the device name a fuzz blob targets, from its first segment."""
+    return _device_from_segment(FuzzBlob.parse(blob).segments[0])
+
+
+def _device_dir(base, device):
+    """Return the per-device subdirectory of a corpus or crashes root."""
+    return os.path.join(base, device)
+
+
+def make_device_seed(device):
+    """Build a minimal seed blob targeting the given device on queue 0."""
+    device_id = _DEVICE_MAP[device][2]
+    vq = FuzzBlob.parse(make_seed()).segments[0].vq
+    return FuzzBlob([FuzzSegment(device_id, 0, vq)]).serialize()
+
+
+def _crash_path(crashes_dir, blob):
+    """Return the per-device path a crash blob is saved under."""
+    dev_dir = _device_dir(crashes_dir, _blob_device_name(blob))
+    os.makedirs(dev_dir, exist_ok=True)
+    blob_hash = hashlib.sha256(blob).hexdigest()[:16]
+    return os.path.join(dev_dir, f"crash_{blob_hash}.bin")
+
+
+def _corpus_path(corpus_dir, blob, iteration):
+    """Return the per-device path a new corpus blob is saved under."""
+    dev_dir = _device_dir(corpus_dir, _blob_device_name(blob))
+    os.makedirs(dev_dir, exist_ok=True)
+    blob_hash = hashlib.sha256(blob).hexdigest()[:16]
+    return os.path.join(dev_dir, f"gen_{iteration:06d}_{blob_hash}.bin")
+
+
 def cmd_gen_test(args):
     """Generate a C test from a fuzz blob, mirroring fuzz.c semantics."""
     container = open(args.blob, "rb").read()
@@ -1683,10 +1716,13 @@ def cmd_seed(args):
         blob = _extract_seeds_from_file(path)
         if blob is None:
             continue
+        device = _blob_device_name(blob)
+        dev_dir = _device_dir(args.corpus_dir, device)
+        os.makedirs(dev_dir, exist_ok=True)
         # Deduplicate by hash
         blob_hash = hashlib.sha256(blob).hexdigest()[:16]
         out_path = os.path.join(
-            args.corpus_dir,
+            dev_dir,
             f"test_{os.path.basename(path).replace('.c', '')}_{blob_hash}.bin")
         if not os.path.exists(out_path):
             with open(out_path, "wb") as fh:
@@ -1713,9 +1749,8 @@ def cmd_triage(args):
     initramfs_path = os.path.join(profraw_dir, "initramfs.cpio.gz")
 
     crash_files = sorted(
-        os.path.join(args.crashes_dir, f)
-        for f in os.listdir(args.crashes_dir)
-        if f.endswith(".bin")
+        glob.glob(os.path.join(args.crashes_dir, "**", "*.bin"),
+                  recursive=True)
     )
     if not crash_files:
         print("[*] No crash files found.")
@@ -1811,7 +1846,8 @@ def cmd_minimize(args):
     """Remove corpus entries that don't contribute unique coverage."""
     _require_llvm_tools("minimize", args.vmm)
 
-    corpus_files = sorted(glob.glob(os.path.join(args.corpus_dir, "*.bin")))
+    corpus_files = sorted(glob.glob(
+        os.path.join(args.corpus_dir, "**", "*.bin"), recursive=True))
     if not corpus_files:
         sys.exit(f"No .bin files in {args.corpus_dir}")
 
@@ -1891,7 +1927,8 @@ def cmd_cov_report(args):
     """Generate an HTML coverage report from the corpus."""
     profdata_tool, cov_tool = _require_llvm_tools("cov-report", args.vmm)
 
-    corpus_files = sorted(glob.glob(os.path.join(args.corpus_dir, "*.bin")))
+    corpus_files = sorted(glob.glob(
+        os.path.join(args.corpus_dir, "**", "*.bin"), recursive=True))
     profraw_dir = os.path.join(_SCRIPT_DIR, "target", "profraw")
     has_profraw = (not args.no_profraw and os.path.isdir(profraw_dir)
                    and glob.glob(os.path.join(profraw_dir, "*.profraw")))
@@ -2019,8 +2056,9 @@ def cmd_fuzz(args):
     # Load or seed corpus
     corpus = []
     skipped = 0
-    for f in os.listdir(args.corpus_dir):
-        path = os.path.join(args.corpus_dir, f)
+    filtered = 0
+    for path in glob.glob(os.path.join(args.corpus_dir, "**", "*.bin"),
+                          recursive=True):
         with open(path, "rb") as fh:
             entry = fh.read()
         try:
@@ -2028,14 +2066,22 @@ def cmd_fuzz(args):
         except ValueError:
             skipped += 1
             continue
+        if args.device and _blob_device_name(entry) != args.device:
+            filtered += 1
+            continue
         corpus.append(entry)
     if skipped:
         print(f"[*] Skipped {skipped} corpus entries not in the "
               "current blob format")
+    if filtered:
+        print(f"[*] Skipped {filtered} corpus entries not targeting "
+              f"{args.device}")
     if not corpus:
-        seed = make_seed()
+        seed = make_device_seed(args.device) if args.device else make_seed()
         corpus.append(seed)
-        with open(os.path.join(args.corpus_dir, "seed_000.bin"), "wb") as fh:
+        seed_dir = _device_dir(args.corpus_dir, _blob_device_name(seed))
+        os.makedirs(seed_dir, exist_ok=True)
+        with open(os.path.join(seed_dir, "seed_000.bin"), "wb") as fh:
             fh.write(seed)
         print("[*] Seeded corpus with 1 entry")
     else:
@@ -2077,6 +2123,8 @@ def cmd_fuzz(args):
           f"cpus={args.cpus}, memory={args.memory}")
     print(f"[*] VMM={args.vmm}")
     print(f"[*] Corpus: {args.corpus_dir}/, Crashes: {args.crashes_dir}/")
+    if args.device:
+        print(f"[*] Device focus: {args.device}")
     print()
 
     start_time = time.time()
@@ -2132,9 +2180,7 @@ def cmd_fuzz(args):
 
                 if crashed:
                     stats["crashes"] += 1
-                    blob_hash = hashlib.sha256(blob).hexdigest()[:16]
-                    crash_path = os.path.join(
-                        args.crashes_dir, f"crash_{blob_hash}.bin")
+                    crash_path = _crash_path(args.crashes_dir, blob)
                     if not os.path.exists(crash_path):
                         with open(crash_path, "wb") as fh:
                             fh.write(blob)
@@ -2149,10 +2195,8 @@ def cmd_fuzz(args):
                         baseline_edges |= new_edges
                         corpus.append(blob)
                         stats["corpus_size"] = len(corpus)
-                        blob_hash = hashlib.sha256(blob).hexdigest()[:16]
-                        corpus_path = os.path.join(
-                            args.corpus_dir,
-                            f"gen_{i:06d}_{blob_hash}.bin")
+                        corpus_path = _corpus_path(
+                            args.corpus_dir, blob, i)
                         with open(corpus_path, "wb") as fh:
                             fh.write(blob)
 
@@ -2200,10 +2244,7 @@ def cmd_fuzz(args):
 
                         if crashed:
                             stats["crashes"] += 1
-                            blob_hash = hashlib.sha256(blob).hexdigest()[:16]
-                            crash_path = os.path.join(
-                                args.crashes_dir,
-                                f"crash_{blob_hash}.bin")
+                            crash_path = _crash_path(args.crashes_dir, blob)
                             if not os.path.exists(crash_path):
                                 with open(crash_path, "wb") as fh:
                                     fh.write(blob)
@@ -2219,11 +2260,8 @@ def cmd_fuzz(args):
                                 baseline_edges |= new_edges
                                 corpus.append(blob)
                                 stats["corpus_size"] = len(corpus)
-                                blob_hash = \
-                                    hashlib.sha256(blob).hexdigest()[:16]
-                                corpus_path = os.path.join(
-                                    args.corpus_dir,
-                                    f"gen_{iteration:06d}_{blob_hash}.bin")
+                                corpus_path = _corpus_path(
+                                    args.corpus_dir, blob, iteration)
                                 with open(corpus_path, "wb") as fh:
                                     fh.write(blob)
 
@@ -2330,6 +2368,10 @@ def main():
                         "(default: target/crashes)")
     g.add_argument("--no-coverage", action="store_true",
                    help="Skip coverage feedback (dumb fuzzing)")
+    g.add_argument("--device", default=None,
+                   choices=sorted(_DEVICE_MAP), metavar="DEV",
+                   help="Focus fuzzing on one virtio device "
+                        "(default: all devices in the corpus)")
     g = p_fuzz.add_argument_group("execution")
     g.add_argument("-j", "--jobs", type=int, default=1, metavar="N",
                    help="Parallel VMs (default: 1)")

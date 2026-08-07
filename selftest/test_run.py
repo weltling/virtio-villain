@@ -2063,6 +2063,34 @@ def test_fuzzblob_segment_selects_test_device():
     assert FUZZ_MOD._device_from_segment(segment) == "rng"
 
 
+def test_make_device_seed_targets_device():
+    """A device seed carries the device id and parses back to its name."""
+    seed = FUZZ_MOD.make_device_seed("rng")
+    parsed = FUZZ_MOD.FuzzBlob.parse(seed)
+    assert parsed.segments[0].device_id == FUZZ_MOD._DEVICE_MAP["rng"][2]
+    assert FUZZ_MOD._blob_device_name(seed) == "rng"
+
+
+def test_crash_path_routes_by_device():
+    """A crash blob is saved under a per-device subdirectory."""
+    with tempfile.TemporaryDirectory() as td:
+        seed = FUZZ_MOD.make_device_seed("net")
+        path = FUZZ_MOD._crash_path(td, seed)
+        assert os.path.dirname(path) == os.path.join(td, "net")
+        assert os.path.isdir(os.path.join(td, "net"))
+        assert os.path.basename(path).startswith("crash_")
+
+
+def test_corpus_path_routes_by_device():
+    """A new corpus blob is saved under a per-device subdirectory."""
+    with tempfile.TemporaryDirectory() as td:
+        seed = FUZZ_MOD.make_device_seed("console")
+        path = FUZZ_MOD._corpus_path(td, seed, 7)
+        assert os.path.dirname(path) == os.path.join(td, "console")
+        assert os.path.isdir(os.path.join(td, "console"))
+        assert os.path.basename(path).startswith("gen_000007_")
+
+
 def test_mutate_returns_versioned_container():
     """mutate consumes and returns a valid versioned blob."""
     random.seed(7)
