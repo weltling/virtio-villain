@@ -55,6 +55,15 @@ static void shutdown(void)
     _exit(0);
 }
 
+/* Features to negotiate per device so control queues become live. The
+ * net control queue only exists when CTRL_VQ is negotiated. */
+static unsigned __int128 fuzz_device_features(uint16_t device_id)
+{
+    if (device_id == VIRTIO_PCI_DEVICE_NET)
+        return (unsigned __int128)1 << VIRTIO_NET_F_CTRL_VQ;
+    return 0;
+}
+
 int main(void)
 {
     if (getpid() != 1) {
@@ -117,7 +126,9 @@ found_device:
     for (uint16_t d = 0; d < device_count; d++) {
         struct fuzz_device *device = &devices[d];
         if (virtio_pci_find(device->device_id, &device->dev) < 0 ||
-            virtio_pci_init(&device->dev) < 0) {
+            virtio_pci_init_features(
+                &device->dev,
+                fuzz_device_features(device->device_id)) < 0) {
             printf("FUZZ: device init failed\n");
             shutdown();
         }

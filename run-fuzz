@@ -54,6 +54,7 @@ FUZZ_BLOB_HEADER_FMT = "<4sHH"
 FUZZ_BLOB_HEADER_SIZE = struct.calcsize(FUZZ_BLOB_HEADER_FMT)
 FUZZ_SEGMENT_HEADER_FMT = "<HHI"
 FUZZ_SEGMENT_HEADER_SIZE = struct.calcsize(FUZZ_SEGMENT_HEADER_FMT)
+VIRTIO_PCI_DEVICE_NET = 0x1041
 VIRTIO_PCI_DEVICE_BLK = 0x1042
 HEADER_FMT = "<HHHH"  # queue_size, num_descs, avail_idx, avail_count
 HEADER_SIZE = struct.calcsize(HEADER_FMT)
@@ -237,6 +238,50 @@ def blk_request_seeds():
                                     queue_index=1),
     }
     return seeds
+
+
+# virtio-net control queue (lib/virtio_spec.h). With the fuzz net device
+# booted at num_queues=2 the queues are rx=0, tx=1, and the control queue
+# at index 2 once VIRTIO_NET_F_CTRL_VQ is negotiated by the guest.
+VIRTIO_NET_F_CTRL_VQ = 17
+VIRTIO_NET_CTRL_MQ = 4
+VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET = 0
+_NET_CTRL_QUEUE = 2
+
+
+def _net_ctrl_blob(cls, command, data):
+    """Build a net control request on the control queue: hdr, data, ack.
+
+    data is the command payload bytes, or None for a header plus ack
+    request with no command data.
+    """
+    payload = bytearray(struct.pack("<BB", cls & 0xff, command & 0xff))
+    if data is None:
+        descs = [[2, _BLK_DESC_F_NEXT, 1], [1, _BLK_DESC_F_WRITE, 0]]
+    else:
+        descs = [
+            [2, _BLK_DESC_F_NEXT, 1],
+            [len(data), _BLK_DESC_F_NEXT, 2],
+            [1, _BLK_DESC_F_WRITE, 0],
+        ]
+        payload += bytes(data)
+    payload += b"\xff"  # ack byte the device writes
+    vring = make_blob(16, descs, 1, [0], bytes(payload))
+    return FuzzBlob([FuzzSegment(VIRTIO_PCI_DEVICE_NET, _NET_CTRL_QUEUE,
+                                 VqBlob.parse(vring))]).serialize()
+
+
+def net_ctrl_seeds():
+    """Valid and malformed net control queue requests, keyed by name."""
+    return {
+        "mq_pairs_set": _net_ctrl_blob(VIRTIO_NET_CTRL_MQ,
+                                       VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET,
+                                       struct.pack("<H", 1)),
+        "bad_class": _net_ctrl_blob(0xff, 0x00, b"\x00\x00"),
+        "bad_command": _net_ctrl_blob(VIRTIO_NET_CTRL_MQ, 0xff, b"\x00\x00"),
+        "mq_no_data": _net_ctrl_blob(VIRTIO_NET_CTRL_MQ,
+                                     VIRTIO_NET_CTRL_MQ_VQ_PAIRS_SET, None),
+    }
 
 
 # --- Mutation Engine ---
@@ -1846,6 +1891,17 @@ def cmd_seed(args):
                 fh.write(blob)
             typed += 1
     print(f"[*] Wrote {typed} valid blk request seeds into {blk_dir}/")
+
+    net_dir = _device_dir(args.corpus_dir, "net")
+    os.makedirs(net_dir, exist_ok=True)
+    net_typed = 0
+    for name, blob in net_ctrl_seeds().items():
+        out_path = os.path.join(net_dir, f"net_ctrl_{name}.bin")
+        if not os.path.exists(out_path):
+            with open(out_path, "wb") as fh:
+                fh.write(blob)
+            net_typed += 1
+    print(f"[*] Wrote {net_typed} net control queue seeds into {net_dir}/")
 
 
 def cmd_triage(args):

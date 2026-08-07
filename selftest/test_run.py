@@ -2136,6 +2136,25 @@ def test_op_blk_oob_sector_shapes_out_of_range():
         assert sector >= FUZZ_MOD._BLK_DISK_SECTORS
 
 
+def test_net_ctrl_seeds_target_control_queue():
+    """Net control seeds target the net control queue with a hdr and ack."""
+    seeds = FUZZ_MOD.net_ctrl_seeds()
+    assert set(seeds) == {"mq_pairs_set", "bad_class", "bad_command",
+                          "mq_no_data"}
+    for name, blob in seeds.items():
+        assert FUZZ_MOD._blob_device_name(blob) == "net"
+        segment = FUZZ_MOD.FuzzBlob.parse(blob).segments[0]
+        assert segment.queue_index == FUZZ_MOD._NET_CTRL_QUEUE
+        vq = segment.vq
+        cls, command = FUZZ_MOD.struct.unpack_from("<BB", vq.payload, 0)
+        if name == "bad_class":
+            assert cls == 0xff
+        if name == "bad_command":
+            assert command == 0xff
+        assert vq.descs[0][1] & 0x01       # header has NEXT
+        assert vq.descs[-1][1] & 0x02      # ack is writable
+
+
 def test_mutate_returns_versioned_container():
     """mutate consumes and returns a valid versioned blob."""
     random.seed(7)
