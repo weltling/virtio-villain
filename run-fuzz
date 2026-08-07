@@ -1095,7 +1095,7 @@ def _fuzz_vmm_cmd(vmm_path, kernel, initramfs_path, disk, pmem_path,
         vmm_path,
         "--kernel", kernel,
         "--initramfs", initramfs_path,
-        "--disk", f"path={disk},num_queues={max(cpus, 2)}",
+        "--disk", f"path={disk},num_queues={cpus}",
         "--net", "tap=,num_queues=2",
         "--vsock", f"cid={cid},socket={vsock_path}",
         "--balloon", "size=0",
@@ -1113,7 +1113,7 @@ def _fuzz_vmm_cmd(vmm_path, kernel, initramfs_path, disk, pmem_path,
 
 
 def run_vmm(vmm_path, initramfs_path, profraw_dir, timeout=3,
-            kernel_path=None, disk_path=None, cpus=1, memory="128M"):
+            kernel_path=None, disk_path=None, cpus=2, memory="128M"):
     """Boot the VMM with the fuzz initramfs. Returns (exit_code, crashed)."""
     if kernel_path:
         kernel = kernel_path
@@ -2491,8 +2491,8 @@ def main():
     g = p_fuzz.add_argument_group("execution")
     g.add_argument("-j", "--jobs", type=int, default=1, metavar="N",
                    help="Parallel VMs (default: 1)")
-    g.add_argument("--cpus", type=int, default=1, metavar="N",
-                   help="vCPUs per VM (default: 1)")
+    g.add_argument("--cpus", type=int, default=2, metavar="N",
+                   help="vCPUs per VM (default: 2)")
     g.add_argument("--memory", default="128M",
                    type=_run_mod._normalize_mem, metavar="SIZE",
                    help="RAM per VM (default: 128M)")

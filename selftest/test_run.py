@@ -2151,7 +2151,7 @@ def test_fuzz_vmm_command_provisions_auxiliary_devices():
     """Fuzz commands include every device targeted by the guest format."""
     cmd = FUZZ_MOD._fuzz_vmm_cmd(
         "/vmm", "/kernel", "/initramfs", "/disk", "/pmem", "/work",
-        1, "128M")
+        2, "128M")
     assert ["--disk", "path=/disk,num_queues=2"] == cmd[5:7]
     assert ["--net", "tap=,num_queues=2"] == cmd[7:9]
     assert "--vsock" in cmd
