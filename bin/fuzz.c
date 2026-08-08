@@ -209,6 +209,29 @@ found_device:
     /* Wait for device to process */
     usleep(50000);
 
+    /* Reset and re-activate each device so the device reset, the queue
+     * teardown, and a second activate run in addition to the first
+     * activate. init_features clears device_status from DRIVER_OK, which
+     * is the reset the device model tears its queues down on. The vring
+     * memory is preserved, so re-attaching and kicking replays it. */
+    for (uint16_t d = 0; d < device_count; d++) {
+        struct fuzz_device *device = &devices[d];
+        if (virtio_pci_init_features(
+                &device->dev,
+                fuzz_device_features(device->device_id)) < 0)
+            continue;
+        for (uint16_t q = 0; q <= device->max_queue; q++)
+            vring_attach(&device->dev, &queues[d][q], q);
+        device->dev.common->device_status |= VIRTIO_STATUS_DRIVER_OK;
+        __sync_synchronize();
+    }
+
+    for (uint16_t i = 0; i < target_count; i++)
+        virtio_pci_kick(&devices[targets[i].device_index].dev,
+                        targets[i].queue_index);
+
+    usleep(50000);
+
     printf("FUZZ: done\n");
     shutdown();
     return 0;
