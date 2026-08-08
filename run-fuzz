@@ -284,6 +284,55 @@ def net_ctrl_seeds():
     }
 
 
+# virtio-mem guest request type (lib/virtio_spec.h).
+VIRTIO_MEM_REQ_STATE = 3
+
+
+def _device_seg_blob(device, queue_index, descs, payload):
+    """Wrap descriptors and payload as one segment for a device queue."""
+    device_id = _DEVICE_MAP[device][2]
+    vring = make_blob(16, descs, 1, [0], bytes(payload))
+    return FuzzBlob([FuzzSegment(device_id, queue_index,
+                                 VqBlob.parse(vring))]).serialize()
+
+
+def device_seeds():
+    """One minimal valid seed per device, keyed by (device, name).
+
+    Each seed targets the primary data queue of a device with buffers
+    of the right direction and size so a focused run has a foothold in
+    that device instead of starting from noise.
+    """
+    n = _BLK_DESC_F_NEXT
+    w = _BLK_DESC_F_WRITE
+    net_tx = struct.pack("<BBHHHH", 0, 0, 0, 0, 0, 0) + b"\x00" * 64
+    mem_req = struct.pack("<HHHHQHHHH", VIRTIO_MEM_REQ_STATE, 0, 0, 0,
+                          0, 1, 0, 0, 0)
+    return {
+        # rng: one writable buffer the device fills with random bytes
+        ("rng", "fill"): _device_seg_blob("rng", 0, [[16, w, 0]],
+                                          b"\x00" * 16),
+        # console: a readable transmit buffer on the tx queue
+        ("console", "tx"): _device_seg_blob("console", 1, [[8, 0, 0]],
+                                            b"vv-fuzz\n"),
+        # net: readable frame with a 10 byte header on the tx queue
+        ("net", "tx"): _device_seg_blob("net", 1, [[10, n, 1], [64, 0, 0]],
+                                        net_tx),
+        # net: a writable receive buffer on the rx queue
+        ("net", "rx"): _device_seg_blob("net", 0, [[74, w, 0]],
+                                        b"\x00" * 74),
+        # vsock: a readable packet header on the tx queue
+        ("vsock", "tx"): _device_seg_blob("vsock", 1, [[44, 0, 0]],
+                                          b"\x00" * 44),
+        # balloon: a readable page frame number on the inflate queue
+        ("balloon", "inflate"): _device_seg_blob("balloon", 0, [[4, 0, 0]],
+                                                 b"\x00" * 4),
+        # mem: a readable request and a writable response on the guest queue
+        ("mem", "state"): _device_seg_blob("mem", 0, [[24, n, 1], [10, w, 0]],
+                                           mem_req + b"\x00" * 10),
+    }
+
+
 # --- Mutation Engine ---
 
 def mutate(blob):
@@ -1902,6 +1951,17 @@ def cmd_seed(args):
                 fh.write(blob)
             net_typed += 1
     print(f"[*] Wrote {net_typed} net control queue seeds into {net_dir}/")
+
+    dev_typed = 0
+    for (device, name), blob in device_seeds().items():
+        dev_dir = _device_dir(args.corpus_dir, device)
+        os.makedirs(dev_dir, exist_ok=True)
+        out_path = os.path.join(dev_dir, f"{device}_{name}.bin")
+        if not os.path.exists(out_path):
+            with open(out_path, "wb") as fh:
+                fh.write(blob)
+            dev_typed += 1
+    print(f"[*] Wrote {dev_typed} per device seeds under {args.corpus_dir}/")
 
 
 def cmd_triage(args):

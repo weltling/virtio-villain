@@ -2155,6 +2155,26 @@ def test_net_ctrl_seeds_target_control_queue():
         assert vq.descs[-1][1] & 0x02      # ack is writable
 
 
+def test_device_seeds_target_expected_queues():
+    """Each per device seed lands on the right device and queue."""
+    expected = {
+        ("rng", "fill"): ("rng", 0),
+        ("console", "tx"): ("console", 1),
+        ("net", "tx"): ("net", 1),
+        ("net", "rx"): ("net", 0),
+        ("vsock", "tx"): ("vsock", 1),
+        ("balloon", "inflate"): ("balloon", 0),
+        ("mem", "state"): ("mem", 0),
+    }
+    seeds = FUZZ_MOD.device_seeds()
+    assert set(seeds) == set(expected)
+    for key, blob in seeds.items():
+        device, queue = expected[key]
+        assert FUZZ_MOD._blob_device_name(blob) == device
+        segment = FUZZ_MOD.FuzzBlob.parse(blob).segments[0]
+        assert segment.queue_index == queue
+
+
 def test_mutate_returns_versioned_container():
     """mutate consumes and returns a valid versioned blob."""
     random.seed(7)
