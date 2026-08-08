@@ -38,6 +38,7 @@ struct fuzz_target {
 struct fuzz_device {
     uint16_t device_id;
     uint16_t max_queue;
+    uint16_t queue_count;
     struct virtio_dev dev;
 };
 
@@ -132,7 +133,16 @@ found_device:
             printf("FUZZ: device init failed\n");
             shutdown();
         }
-        for (uint16_t q = 0; q <= device->max_queue; q++) {
+        /* Enable every queue the device advertises so a seed that
+         * targets one queue still meets the minimum the device model
+         * needs to activate. */
+        uint16_t nq = device->dev.common->num_queues;
+        if (nq < device->max_queue + 1)
+            nq = device->max_queue + 1;
+        if (nq > FUZZ_MAX_QUEUE_SIZE)
+            nq = FUZZ_MAX_QUEUE_SIZE;
+        device->queue_count = nq;
+        for (uint16_t q = 0; q < device->queue_count; q++) {
             struct fuzz_target *target = NULL;
             for (uint16_t i = 0; i < target_count; i++) {
                 if (targets[i].device_index == d &&
@@ -220,7 +230,7 @@ found_device:
                 &device->dev,
                 fuzz_device_features(device->device_id)) < 0)
             continue;
-        for (uint16_t q = 0; q <= device->max_queue; q++)
+        for (uint16_t q = 0; q < device->queue_count; q++)
             vring_attach(&device->dev, &queues[d][q], q);
         device->dev.common->device_status |= VIRTIO_STATUS_DRIVER_OK;
         __sync_synchronize();
