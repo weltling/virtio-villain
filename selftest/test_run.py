@@ -2155,6 +2155,21 @@ def test_net_ctrl_seeds_target_control_queue():
         assert vq.descs[-1][1] & 0x02      # ack is writable
 
 
+def test_require_vmm_missing_exits():
+    """A missing VMM path exits cleanly instead of raising later."""
+    try:
+        FUZZ_MOD._require_vmm("/no/such/vmm-xyz")
+    except SystemExit as e:
+        assert "not found" in str(e)
+        return
+    raise AssertionError("expected SystemExit for a missing VMM binary")
+
+
+def test_require_vmm_accepts_executable():
+    """An existing executable passes validation without raising."""
+    FUZZ_MOD._require_vmm(sys.executable)
+
+
 def test_vmm_instrumentation_check_non_binary():
     """A non binary file cannot be told apart, so the check returns None."""
     if not shutil.which("nm"):

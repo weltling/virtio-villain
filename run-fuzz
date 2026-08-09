@@ -1241,6 +1241,20 @@ def _fuzz_vmm_cmd(vmm_path, kernel, initramfs_path, disk, pmem_path,
     ]
 
 
+def _require_vmm(vmm_path):
+    """Exit with a clear message when the VMM binary is missing.
+
+    A cross build puts the binary under target/<triple>/debug/, not
+    target/debug/, which is a common path mistake.
+    """
+    if not os.path.isfile(vmm_path):
+        sys.exit(f"error: VMM binary not found: {vmm_path}\n"
+                 "       Check the --vmm path. A cross build puts it under "
+                 "target/<triple>/debug/, not target/debug/.")
+    if not os.access(vmm_path, os.X_OK):
+        sys.exit(f"error: VMM binary is not executable: {vmm_path}")
+
+
 def run_vmm(vmm_path, initramfs_path, profraw_dir, timeout=3,
             kernel_path=None, disk_path=None, cpus=2, memory="128M"):
     """Boot the VMM with the fuzz initramfs. Returns (exit_code, crashed)."""
@@ -1791,6 +1805,7 @@ def _print_crash_detail(blob, vmm_output, crash_path):
 
 def cmd_replay(args):
     """Replay a crash blob against the VMM."""
+    _require_vmm(args.vmm)
     fuzz_binary = os.path.join(_SCRIPT_DIR, "target", "fuzz")
     if not os.path.exists(fuzz_binary):
         print("[*] Building fuzz guest...")
@@ -2001,6 +2016,7 @@ def cmd_seed(args):
 
 def cmd_triage(args):
     """Replay all crashes, group by error class, print summary."""
+    _require_vmm(args.vmm)
     fuzz_binary = os.path.join(_SCRIPT_DIR, "target", "fuzz")
     if not os.path.exists(fuzz_binary):
         print("[*] Building fuzz guest...")
@@ -2111,6 +2127,7 @@ def _select_minimal_corpus(entry_edges):
 
 def cmd_minimize(args):
     """Remove corpus entries that don't contribute unique coverage."""
+    _require_vmm(args.vmm)
     _require_llvm_tools("minimize", args.vmm)
 
     corpus_files = sorted(glob.glob(
@@ -2192,6 +2209,7 @@ def cmd_minimize(args):
 
 def cmd_cov_report(args):
     """Generate an HTML coverage report from the corpus."""
+    _require_vmm(args.vmm)
     profdata_tool, cov_tool = _require_llvm_tools("cov-report", args.vmm)
 
     corpus_files = sorted(glob.glob(
@@ -2289,6 +2307,7 @@ def cmd_cov_report(args):
 
 def cmd_fuzz(args):
     """Main fuzzing loop."""
+    _require_vmm(args.vmm)
     os.makedirs(args.corpus_dir, exist_ok=True)
     os.makedirs(args.crashes_dir, exist_ok=True)
 
