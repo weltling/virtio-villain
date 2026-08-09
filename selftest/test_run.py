@@ -2155,6 +2155,27 @@ def test_net_ctrl_seeds_target_control_queue():
         assert vq.descs[-1][1] & 0x02      # ack is writable
 
 
+def test_vmm_instrumentation_check_non_binary():
+    """A non binary file cannot be told apart, so the check returns None."""
+    if not shutil.which("nm"):
+        return
+    with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as f:
+        f.write(b"not a binary\n")
+        path = f.name
+    try:
+        assert FUZZ_MOD._vmm_has_coverage_instrumentation(path) is None
+    finally:
+        os.unlink(path)
+
+
+def test_vmm_instrumentation_check_plain_binary():
+    """A normal binary without coverage is reported as not instrumented."""
+    if not shutil.which("nm"):
+        return
+    res = FUZZ_MOD._vmm_has_coverage_instrumentation(sys.executable)
+    assert res in (False, None)
+
+
 def test_device_seeds_target_expected_queues():
     """Each per device seed lands on the right device and queue."""
     expected = {

@@ -1004,6 +1004,41 @@ def _profraw_probe(vmm):
     return None
 
 
+def _vmm_has_coverage_instrumentation(vmm_path):
+    """Best effort check that the VMM was built with coverage.
+
+    Returns True if the binary exposes __llvm_profile symbols, False if
+    nm ran and saw symbols but none matched, or None when it cannot be
+    told (nm missing, unreadable, or a stripped binary with no symbols).
+    """
+    nm = shutil.which("nm")
+    if not nm:
+        return None
+    try:
+        proc = subprocess.Popen([nm, vmm_path], stdout=subprocess.PIPE,
+                                stderr=subprocess.DEVNULL, text=True)
+    except OSError:
+        return None
+    found = False
+    saw_symbol = False
+    try:
+        for line in proc.stdout:
+            saw_symbol = True
+            if "__llvm_profile" in line:
+                found = True
+                break
+    finally:
+        proc.stdout.close()
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+    if found:
+        return True
+    return False if saw_symbol else None
+
+
 def select_coverage_tools(vmm):
     """Pick llvm-profdata/llvm-cov that can actually read the VMM's profraw.
 
@@ -2273,6 +2308,12 @@ def cmd_fuzz(args):
     # Select coverage tools that can actually read this VMM's profraw; fall
     # back to dumb fuzzing if none match (avoids silent edges=0 runs).
     if not args.no_coverage:
+        if _vmm_has_coverage_instrumentation(args.vmm) is False:
+            print("[!] VMM has no __llvm_profile symbols: it was not built "
+                  "with coverage instrumentation, so coverage feedback will "
+                  "find no edges and the corpus will not grow.\n"
+                  "    Rebuild with RUSTFLAGS=\"-C instrument-coverage\" or "
+                  "pass --no-coverage for a dumb run.")
         profdata_tool, cov_tool = select_coverage_tools(args.vmm)
         if not profdata_tool or not cov_tool:
             print("[!] no llvm-profdata/llvm-cov able to read this VMM's "
