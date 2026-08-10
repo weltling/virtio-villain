@@ -2797,6 +2797,48 @@ def test_run_vmm_timeout_reports_timed_out():
     assert timed_out is True
 
 
+def test_run_vmm_calls_overlap_across_threads():
+    """The fuzzer relies on many VM boots running at once. Drive run_vmm
+    from several threads with a stub VMM that just sleeps: if the calls
+    overlap the wall time stays near one sleep, but a regression that
+    serializes boots would approach the summed sleep and fail here."""
+    import threading
+    import time
+
+    workers = 6
+    sleep_s = 0.5
+    with tempfile.TemporaryDirectory() as base:
+        vmm = os.path.join(base, "stubvmm")
+        with open(vmm, "w") as fh:
+            fh.write("#!/bin/sh\nsleep %s\nexit 0\n" % sleep_s)
+        os.chmod(vmm, 0o755)
+        kernel = os.path.join(base, "vmlinux")
+        open(kernel, "wb").close()
+
+        def one(i):
+            wd = os.path.join(base, "w%d" % i)
+            os.makedirs(wd)
+            disk = os.path.join(wd, "disk.raw")
+            open(disk, "wb").close()
+            FUZZ_MOD.run_vmm(vmm, os.path.join(wd, "initramfs"), wd,
+                             timeout=10, kernel_path=kernel, disk_path=disk)
+
+        threads = [threading.Thread(target=one, args=(i,))
+                   for i in range(workers)]
+        start = time.perf_counter()
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        elapsed = time.perf_counter() - start
+
+    # Serial would be workers*sleep_s (3.0s). Overlapping keeps it near
+    # one sleep plus per call overhead; allow generous slack for load.
+    assert elapsed < workers * sleep_s / 2, (
+        "run_vmm boots did not overlap: %.2fs for %d x %.2fs"
+        % (elapsed, workers, sleep_s))
+
+
 def test_getcap_parses_expression():
     """getcap "PATH cap=ep" yields the capability expression."""
     orig_which = RUN_MOD.shutil.which
