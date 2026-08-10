@@ -2774,6 +2774,29 @@ class _CP:
         self.stderr = stderr
 
 
+def test_run_vmm_timeout_reports_timed_out():
+    """A boot timeout returns crashed and timed_out set, so the fuzz
+    loop can reconfirm it instead of trusting a scheduling stall."""
+    import tempfile
+    orig_run = FUZZ_MOD.subprocess.run
+
+    def _raise_timeout(*a, **k):
+        raise FUZZ_MOD.subprocess.TimeoutExpired(cmd="vmm", timeout=3)
+
+    with tempfile.TemporaryDirectory() as d:
+        kernel = os.path.join(d, "vmlinux")
+        open(kernel, "wb").close()
+        try:
+            FUZZ_MOD.subprocess.run = _raise_timeout
+            rc, crashed, out, timed_out = FUZZ_MOD.run_vmm(
+                "/bin/true", os.path.join(d, "initramfs"), d,
+                timeout=1, kernel_path=kernel)
+        finally:
+            FUZZ_MOD.subprocess.run = orig_run
+    assert crashed is True
+    assert timed_out is True
+
+
 def test_getcap_parses_expression():
     """getcap "PATH cap=ep" yields the capability expression."""
     orig_which = RUN_MOD.shutil.which

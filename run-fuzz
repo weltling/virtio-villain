@@ -1281,7 +1281,11 @@ def _require_vmm(vmm_path):
 
 def run_vmm(vmm_path, initramfs_path, profraw_dir, timeout=3,
             kernel_path=None, disk_path=None, cpus=2, memory="128M"):
-    """Boot the VMM with the fuzz initramfs. Returns (exit_code, crashed)."""
+    """Boot the VMM with the fuzz initramfs.
+
+    Returns (exit_code, crashed, output, timed_out). A timeout under
+    parallel load is not a genuine fault, so callers can reconfirm it.
+    """
     if kernel_path:
         kernel = kernel_path
     else:
@@ -1323,9 +1327,9 @@ def run_vmm(vmm_path, initramfs_path, profraw_dir, timeout=3,
         # rather than a real finding. Run with --apply-sysconfig to grant
         # CAP_SYS_PTRACE and remove that artifact at the source.
         crashed = _fault_class(result.returncode, output) is not None
-        return result.returncode, crashed, output
+        return result.returncode, crashed, output, False
     except subprocess.TimeoutExpired:
-        return -1, True, ""
+        return -1, True, "", True
 
 
 # --- Main Loop ---
@@ -1878,7 +1882,7 @@ def cmd_replay(args):
         build_initramfs(fuzz_binary, initramfs_path)
 
         print(f"[*] Replaying {path}...")
-        exit_code, crashed, output = run_vmm(
+        exit_code, crashed, output, _timed_out = run_vmm(
             args.vmm, initramfs_path, profraw_dir, args.timeout,
             kernel_path=args.kernel, disk_path=args.disk
         )
@@ -2107,7 +2111,7 @@ def cmd_triage(args):
         patch_blob(fuzz_binary, blob, section_offset)
         build_initramfs(fuzz_binary, initramfs_path)
 
-        exit_code, crashed, output = run_vmm(
+        exit_code, crashed, output, _timed_out = run_vmm(
             args.vmm, initramfs_path, profraw_dir, args.timeout,
             kernel_path=args.kernel, disk_path=args.disk
         )
@@ -2496,11 +2500,21 @@ def cmd_fuzz(args):
                 os.unlink(os.path.join(w["dir"], fname))
 
         # Run VMM
-        exit_code, crashed, vmm_output = run_vmm(
+        exit_code, crashed, vmm_output, timed_out = run_vmm(
             args.vmm, w["initramfs"], w["dir"], args.timeout,
             kernel_path=kernel, disk_path=w["disk"],
             cpus=args.cpus, memory=args.memory
         )
+
+        # A timeout under parallel load is usually a scheduling stall,
+        # not a hang. Reconfirm with extra headroom before believing it.
+        if timed_out and not args.no_confirm_timeouts:
+            confirm_timeout = max(args.timeout * 3, 12)
+            exit_code, crashed, vmm_output, timed_out = run_vmm(
+                args.vmm, w["initramfs"], w["dir"], confirm_timeout,
+                kernel_path=kernel, disk_path=w["disk"],
+                cpus=args.cpus, memory=args.memory
+            )
 
         # Collect coverage
         edges = set()
@@ -2726,6 +2740,9 @@ def main():
                    help="RAM per VM (default: 128M)")
     g.add_argument("--timeout", type=int, default=3, metavar="SEC",
                    help="VMM boot timeout in seconds (default: 3)")
+    g.add_argument("--no-confirm-timeouts", action="store_true",
+                   help="save timeouts as crashes without reconfirming "
+                        "them with a longer timeout")
     _add_sysconfig(p_fuzz)
     _add_help(p_fuzz)
 
