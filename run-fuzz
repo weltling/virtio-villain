@@ -2644,17 +2644,20 @@ def cmd_fuzz(args):
     except KeyboardInterrupt:
         stop.set()
         print("\n[*] Interrupted")
-
-    elapsed = time.time() - start_time
-    print(f"\n\n[*] Done: {stats['iterations']} iterations in {elapsed:.1f}s "
-          f"({stats['iterations']/elapsed:.1f} exec/s)")
-    print(f"    Corpus: {stats['corpus_size']} entries")
-    print(f"    Crashes: {stats['crashes']}")
-    print(f"    New edges: {stats['new_edges']}")
-
-    # Cleanup
-    for w in worker_dirs:
-        shutil.rmtree(w["dir"], ignore_errors=True)
+    finally:
+        # A second Ctrl-C must not spew a traceback over the summary.
+        try:
+            elapsed = time.time() - start_time
+            rate = stats["iterations"] / elapsed if elapsed > 0 else 0
+            print(f"\n\n[*] Done: {stats['iterations']} iterations in "
+                  f"{elapsed:.1f}s ({rate:.1f} exec/s)")
+            print(f"    Corpus: {stats['corpus_size']} entries")
+            print(f"    Crashes: {stats['crashes']}")
+            print(f"    New edges: {stats['new_edges']}")
+        except KeyboardInterrupt:
+            pass
+        for w in worker_dirs:
+            shutil.rmtree(w["dir"], ignore_errors=True)
 
 
 def main():
