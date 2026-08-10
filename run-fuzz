@@ -2583,7 +2583,8 @@ def cmd_fuzz(args):
                 finally:
                     slot_queue.put(slot)
 
-            with ThreadPoolExecutor(max_workers=jobs) as pool:
+            pool = ThreadPoolExecutor(max_workers=jobs)
+            try:
                 futures = {}
                 for i in range(args.iterations):
                     if stop.is_set():
@@ -2634,6 +2635,11 @@ def cmd_fuzz(args):
                                 f"crashes={stats['crashes']} | "
                                 f"edges={len(baseline_edges)}",
                                 end="\r")
+            finally:
+                # Never block on a running VM boot when interrupted.
+                # Drop queued work and let live children die on the
+                # shared SIGINT or their own timeout.
+                pool.shutdown(wait=False, cancel_futures=True)
 
     except KeyboardInterrupt:
         stop.set()
