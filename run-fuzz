@@ -2111,10 +2111,18 @@ def cmd_triage(args):
         patch_blob(fuzz_binary, blob, section_offset)
         build_initramfs(fuzz_binary, initramfs_path)
 
-        exit_code, crashed, output, _timed_out = run_vmm(
+        exit_code, crashed, output, timed_out = run_vmm(
             args.vmm, initramfs_path, profraw_dir, args.timeout,
             kernel_path=args.kernel, disk_path=args.disk
         )
+        # A lone timeout is often a slow boot, not a hang. Reconfirm
+        # with extra headroom before ranking it as a VMM stall.
+        if timed_out:
+            exit_code, crashed, output, timed_out = run_vmm(
+                args.vmm, initramfs_path, profraw_dir,
+                max(args.timeout * 3, 12),
+                kernel_path=args.kernel, disk_path=args.disk
+            )
         error_class = (_classify_vmm_output(output, exit_code)
                        if crashed else "NO CRASH (fixed?)")
         notes = _annotate_container(blob)
