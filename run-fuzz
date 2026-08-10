@@ -12,7 +12,6 @@ import argparse
 import functools
 import glob
 import hashlib
-import json
 import os
 import random
 import re
@@ -1090,8 +1089,51 @@ def select_coverage_tools(vmm):
     return None, None
 
 
+_PROFDATA_FUNC_RE = re.compile(r"^  (.+):\s*$")
+
+
+def _parse_profdata_counts(text):
+    """Turn llvm-profdata show --counts output into a covered set.
+
+    Reads the merged profile alone, so it never loads the coverage map
+    out of the VMM binary. Each function contributes an entry marker when
+    its function count is nonzero and one marker per nonzero block
+    counter, which gives a cheap edge like signal for the fuzzing loop.
+    """
+    edges = set()
+    func = None
+    fhash = ""
+    for line in text.splitlines():
+        m = _PROFDATA_FUNC_RE.match(line)
+        if m:
+            func = m.group(1)
+            fhash = ""
+            continue
+        s = line.strip()
+        if s.startswith("Hash:"):
+            fhash = s.split(None, 1)[1].strip()
+        elif s.startswith("Function count:"):
+            try:
+                if int(s.split(":", 1)[1]) > 0:
+                    edges.add((func, fhash, -1))
+            except ValueError:
+                pass
+        elif s.startswith("Block counts:"):
+            inside = s[s.find("[") + 1:s.rfind("]")]
+            for i, tok in enumerate(inside.split(",")):
+                tok = tok.strip()
+                if tok and tok != "0":
+                    edges.add((func, fhash, i))
+    return edges
+
+
 def collect_coverage(vmm_binary, profdata_path, profraw_dir):
-    """Merge profraw files and return set of covered regions."""
+    """Merge profraw and derive a covered set from the profile counters.
+
+    The signal comes from llvm-profdata alone, not llvm-cov, so it does
+    not reload the large coverage map out of the VMM binary every
+    iteration. vmm_binary is unused but kept for call compatibility.
+    """
     profraw_files = [
         os.path.join(profraw_dir, f)
         for f in os.listdir(profraw_dir)
@@ -1101,8 +1143,7 @@ def collect_coverage(vmm_binary, profdata_path, profraw_dir):
         return set()
 
     profdata_tool = _SELECTED_PROFDATA or find_llvm_tool("llvm-profdata")
-    cov_tool = _SELECTED_COV or find_llvm_tool("llvm-cov")
-    if not profdata_tool or not cov_tool:
+    if not profdata_tool:
         return set()
 
     merge_cmd = [
@@ -1113,30 +1154,13 @@ def collect_coverage(vmm_binary, profdata_path, profraw_dir):
     if result.returncode != 0:
         return set()
 
-    export_cmd = [
-        cov_tool, "export", vmm_binary,
-        f"-instr-profile={profdata_path}",
-        "-format=text"
+    show_cmd = [
+        profdata_tool, "show", "--all-functions", "--counts", profdata_path
     ]
-    result = subprocess.run(export_cmd, capture_output=True, text=True)
+    result = subprocess.run(show_cmd, capture_output=True, text=True)
     if result.returncode != 0:
         return set()
-
-    try:
-        cov = json.loads(result.stdout)
-    except json.JSONDecodeError:
-        return set()
-
-    edges = set()
-    for datum in cov.get("data", []):
-        for func in datum.get("functions", []):
-            for region in func.get("regions", []):
-                if len(region) >= 7 and region[4] > 0:  # count > 0
-                    # (file_id, line_start, col_start, line_end, col_end)
-                    edge = (func.get("name", ""), region[0], region[1],
-                            region[2], region[3])
-                    edges.add(edge)
-    return edges
+    return _parse_profdata_counts(result.stdout)
 
 
 # --- VMM Runner ---

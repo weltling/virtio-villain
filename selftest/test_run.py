@@ -2155,6 +2155,37 @@ def test_net_ctrl_seeds_target_control_queue():
         assert vq.descs[-1][1] & 0x02      # ack is writable
 
 
+def test_parse_profdata_counts_captures_entry_and_blocks():
+    """Profdata show output yields entry and nonzero block markers."""
+    sample = (
+        "Counters:\n"
+        "  main:\n"
+        "    Hash: 0x000000000a712458\n"
+        "    Counters: 2\n"
+        "    Function count: 2\n"
+        "    Block counts: [1]\n"
+        "  add:\n"
+        "    Hash: 0x000000029c498458\n"
+        "    Counters: 2\n"
+        "    Function count: 0\n"
+        "    Block counts: [0]\n"
+        "Instrumentation level: Front-end\n"
+        "Total functions: 2\n"
+    )
+    edges = FUZZ_MOD._parse_profdata_counts(sample)
+    # main ran: entry marker plus its nonzero block 0.
+    assert ("main", "0x000000000a712458", -1) in edges
+    assert ("main", "0x000000000a712458", 0) in edges
+    # add never entered and its block is zero, so it contributes nothing.
+    assert ("add", "0x000000029c498458", -1) not in edges
+    assert ("add", "0x000000029c498458", 0) not in edges
+
+
+def test_parse_profdata_counts_empty_on_garbage():
+    """Non profile text yields an empty set rather than raising."""
+    assert FUZZ_MOD._parse_profdata_counts("not profile data\n") == set()
+
+
 def test_require_vmm_missing_exits():
     """A missing VMM path exits cleanly instead of raising later."""
     try:
