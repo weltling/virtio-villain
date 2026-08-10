@@ -1611,6 +1611,9 @@ REGISTER_TEST({test_id}, {device_macro}, {func_name},
 # Valid descriptor flags: NEXT=0x01, WRITE=0x02, INDIRECT=0x04
 _VALID_FLAGS = 0x0007
 
+# Cap per blob anomaly notes so a mutated count cannot flood the output.
+_MAX_BLOB_NOTES = 32
+
 
 def _annotate_blob(blob):
     """Return list of anomaly annotations for a blob."""
@@ -1630,6 +1633,10 @@ def _annotate_blob(blob):
     for i in range(nd):
         if off + DESC_SIZE > len(blob):
             break
+        if len(notes) >= _MAX_BLOB_NOTES:
+            notes.append(f"... descriptor annotations truncated "
+                         f"(num_descs={nd})")
+            return notes
         l, f, n = struct.unpack_from(DESC_FMT, blob, off)
         undefined = f & ~_VALID_FLAGS
         if undefined:
@@ -1649,6 +1656,9 @@ def _annotate_blob(blob):
     for i in range(ac):
         if avail_off + 2 > len(blob):
             break
+        if len(notes) >= _MAX_BLOB_NOTES:
+            notes.append(f"... avail annotations truncated (avail_count={ac})")
+            return notes
         v, = struct.unpack_from("<H", blob, avail_off)
         if v >= nd:
             notes.append(f"avail[{i}]={v} OOB (num_descs={nd})")
@@ -1809,9 +1819,27 @@ def _classify_vmm_output(output, returncode=None):
     return "exit code non-zero"
 
 
+def _annotate_container(blob):
+    """Annotate every segment of a versioned crash blob.
+
+    The stored crash blob is the outer versioned container, so annotate
+    each segment's virtqueue rather than misreading the container header
+    as one queue.
+    """
+    try:
+        fb = FuzzBlob.parse(blob)
+    except ValueError as e:
+        return [f"invalid blob: {e}"]
+    notes = []
+    for si, seg in enumerate(fb.segments):
+        for note in _annotate_blob(seg.vq.serialize()):
+            notes.append(f"segment[{si}] {note}")
+    return notes
+
+
 def _print_crash_detail(blob, vmm_output, crash_path):
     """Print decoded crash with annotations and VMM error."""
-    notes = _annotate_blob(blob)
+    notes = _annotate_container(blob)
     error_class = _classify_vmm_output(vmm_output)
     print(f"    class: {error_class}")
     if notes:
@@ -2085,7 +2113,7 @@ def cmd_triage(args):
         )
         error_class = (_classify_vmm_output(output, exit_code)
                        if crashed else "NO CRASH (fixed?)")
-        notes = _annotate_blob(blob)
+        notes = _annotate_container(blob)
         tier, _ = _security_triage(output, exit_code)
         severity[tier] += 1
         tier_of[path] = tier

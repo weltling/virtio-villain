@@ -2186,6 +2186,29 @@ def test_parse_profdata_counts_empty_on_garbage():
     assert FUZZ_MOD._parse_profdata_counts("not profile data\n") == set()
 
 
+def test_annotate_container_reads_segments_not_magic():
+    """Annotating a crash blob uses the segments, not the outer magic."""
+    seed = FUZZ_MOD.make_seed()
+    notes = FUZZ_MOD._annotate_container(seed)
+    joined = " ".join(notes)
+    # The bug read the VVFZ magic as a queue header giving these numbers.
+    assert "num_descs=23110" not in joined
+    assert "queue_size=22102" not in joined
+    # A real anomaly still comes through, tagged with its segment.
+    for note in notes:
+        assert note.startswith("segment[")
+
+
+def test_annotate_container_caps_flood():
+    """A segment with a huge descriptor count does not flood the notes."""
+    vq = FUZZ_MOD.FuzzBlob.parse(FUZZ_MOD.make_seed()).segments[0].vq
+    vq.descs = [[0, 0, 0] for _ in range(4000)]  # many zero length descs
+    blob = FUZZ_MOD.FuzzBlob([FUZZ_MOD.FuzzSegment(
+        FUZZ_MOD.VIRTIO_PCI_DEVICE_BLK, 0, vq)]).serialize()
+    notes = FUZZ_MOD._annotate_container(blob)
+    assert len(notes) <= FUZZ_MOD._MAX_BLOB_NOTES + 2
+
+
 def test_require_vmm_missing_exits():
     """A missing VMM path exits cleanly instead of raising later."""
     try:
