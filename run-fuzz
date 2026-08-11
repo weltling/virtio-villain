@@ -2454,6 +2454,8 @@ def cmd_fuzz(args):
     baseline_edges = set()
     stats = {"iterations": 0, "crashes": 0, "new_edges": 0,
              "corpus_size": len(corpus)}
+    phase_times = {"mutate": 0.0, "patch": 0.0, "initramfs": 0.0,
+                   "boot": 0.0, "coverage": 0.0}
     lock = threading.Lock()
 
     # Set up per-worker state
@@ -2491,16 +2493,23 @@ def cmd_fuzz(args):
         if stop.is_set():
             return None
         w = worker_dirs[worker_id % jobs]
+        tm = {}
 
         with lock:
             parent = random.choice(corpus)
+        t = time.perf_counter()
         blob = mutate(parent)
+        tm["mutate"] = time.perf_counter() - t
 
         # Patch into this worker's binary
+        t = time.perf_counter()
         patch_blob(w["binary"], blob, section_offset)
+        tm["patch"] = time.perf_counter() - t
 
         # Rebuild initramfs
+        t = time.perf_counter()
         build_initramfs(w["binary"], w["initramfs"])
+        tm["initramfs"] = time.perf_counter() - t
 
         # Clear old profraw
         for fname in os.listdir(w["dir"]):
@@ -2508,6 +2517,7 @@ def cmd_fuzz(args):
                 os.unlink(os.path.join(w["dir"], fname))
 
         # Run VMM
+        t = time.perf_counter()
         exit_code, crashed, vmm_output, timed_out = run_vmm(
             args.vmm, w["initramfs"], w["dir"], args.timeout,
             kernel_path=kernel, disk_path=w["disk"],
@@ -2523,14 +2533,17 @@ def cmd_fuzz(args):
                 kernel_path=kernel, disk_path=w["disk"],
                 cpus=args.cpus, memory=args.memory
             )
+        tm["boot"] = time.perf_counter() - t
 
         # Collect coverage
+        t = time.perf_counter()
         edges = set()
         if not args.no_coverage:
             profdata_path = os.path.join(w["dir"], "merged.profdata")
             edges = collect_coverage(args.vmm, profdata_path, w["dir"])
+        tm["coverage"] = time.perf_counter() - t
 
-        return iteration, crashed, blob, vmm_output, edges
+        return iteration, crashed, blob, vmm_output, edges, tm
 
     try:
         if jobs == 1:
@@ -2541,8 +2554,10 @@ def cmd_fuzz(args):
                 result = _worker(i, 0)
                 if result is None:
                     break
-                _, crashed, blob, vmm_output, edges = result
+                _, crashed, blob, vmm_output, edges, tm = result
                 stats["iterations"] += 1
+                for k, v in tm.items():
+                    phase_times[k] += v
 
                 if crashed:
                     stats["crashes"] += 1
@@ -2604,10 +2619,12 @@ def cmd_fuzz(args):
                     result = future.result()
                     if result is None:
                         continue
-                    iteration, crashed, blob, vmm_output, edges = result
+                    iteration, crashed, blob, vmm_output, edges, tm = result
 
                     with lock:
                         stats["iterations"] += 1
+                        for k, v in tm.items():
+                            phase_times[k] += v
 
                         if crashed:
                             stats["crashes"] += 1
@@ -2662,6 +2679,15 @@ def cmd_fuzz(args):
             print(f"    Corpus: {stats['corpus_size']} entries")
             print(f"    Crashes: {stats['crashes']}")
             print(f"    New edges: {stats['new_edges']}")
+            done = stats["iterations"]
+            if done:
+                # Sum of averages shows where an iteration spends its
+                # wall time; at high -j the boot line dominates when the
+                # box is oversubscribed.
+                print("    Avg per iteration (wall, not divided by jobs):")
+                for k in ("mutate", "patch", "initramfs", "boot",
+                          "coverage"):
+                    print(f"      {k:9s} {phase_times[k]/done*1000:8.1f} ms")
         except KeyboardInterrupt:
             pass
         for w in worker_dirs:
