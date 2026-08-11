@@ -1220,8 +1220,8 @@ def build_initramfs(fuzz_binary, output_path):
         )
         find.stdout.close()
         gzip = subprocess.Popen(
-            ["gzip"], stdin=cpio.stdout, stdout=open(output_path, "wb"),
-            stderr=subprocess.DEVNULL
+            ["gzip", "-1"], stdin=cpio.stdout,
+            stdout=open(output_path, "wb"), stderr=subprocess.DEVNULL
         )
         cpio.stdout.close()
         gzip.wait()
