@@ -2464,12 +2464,6 @@ def cmd_fuzz(args):
     phase_times = {"mutate": 0.0, "patch": 0.0, "initramfs": 0.0,
                    "boot": 0.0, "coverage": 0.0}
     lock = threading.Lock()
-    # The initramfs gzip and the coverage llvm-profdata pass are CPU and
-    # memory bound and do not scale past the core count. Cap how many run
-    # at once so a high --jobs still overlaps the light VM boots without
-    # 64 heavy processes thrashing the box.
-    cpu_slots = args.cpu_jobs or (os.cpu_count() or 4)
-    cpu_sema = threading.BoundedSemaphore(max(1, cpu_slots))
 
     # Set up per-worker state
     worker_dirs = []
@@ -2521,8 +2515,7 @@ def cmd_fuzz(args):
 
         # Rebuild initramfs
         t = time.perf_counter()
-        with cpu_sema:
-            build_initramfs(w["binary"], w["initramfs"])
+        build_initramfs(w["binary"], w["initramfs"])
         tm["initramfs"] = time.perf_counter() - t
 
         # Clear old profraw
@@ -2554,8 +2547,7 @@ def cmd_fuzz(args):
         edges = set()
         if not args.no_coverage:
             profdata_path = os.path.join(w["dir"], "merged.profdata")
-            with cpu_sema:
-                edges = collect_coverage(args.vmm, profdata_path, w["dir"])
+            edges = collect_coverage(args.vmm, profdata_path, w["dir"])
         tm["coverage"] = time.perf_counter() - t
 
         return iteration, crashed, blob, vmm_output, edges, tm
@@ -2791,11 +2783,6 @@ def main():
     g = p_fuzz.add_argument_group("execution")
     g.add_argument("-j", "--jobs", type=int, default=1, metavar="N",
                    help="Parallel VMs (default: 1)")
-    g.add_argument("--cpu-jobs", type=int, default=0, metavar="N",
-                   dest="cpu_jobs",
-                   help="Cap concurrent initramfs and coverage work "
-                        "(default: CPU count). Keeps a high --jobs from "
-                        "thrashing the box on the heavy phases.")
     g.add_argument("--cpus", type=int, default=2, metavar="N",
                    help="vCPUs per VM (default: 2)")
     g.add_argument("--memory", default="128M",
