@@ -1137,32 +1137,38 @@ def _parse_profdata_counts(text):
 # function entry (-1) or nonzero block counter, and the parent only
 # builds a set from that small output.
 _REDUCE_COUNTS_SRC = r"""
-import sys, re
+import sys, re, signal
+# Ignore Ctrl-C: on interrupt the parent tears down the pipe and this
+# child exits on EOF, so it must not raise and spew a traceback.
+signal.signal(signal.SIGINT, signal.SIG_IGN)
 FUNC = re.compile(r"^  (.+):\s*$")
 func = None
 fhash = ""
 w = sys.stdout.write
-for line in sys.stdin:
-    m = FUNC.match(line)
-    if m:
-        func = m.group(1)
-        fhash = ""
-        continue
-    s = line.strip()
-    if s.startswith("Hash:"):
-        fhash = s.split(None, 1)[1].strip()
-    elif s.startswith("Function count:"):
-        try:
-            if int(s.split(":", 1)[1]) > 0:
-                w(func + "\t" + fhash + "\t-1\n")
-        except ValueError:
-            pass
-    elif s.startswith("Block counts:"):
-        inside = s[s.find("[") + 1:s.rfind("]")]
-        for i, tok in enumerate(inside.split(",")):
-            tok = tok.strip()
-            if tok and tok != "0":
-                w(func + "\t" + fhash + "\t" + str(i) + "\n")
+try:
+    for line in sys.stdin:
+        m = FUNC.match(line)
+        if m:
+            func = m.group(1)
+            fhash = ""
+            continue
+        s = line.strip()
+        if s.startswith("Hash:"):
+            fhash = s.split(None, 1)[1].strip()
+        elif s.startswith("Function count:"):
+            try:
+                if int(s.split(":", 1)[1]) > 0:
+                    w(func + "\t" + fhash + "\t-1\n")
+            except ValueError:
+                pass
+        elif s.startswith("Block counts:"):
+            inside = s[s.find("[") + 1:s.rfind("]")]
+            for i, tok in enumerate(inside.split(",")):
+                tok = tok.strip()
+                if tok and tok != "0":
+                    w(func + "\t" + fhash + "\t" + str(i) + "\n")
+except BrokenPipeError:
+    pass
 """
 
 
