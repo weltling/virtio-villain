@@ -1127,6 +1127,69 @@ def _parse_profdata_counts(text):
     return edges
 
 
+# Parsing the profdata show output holds the GIL, so at high --jobs the
+# workers serialize through it. On a large release profile that parse is
+# ~2s, which caps throughput regardless of job count. Run it in a child
+# interpreter instead, one per worker, so the parses run in parallel. The
+# child emits compact "func<TAB>hash<TAB>index" lines, one per covered
+# function entry (-1) or nonzero block counter, and the parent only
+# builds a set from that small output.
+_REDUCE_COUNTS_SRC = r"""
+import sys, re
+FUNC = re.compile(r"^  (.+):\s*$")
+func = None
+fhash = ""
+w = sys.stdout.write
+for line in sys.stdin:
+    m = FUNC.match(line)
+    if m:
+        func = m.group(1)
+        fhash = ""
+        continue
+    s = line.strip()
+    if s.startswith("Hash:"):
+        fhash = s.split(None, 1)[1].strip()
+    elif s.startswith("Function count:"):
+        try:
+            if int(s.split(":", 1)[1]) > 0:
+                w(func + "\t" + fhash + "\t-1\n")
+        except ValueError:
+            pass
+    elif s.startswith("Block counts:"):
+        inside = s[s.find("[") + 1:s.rfind("]")]
+        for i, tok in enumerate(inside.split(",")):
+            tok = tok.strip()
+            if tok and tok != "0":
+                w(func + "\t" + fhash + "\t" + str(i) + "\n")
+"""
+
+
+def _show_counts_offloaded(show_cmd):
+    """Run the profdata show and parse it in a child process off the GIL.
+
+    Returns a covered set matching _parse_profdata_counts, or None if the
+    pipeline fails so the caller can fall back to an in process parse.
+    """
+    try:
+        show = subprocess.Popen(show_cmd, stdout=subprocess.PIPE)
+        reduce = subprocess.Popen(
+            [sys.executable, "-c", _REDUCE_COUNTS_SRC],
+            stdin=show.stdout, stdout=subprocess.PIPE, text=True
+        )
+        show.stdout.close()
+        out, _ = reduce.communicate()
+        if show.wait() != 0 or reduce.returncode != 0:
+            return None
+    except OSError:
+        return None
+    edges = set()
+    for line in out.splitlines():
+        parts = line.split("\t")
+        if len(parts) == 3:
+            edges.add((parts[0], parts[1], int(parts[2])))
+    return edges
+
+
 def collect_coverage(vmm_binary, profdata_path, profraw_dir):
     """Merge profraw and derive a covered set from the profile counters.
 
@@ -1164,6 +1227,10 @@ def collect_coverage(vmm_binary, profdata_path, profraw_dir):
     show_cmd = [
         profdata_tool, "show", "--all-functions", "--counts", show_target
     ]
+    edges = _show_counts_offloaded(show_cmd)
+    if edges is not None:
+        return edges
+    # Fallback: parse in this process if the child pipeline failed.
     result = subprocess.run(show_cmd, capture_output=True, text=True)
     if result.returncode != 0:
         return set()

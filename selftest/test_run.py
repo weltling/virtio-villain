@@ -2186,6 +2186,38 @@ def test_parse_profdata_counts_empty_on_garbage():
     assert FUZZ_MOD._parse_profdata_counts("not profile data\n") == set()
 
 
+def test_show_counts_offload_matches_parser():
+    """The child reducer yields the same edges as the in process parse,
+    so moving the parse off the GIL does not change the coverage signal."""
+    import subprocess as _sp
+    sample = (
+        "Counters:\n"
+        "  core::fmt:\n"
+        "    Hash: 0x1234\n"
+        "    Counters: 3\n"
+        "    Function count: 5\n"
+        "    Block counts: [0, 2, 0]\n"
+        "  main::run:\n"
+        "    Hash: 0xabcd\n"
+        "    Counters: 2\n"
+        "    Function count: 0\n"
+        "    Block counts: [0, 0]\n"
+    )
+    ref = FUZZ_MOD._parse_profdata_counts(sample)
+    show = _sp.Popen(["printf", "%s", sample], stdout=_sp.PIPE)
+    reduce = _sp.Popen(
+        [sys.executable, "-c", FUZZ_MOD._REDUCE_COUNTS_SRC],
+        stdin=show.stdout, stdout=_sp.PIPE, text=True)
+    show.stdout.close()
+    out, _ = reduce.communicate()
+    show.wait()
+    child = set()
+    for line in out.splitlines():
+        a, b, c = line.split("\t")
+        child.add((a, b, int(c)))
+    assert child == ref
+
+
 def test_annotate_container_reads_segments_not_magic():
     """Annotating a crash blob uses the segments, not the outer magic."""
     seed = FUZZ_MOD.make_seed()
