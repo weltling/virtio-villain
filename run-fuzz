@@ -23,7 +23,9 @@ import sys
 import tempfile
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import (
+    ThreadPoolExecutor, FIRST_COMPLETED, wait
+)
 
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 _fuzz_vsock_cid = 3
@@ -2656,6 +2658,45 @@ def cmd_fuzz(args):
 
         return iteration, crashed, blob, vmm_output, edges, tm
 
+    def _record_result(result):
+        """Fold one worker result into stats, corpus and crashes."""
+        nonlocal baseline_edges
+        it, crashed, blob, vmm_output, edges, tm = result
+        with lock:
+            stats["iterations"] += 1
+            for k, v in tm.items():
+                phase_times[k] += v
+
+            if crashed:
+                stats["crashes"] += 1
+                crash_path = _crash_path(args.crashes_dir, blob)
+                if not os.path.exists(crash_path):
+                    with open(crash_path, "wb") as fh:
+                        fh.write(blob)
+                    print(f"\n[!] CRASH #{stats['crashes']} "
+                          f"saved: {crash_path}")
+                    _print_crash_detail(blob, vmm_output, crash_path)
+
+            if not args.no_coverage and edges:
+                new_edges = edges - baseline_edges
+                if new_edges:
+                    stats["new_edges"] += len(new_edges)
+                    baseline_edges |= new_edges
+                    corpus.append(blob)
+                    stats["corpus_size"] = len(corpus)
+                    corpus_path = _corpus_path(args.corpus_dir, blob, it)
+                    with open(corpus_path, "wb") as fh:
+                        fh.write(blob)
+
+            done = stats["iterations"]
+            if done % 10 == 0:
+                elapsed = time.time() - start_time
+                rate = done / elapsed if elapsed > 0 else 0
+                print(f"[{done}/{args.iterations}] {rate:.1f} exec/s | "
+                      f"corpus={stats['corpus_size']} | "
+                      f"crashes={stats['crashes']} | "
+                      f"edges={len(baseline_edges)}", end="\r")
+
     try:
         if jobs == 1:
             # Sequential path (simpler, no threading overhead)
@@ -2665,42 +2706,7 @@ def cmd_fuzz(args):
                 result = _worker(i, 0)
                 if result is None:
                     break
-                _, crashed, blob, vmm_output, edges, tm = result
-                stats["iterations"] += 1
-                for k, v in tm.items():
-                    phase_times[k] += v
-
-                if crashed:
-                    stats["crashes"] += 1
-                    crash_path = _crash_path(args.crashes_dir, blob)
-                    if not os.path.exists(crash_path):
-                        with open(crash_path, "wb") as fh:
-                            fh.write(blob)
-                        print(f"\n[!] CRASH #{stats['crashes']} "
-                              f"saved: {crash_path}")
-                        _print_crash_detail(blob, vmm_output, crash_path)
-
-                if not args.no_coverage and edges:
-                    new_edges = edges - baseline_edges
-                    if new_edges:
-                        stats["new_edges"] += len(new_edges)
-                        baseline_edges |= new_edges
-                        corpus.append(blob)
-                        stats["corpus_size"] = len(corpus)
-                        corpus_path = _corpus_path(
-                            args.corpus_dir, blob, i)
-                        with open(corpus_path, "wb") as fh:
-                            fh.write(blob)
-
-                if (i + 1) % 10 == 0:
-                    elapsed = time.time() - start_time
-                    rate = stats["iterations"] / elapsed if elapsed > 0 else 0
-                    print(f"[{i+1}/{args.iterations}] "
-                          f"{rate:.1f} exec/s | "
-                          f"corpus={stats['corpus_size']} | "
-                          f"crashes={stats['crashes']} | "
-                          f"edges={len(baseline_edges)}",
-                          end="\r")
+                _record_result(result)
         else:
             # Parallel path: each worker owns a dedicated slot
             import queue
@@ -2718,59 +2724,32 @@ def cmd_fuzz(args):
                     slot_queue.put(slot)
 
             pool = ThreadPoolExecutor(max_workers=jobs)
+            # Keep only a bounded window of work in flight. Submitting all
+            # iterations up front would pin every result (blob plus its
+            # edge set) in memory until the run ended, growing without
+            # bound on a long run.
+            max_outstanding = jobs * 2
             try:
-                futures = {}
-                for i in range(args.iterations):
-                    if stop.is_set():
-                        break
-                    f = pool.submit(_parallel_worker, i)
-                    futures[f] = i
+                pending = set()
+                next_i = 0
+                while (next_i < args.iterations
+                       and len(pending) < max_outstanding
+                       and not stop.is_set()):
+                    pending.add(pool.submit(_parallel_worker, next_i))
+                    next_i += 1
 
-                for future in as_completed(futures):
-                    result = future.result()
-                    if result is None:
-                        continue
-                    iteration, crashed, blob, vmm_output, edges, tm = result
-
-                    with lock:
-                        stats["iterations"] += 1
-                        for k, v in tm.items():
-                            phase_times[k] += v
-
-                        if crashed:
-                            stats["crashes"] += 1
-                            crash_path = _crash_path(args.crashes_dir, blob)
-                            if not os.path.exists(crash_path):
-                                with open(crash_path, "wb") as fh:
-                                    fh.write(blob)
-                                print(f"\n[!] CRASH #{stats['crashes']} "
-                                      f"saved: {crash_path}")
-                                _print_crash_detail(
-                                    blob, vmm_output, crash_path)
-
-                        if not args.no_coverage and edges:
-                            new_edges = edges - baseline_edges
-                            if new_edges:
-                                stats["new_edges"] += len(new_edges)
-                                baseline_edges |= new_edges
-                                corpus.append(blob)
-                                stats["corpus_size"] = len(corpus)
-                                corpus_path = _corpus_path(
-                                    args.corpus_dir, blob, iteration)
-                                with open(corpus_path, "wb") as fh:
-                                    fh.write(blob)
-
-                        done = stats["iterations"]
-                        if done % 10 == 0:
-                            elapsed = time.time() - start_time
-                            rate = done / elapsed if elapsed > 0 else 0
-                            print(
-                                f"[{done}/{args.iterations}] "
-                                f"{rate:.1f} exec/s | "
-                                f"corpus={stats['corpus_size']} | "
-                                f"crashes={stats['crashes']} | "
-                                f"edges={len(baseline_edges)}",
-                                end="\r")
+                while pending:
+                    done_set, pending = wait(
+                        pending, return_when=FIRST_COMPLETED)
+                    for future in done_set:
+                        result = future.result()
+                        if result is not None:
+                            _record_result(result)
+                        if (next_i < args.iterations
+                                and not stop.is_set()):
+                            pending.add(
+                                pool.submit(_parallel_worker, next_i))
+                            next_i += 1
             finally:
                 # Never block on a running VM boot when interrupted.
                 # Drop queued work and let live children die on the
