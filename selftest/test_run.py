@@ -2822,6 +2822,23 @@ def test_sweep_stale_workdirs_ages_out_only_old_dirs():
         assert os.path.exists(other)
 
 
+def test_list_devices_lists_all_without_vmm():
+    """--list-devices prints every device and needs no --vmm."""
+    r = subprocess.run([sys.executable, RUN_FUZZ, "fuzz", "--list-devices"],
+                       capture_output=True, text=True, cwd=ROOT_DIR)
+    assert r.returncode == 0
+    for name in FUZZ_MOD._DEVICE_MAP:
+        assert name in r.stdout
+
+
+def test_fuzz_without_vmm_errors_clearly():
+    """A real run still requires --vmm and says so."""
+    r = subprocess.run([sys.executable, RUN_FUZZ, "fuzz", "-n", "1"],
+                       capture_output=True, text=True, cwd=ROOT_DIR)
+    assert r.returncode != 0
+    assert "--vmm is required" in (r.stdout + r.stderr)
+
+
 def test_run_vmm_calls_overlap_across_threads():
     """The fuzzer relies on many VM boots running at once. Drive run_vmm
     from several threads with a stub VMM that just sleeps: if the calls

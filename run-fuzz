@@ -2402,6 +2402,13 @@ def cmd_cov_report(args):
 
 def cmd_fuzz(args):
     """Main fuzzing loop."""
+    if getattr(args, "list_devices", False):
+        print("supported devices for --device:")
+        for name in sorted(_DEVICE_MAP):
+            print(f"  {name:<9} (id 0x{_DEVICE_MAP[name][2]:04x})")
+        return
+    if not args.vmm:
+        sys.exit("error: --vmm is required (or use --list-devices)")
     _require_vmm(args.vmm)
     os.makedirs(args.corpus_dir, exist_ok=True)
     os.makedirs(args.crashes_dir, exist_ok=True)
@@ -2785,7 +2792,7 @@ def main():
     p_fuzz = sub.add_parser("fuzz", help="Run the fuzzing loop",
                             add_help=False)
     g = p_fuzz.add_argument_group("target")
-    g.add_argument("--vmm", required=True, metavar="PATH",
+    g.add_argument("--vmm", metavar="PATH",
                    help="Path to the VMM binary (required)")
     g.add_argument("--kernel", default=None, metavar="PATH",
                    help="Guest kernel, auto-detected if omitted")
@@ -2810,6 +2817,9 @@ def main():
                    choices=sorted(_DEVICE_MAP), metavar="DEV",
                    help="Focus fuzzing on one virtio device "
                         "(default: all devices in the corpus)")
+    g.add_argument("--list-devices", action="store_true",
+                   dest="list_devices",
+                   help="List the devices accepted by --device and exit")
     g = p_fuzz.add_argument_group("execution")
     g.add_argument("-j", "--jobs", type=int, default=1, metavar="N",
                    help="Parallel VMs (default: 1)")
