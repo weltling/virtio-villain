@@ -2797,6 +2797,31 @@ def test_run_vmm_timeout_reports_timed_out():
     assert timed_out is True
 
 
+def test_sweep_stale_workdirs_ages_out_only_old_dirs():
+    """The sweep removes leaked scratch from dead runs but never a fresh
+    dir, so a concurrent run is safe."""
+    import tempfile
+    import time
+    with tempfile.TemporaryDirectory() as tmp:
+        orig = FUZZ_MOD.tempfile.gettempdir
+        old = os.path.join(tmp, "vvfuzz_w0_old")
+        fresh = os.path.join(tmp, "vvfuzz_w1_new")
+        other = os.path.join(tmp, "keepme")
+        for d in (old, fresh, other):
+            os.makedirs(d)
+        past = time.time() - 3 * 3600
+        os.utime(old, (past, past))
+        try:
+            FUZZ_MOD.tempfile.gettempdir = lambda: tmp
+            removed = FUZZ_MOD._sweep_stale_workdirs(max_age_s=3600)
+        finally:
+            FUZZ_MOD.tempfile.gettempdir = orig
+        assert removed == 1
+        assert not os.path.exists(old)
+        assert os.path.exists(fresh)
+        assert os.path.exists(other)
+
+
 def test_run_vmm_calls_overlap_across_threads():
     """The fuzzer relies on many VM boots running at once. Drive run_vmm
     from several threads with a stub VMM that just sleeps: if the calls

@@ -1242,6 +1242,30 @@ def _fetch_kernel():
     return result.stdout.strip()
 
 
+def _sweep_stale_workdirs(max_age_s=7200):
+    """Remove leaked vvfuzz_* scratch dirs from dead or killed runs.
+
+    A run cleans its own dirs on exit, but a hard kill leaves them, and
+    on a tmpfs /tmp that scratch sits in RAM forever. Only sweep dirs
+    older than max_age_s so a concurrent run is never touched. Returns
+    the number of directories removed.
+    """
+    tmp = tempfile.gettempdir()
+    cutoff = time.time() - max_age_s
+    removed = 0
+    for path in glob.glob(os.path.join(tmp, "vvfuzz_*")):
+        try:
+            if not os.path.isdir(path):
+                continue
+            if os.path.getmtime(path) >= cutoff:
+                continue
+        except OSError:
+            continue
+        shutil.rmtree(path, ignore_errors=True)
+        removed += 1
+    return removed
+
+
 def _fuzz_vmm_cmd(vmm_path, kernel, initramfs_path, disk, pmem_path,
                   profraw_dir, cpus, memory):
     """Build the Cloud Hypervisor command used for a fuzz iteration."""
@@ -2464,6 +2488,12 @@ def cmd_fuzz(args):
     phase_times = {"mutate": 0.0, "patch": 0.0, "initramfs": 0.0,
                    "boot": 0.0, "coverage": 0.0}
     lock = threading.Lock()
+
+    # Reclaim scratch leaked by dead runs before allocating our own, so
+    # a tmpfs /tmp does not slowly fill RAM across many runs.
+    stale = _sweep_stale_workdirs()
+    if stale:
+        print(f"[*] Removed {stale} stale worker dirs from previous runs")
 
     # Set up per-worker state
     worker_dirs = []
