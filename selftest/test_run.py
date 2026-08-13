@@ -2174,11 +2174,11 @@ def test_parse_profdata_counts_captures_entry_and_blocks():
     )
     edges = FUZZ_MOD._parse_profdata_counts(sample)
     # main ran: entry marker plus its nonzero block 0.
-    assert ("main", "0x000000000a712458", -1) in edges
-    assert ("main", "0x000000000a712458", 0) in edges
+    assert "main\t0x000000000a712458\t-1" in edges
+    assert "main\t0x000000000a712458\t0" in edges
     # add never entered and its block is zero, so it contributes nothing.
-    assert ("add", "0x000000029c498458", -1) not in edges
-    assert ("add", "0x000000029c498458", 0) not in edges
+    assert "add\t0x000000029c498458\t-1" not in edges
+    assert "add\t0x000000029c498458\t0" not in edges
 
 
 def test_parse_profdata_counts_empty_on_garbage():
@@ -2211,11 +2211,11 @@ def test_show_counts_offload_matches_parser():
     show.stdout.close()
     out, _ = reduce.communicate()
     show.wait()
-    child = set()
-    for line in out.splitlines():
-        a, b, c = line.split("\t")
-        child.add((a, b, int(c)))
+    # Edge keys are plain "func\thash\tindex" strings, so the parent set
+    # is just the child lines. It must match the in process parse.
+    child = set(out.splitlines())
     assert child == ref
+    assert "core::fmt\t0x1234\t-1" in ref
 
 
 def test_annotate_container_reads_segments_not_magic():

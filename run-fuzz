@@ -1125,7 +1125,7 @@ def _parse_profdata_counts(text):
         elif s.startswith("Function count:"):
             try:
                 if int(s.split(":", 1)[1]) > 0:
-                    edges.add((func, fhash, -1))
+                    edges.add(func + "\t" + fhash + "\t-1")
             except ValueError:
                 pass
         elif s.startswith("Block counts:"):
@@ -1133,7 +1133,7 @@ def _parse_profdata_counts(text):
             for i, tok in enumerate(inside.split(",")):
                 tok = tok.strip()
                 if tok and tok != "0":
-                    edges.add((func, fhash, i))
+                    edges.add(func + "\t" + fhash + "\t" + str(i))
     return edges
 
 
@@ -1198,12 +1198,10 @@ def _show_counts_offloaded(show_cmd):
             return None
     except OSError:
         return None
-    edges = set()
-    for line in out.splitlines():
-        parts = line.split("\t")
-        if len(parts) == 3:
-            edges.add((parts[0], parts[1], int(parts[2])))
-    return edges
+    # Each line is already a unique edge key. Build the set in one C
+    # level call, not a per line Python loop; that loop is the hot GIL
+    # bound path when many workers collect coverage at once.
+    return set(out.splitlines())
 
 
 def collect_coverage(vmm_binary, profdata_path, profraw_dir):
