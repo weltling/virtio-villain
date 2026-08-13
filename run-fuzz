@@ -309,6 +309,13 @@ def device_seeds():
     net_tx = struct.pack("<BBHHHH", 0, 0, 0, 0, 0, 0) + b"\x00" * 64
     mem_req = struct.pack("<HHHHQHHHH", VIRTIO_MEM_REQ_STATE, 0, 0, 0,
                           0, 1, 0, 0, 0)
+    # A valid virtio-vsock stream connection request to the host cid, so
+    # CH parses a real packet and drives the muxer and connection state
+    # machine instead of dropping an all-zero header. Fields, all little
+    # endian: src_cid, dst_cid, src_port, dst_port, len, type, op, flags,
+    # buf_alloc, fwd_cnt. type=STREAM(1), op=REQUEST(1), dst_cid=HOST(2).
+    vsock_req = struct.pack("<QQIIIHHIII", 3, 2, 1234, 5678, 0, 1, 1,
+                            0, 262144, 0)
     return {
         # rng: one writable buffer the device fills with random bytes
         ("rng", "fill"): _device_seg_blob("rng", 0, [[16, w, 0]],
@@ -322,9 +329,10 @@ def device_seeds():
         # net: a writable receive buffer on the rx queue
         ("net", "rx"): _device_seg_blob("net", 0, [[74, w, 0]],
                                         b"\x00" * 74),
-        # vsock: a readable packet header on the tx queue
+        # vsock: a valid stream connection request on the tx queue, so
+        # the muxer and connection state machine actually run
         ("vsock", "tx"): _device_seg_blob("vsock", 1, [[44, 0, 0]],
-                                          b"\x00" * 44),
+                                          vsock_req),
         # balloon: a readable page frame number on the inflate queue
         ("balloon", "inflate"): _device_seg_blob("balloon", 0, [[4, 0, 0]],
                                                  b"\x00" * 4),

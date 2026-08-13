@@ -2297,6 +2297,24 @@ def test_device_seeds_target_expected_queues():
         assert segment.queue_index == queue
 
 
+def test_vsock_seed_is_valid_stream_request():
+    """The vsock seed carries a well formed ring and a real stream
+    connection request, so CH parses a packet and runs the connection
+    state machine instead of dropping an all-zero header."""
+    import struct
+    vq = FUZZ_MOD.FuzzBlob.parse(
+        FUZZ_MOD.device_seeds()[("vsock", "tx")]).segments[0].vq
+    # ring is well formed: one readable 44 byte header, avail points at it
+    assert vq.descs == [[44, 0, 0]]
+    assert vq.avail_ring[:1] == [0]
+    assert vq.avail_idx == 1
+    hdr = struct.unpack("<QQIIIHHIII", bytes(vq.payload[:44]))
+    dst_cid, vtype, op = hdr[1], hdr[5], hdr[6]
+    assert dst_cid == 2      # VMADDR_CID_HOST
+    assert vtype == 1        # VIRTIO_VSOCK_TYPE_STREAM
+    assert op == 1           # VIRTIO_VSOCK_OP_REQUEST
+
+
 def test_mutate_returns_versioned_container():
     """mutate consumes and returns a valid versioned blob."""
     random.seed(7)
