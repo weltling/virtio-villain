@@ -1358,11 +1358,13 @@ def _fuzz_vmm_cmd(vmm_path, kernel, initramfs_path, disk, pmem_path,
         cid = _fuzz_vsock_cid
         _fuzz_vsock_cid += 1
     vsock_path = os.path.join(profraw_dir, "fuzz.vsock")
+    iommu_disk = os.path.join(profraw_dir, "iommu.raw")
     return [
         vmm_path,
         "--kernel", kernel,
         "--initramfs", initramfs_path,
         "--disk", f"path={disk},num_queues={cpus}",
+        "--disk", f"path={iommu_disk},iommu=on",
         "--net", "tap=,num_queues=2",
         "--vsock", f"cid={cid},socket={vsock_path}",
         "--balloon", "size=0",
@@ -1419,6 +1421,15 @@ def run_vmm(vmm_path, initramfs_path, profraw_dir, timeout=3,
     if not os.path.exists(pmem_path):
         with open(pmem_path, "wb") as f:
             f.seek(128 * 1024 * 1024 - 1)
+            f.write(b"\x00")
+
+    # A small disk placed behind the IOMMU so CH instantiates a
+    # virtio-iommu device the fuzzer can drive. It is found after the
+    # main disk, so blk fuzzing keeps using the untranslated one.
+    iommu_disk = os.path.join(profraw_dir, "iommu.raw")
+    if not os.path.exists(iommu_disk):
+        with open(iommu_disk, "wb") as f:
+            f.seek(1024 * 1024 - 1)
             f.write(b"\x00")
 
     env = os.environ.copy()

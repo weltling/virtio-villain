@@ -2331,15 +2331,22 @@ def test_fuzz_vmm_command_provisions_auxiliary_devices():
     cmd = FUZZ_MOD._fuzz_vmm_cmd(
         "/vmm", "/kernel", "/initramfs", "/disk", "/pmem", "/work",
         2, "128M")
-    assert ["--disk", "path=/disk,num_queues=2"] == cmd[5:7]
-    assert ["--net", "tap=,num_queues=2"] == cmd[7:9]
+
+    def pair(flag, val):
+        return any(cmd[i] == flag and cmd[i + 1] == val
+                   for i in range(len(cmd) - 1))
+
+    assert pair("--disk", "path=/disk,num_queues=2")
+    # a throwaway disk behind the iommu instantiates virtio-iommu
+    assert pair("--disk", "path=/work/iommu.raw,iommu=on")
+    assert pair("--net", "tap=,num_queues=2")
     assert "--vsock" in cmd
-    assert ["--balloon", "size=0"] == cmd[11:13]
+    assert pair("--balloon", "size=0")
     assert "--watchdog" in cmd
-    assert ["--rng", "src=/dev/urandom"] == cmd[14:16]
-    assert ["--console", "null"] == cmd[16:18]
-    assert ["--pmem", "file=/pmem,size=128M,discard_writes=on"] == cmd[18:20]
-    assert "hotplug_method=virtio-mem" in cmd[23]
+    assert pair("--rng", "src=/dev/urandom")
+    assert pair("--console", "null")
+    assert pair("--pmem", "file=/pmem,size=128M,discard_writes=on")
+    assert any("hotplug_method=virtio-mem" in a for a in cmd)
 
 
 def test_fuzz_vmm_command_assigns_unique_vsock_cids():
@@ -2350,7 +2357,9 @@ def test_fuzz_vmm_command_assigns_unique_vsock_cids():
     second = FUZZ_MOD._fuzz_vmm_cmd(
         "/vmm", "/kernel", "/initramfs", "/disk", "/pmem", "/work",
         1, "128M")
-    assert first[10] != second[10]
+    vsock_first = first[first.index("--vsock") + 1]
+    vsock_second = second[second.index("--vsock") + 1]
+    assert vsock_first != vsock_second
 
 
 def test_vqblob_serialize_is_blob_size():
