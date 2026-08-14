@@ -2556,7 +2556,7 @@ def cmd_fuzz(args):
     _require_vmm(args.vmm)
     # Resolve the backend on the main thread so an unknown VMM name fails
     # with a clear message rather than in a worker thread mid run.
-    _detect_backend(args.vmm)
+    backend = _detect_backend(args.vmm)
     os.makedirs(args.corpus_dir, exist_ok=True)
     os.makedirs(args.crashes_dir, exist_ok=True)
 
@@ -2676,6 +2676,29 @@ def cmd_fuzz(args):
             "initramfs": initramfs,
             "disk": disk,
         })
+
+    # Probe one real boot before the loop. A misconfigured VMM (wrong
+    # machine, a device backend not compiled in, and so on) exits before
+    # the guest runs, which the loop would otherwise miscount as harmless
+    # graceful exits. The guest prints a FUZZ: marker on every code path
+    # once it runs, so its absence means the VMM never booted the guest.
+    # CH's fuzz command runs without a console, so it emits no marker;
+    # only probe the backends that boot with a console.
+    if backend.name != "ch":
+        w0 = worker_dirs[0]
+        patch_blob(w0["binary"], corpus[0], section_offset)
+        build_initramfs(w0["binary"], w0["initramfs"])
+        probe_timeout = max(args.timeout * 3, 12)
+        _ec, _crashed, probe_out, _to = run_vmm(
+            args.vmm, w0["initramfs"], w0["dir"], probe_timeout,
+            kernel_path=kernel, disk_path=w0["disk"],
+            cpus=args.cpus, memory=args.memory)
+        if "FUZZ:" not in probe_out:
+            msg = "\n".join("    vmm: " + ln
+                            for ln in probe_out.splitlines()[-10:])
+            sys.exit(
+                "error: the VMM exited without booting the guest; check "
+                "the command and device backends.\n" + msg)
 
     print(f"[*] Starting fuzzing: {args.iterations} iterations, "
           f"jobs={jobs}, timeout={args.timeout}s, "
