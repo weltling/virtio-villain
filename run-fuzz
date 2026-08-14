@@ -2083,9 +2083,13 @@ def cmd_replay(args):
         build_initramfs(fuzz_binary, initramfs_path)
 
         print(f"[*] Replaying {path}...")
+        # Reproduce in the same lean device set the crash was found in:
+        # infer the device from the blob unless --device overrides it.
+        dev = getattr(args, "device", None) or _blob_device_name(blob)
         exit_code, crashed, output, _timed_out = run_vmm(
             args.vmm, initramfs_path, profraw_dir, args.timeout,
-            kernel_path=args.kernel, disk_path=args.disk
+            kernel_path=args.kernel, disk_path=args.disk,
+            fuzz_device=dev
         )
         status = "CRASH" if crashed else "OK"
         print(f"    exit={exit_code} {status}")
@@ -2312,9 +2316,12 @@ def cmd_triage(args):
         patch_blob(fuzz_binary, blob, section_offset)
         build_initramfs(fuzz_binary, initramfs_path)
 
+        # Reproduce in the lean device set the crash was found in.
+        dev = _blob_device_name(blob)
         exit_code, crashed, output, timed_out = run_vmm(
             args.vmm, initramfs_path, profraw_dir, args.timeout,
-            kernel_path=args.kernel, disk_path=args.disk
+            kernel_path=args.kernel, disk_path=args.disk,
+            fuzz_device=dev
         )
         # A lone timeout is often a slow boot, not a hang. Reconfirm
         # with extra headroom before ranking it as a VMM stall.
@@ -2322,7 +2329,8 @@ def cmd_triage(args):
             exit_code, crashed, output, timed_out = run_vmm(
                 args.vmm, initramfs_path, profraw_dir,
                 max(args.timeout * 3, 12),
-                kernel_path=args.kernel, disk_path=args.disk
+                kernel_path=args.kernel, disk_path=args.disk,
+                fuzz_device=dev
             )
         error_class = (_classify_vmm_output(output, exit_code)
                        if crashed else "NO CRASH (fixed?)")
@@ -3063,6 +3071,10 @@ def main():
                           help="Raw disk image, created in tmpdir if omitted")
     p_replay.add_argument("--timeout", type=int, default=5, metavar="SEC",
                           help="VMM boot timeout in seconds (default: 5)")
+    p_replay.add_argument("--device", default=None,
+                          choices=sorted(_DEVICE_MAP), metavar="DEV",
+                          help="Attach only this virtio device, matching a "
+                               "focused fuzz run (default: all devices)")
     p_replay.add_argument("-v", "--verbose", action="store_true",
                           help="Print the full captured VMM stderr log")
     p_replay.add_argument("blobs", nargs="+", metavar="BLOB",
