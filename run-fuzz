@@ -1992,6 +1992,26 @@ def _fault_class(returncode, output):
     return None
 
 
+def _reached_harness(output):
+    """True once the guest kernel handed control to the fuzz PID1 init."""
+    return ("Run /init as init process" in output) or ("FUZZ:" in output)
+
+
+def _is_boot_stall(output):
+    """A captured guest boot that stalled before the harness ran.
+
+    The fuzzed blob is read only after PID1 init starts, so a boot that
+    never reached the harness cannot have been caused by the input. Only
+    judge this when a guest boot log was actually captured (QEMU and
+    OpenVMM), and never when a real fault marker is present.
+    """
+    if "Kernel command line" not in output and "Booting Linux" not in output:
+        return False
+    if _reached_harness(output):
+        return False
+    return _fault_class(None, output) is None
+
+
 def _classify_vmm_output(output, returncode=None):
     """Extract a short error class from VMM output for triage grouping."""
     if not output:
@@ -2332,6 +2352,10 @@ def cmd_triage(args):
                 kernel_path=args.kernel, disk_path=args.disk,
                 fuzz_device=dev
             )
+        # A boot that stalled before the harness ran is a host boot stage
+        # flake, not a fault from this input.
+        if crashed and _is_boot_stall(output):
+            crashed = False
         error_class = (_classify_vmm_output(output, exit_code)
                        if crashed else "NO CRASH (fixed?)")
         notes = _annotate_container(blob)
@@ -2797,6 +2821,11 @@ def cmd_fuzz(args):
                 cpus=args.cpus, memory=args.memory, fuzz_device=args.device
             )
         tm["boot"] = time.perf_counter() - t
+
+        # A boot that stalled before the harness ran is a host boot stage
+        # flake, not a fault from this input; do not record it as a crash.
+        if crashed and _is_boot_stall(vmm_output):
+            crashed = False
 
         # Collect coverage
         t = time.perf_counter()

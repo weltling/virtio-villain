@@ -2598,6 +2598,37 @@ def test_classify_real_seccomp_still_detected():
     assert cls == "seccomp violation"
 
 
+def test_boot_stall_before_init_is_a_boot_stall():
+    """A captured guest boot that never reached the harness is a boot
+    stage stall, not a fault from the fuzzed input."""
+    output = ("[    0.0] Booting Linux on physical CPU 0x0\n"
+              "[    0.0] Kernel command line: console=ttyAMA0\n"
+              "[    0.3] clk: Disabling unused clocks\n")
+    assert FUZZ_MOD._is_boot_stall(output) is True
+
+
+def test_boot_stall_false_once_harness_ran():
+    """Reaching /init means the harness owns the outcome, not the boot."""
+    output = ("[    0.0] Booting Linux on physical CPU 0x0\n"
+              "[    0.0] Kernel command line: console=ttyAMA0\n"
+              "[    0.5] Run /init as init process\n")
+    assert FUZZ_MOD._is_boot_stall(output) is False
+
+
+def test_boot_stall_false_with_real_fault():
+    """A sanitizer report during boot is a real fault, not a stall."""
+    output = ("[    0.0] Booting Linux on physical CPU 0x0\n"
+              "[    0.0] Kernel command line: console=ttyAMA0\n"
+              "==1==ERROR: AddressSanitizer: heap-buffer-overflow\n")
+    assert FUZZ_MOD._is_boot_stall(output) is False
+
+
+def test_boot_stall_false_without_a_guest_boot_log():
+    """No captured boot log (as on CH) means the check does not apply."""
+    output = "cloud-hypervisor: ERROR: something benign\n"
+    assert FUZZ_MOD._is_boot_stall(output) is False
+
+
 def test_classify_real_error_after_ptrace_noise():
     """A real ERROR line is reported even when ptrace noise precedes it."""
     output = (
