@@ -1423,11 +1423,14 @@ def _detect_backend(vmm_path):
 
 
 def run_vmm(vmm_path, initramfs_path, profraw_dir, timeout=3,
-            kernel_path=None, disk_path=None, cpus=2, memory="128M"):
+            kernel_path=None, disk_path=None, cpus=2, memory="128M",
+            fuzz_device=None):
     """Boot the VMM with the fuzz initramfs.
 
     Returns (exit_code, crashed, output, timed_out). A timeout under
     parallel load is not a genuine fault, so callers can reconfirm it.
+    When fuzz_device is set, the non-CH backends attach only that device
+    so the guest boots faster.
     """
     if kernel_path:
         kernel = kernel_path
@@ -1475,7 +1478,8 @@ def run_vmm(vmm_path, initramfs_path, profraw_dir, timeout=3,
         # never storms the shared INTx line the kernel left unhandled.
         cmdline = ("console=" + backend.console_device
                    + " initcall_blacklist=virtio_blk_init")
-        opts = {"cpus": cpus, "memory": memory, "pmem_path": pmem_path}
+        opts = {"cpus": cpus, "memory": memory, "pmem_path": pmem_path,
+                "fuzz_device": fuzz_device}
         cmd = backend.build_cmd(kernel, initramfs_path, disk, cmdline, opts)
 
     # OpenVMM always runs an interactive REPL that needs a controlling
@@ -2705,7 +2709,7 @@ def cmd_fuzz(args):
         _ec, _crashed, probe_out, _to = run_vmm(
             args.vmm, w0["initramfs"], w0["dir"], probe_timeout,
             kernel_path=kernel, disk_path=w0["disk"],
-            cpus=args.cpus, memory=args.memory)
+            cpus=args.cpus, memory=args.memory, fuzz_device=args.device)
         if "FUZZ:" not in probe_out:
             msg = "\n".join("    vmm: " + ln
                             for ln in probe_out.splitlines()[-10:])
@@ -2763,7 +2767,7 @@ def cmd_fuzz(args):
         exit_code, crashed, vmm_output, timed_out = run_vmm(
             args.vmm, w["initramfs"], w["dir"], args.timeout,
             kernel_path=kernel, disk_path=w["disk"],
-            cpus=args.cpus, memory=args.memory
+            cpus=args.cpus, memory=args.memory, fuzz_device=args.device
         )
 
         # A timeout under parallel load is usually a scheduling stall,
@@ -2773,7 +2777,7 @@ def cmd_fuzz(args):
             exit_code, crashed, vmm_output, timed_out = run_vmm(
                 args.vmm, w["initramfs"], w["dir"], confirm_timeout,
                 kernel_path=kernel, disk_path=w["disk"],
-                cpus=args.cpus, memory=args.memory
+                cpus=args.cpus, memory=args.memory, fuzz_device=args.device
             )
         tm["boot"] = time.perf_counter() - t
 

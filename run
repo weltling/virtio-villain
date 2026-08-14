@@ -548,6 +548,13 @@ class Qemu(VmmBackend):
         pmem_path = opts.get("pmem_path")
         fs_socket = opts.get("fs_socket")
         api_socket = opts.get("api_socket")
+        # When fuzzing one device, attach only that device so the guest
+        # boots faster. None (the conformance runs) attaches the full set.
+        only = opts.get("fuzz_device")
+
+        def want(dev):
+            return only is None or only == dev
+
         cid = self._next_cid()
         ext = disk_path.rsplit(".", 1)[-1]
         fmt_map = {"raw": "raw", "qcow2": "qcow2", "vhd": "vpc", "vhdx": "vhdx"}
@@ -569,16 +576,29 @@ class Qemu(VmmBackend):
             "-enable-kvm",
             "-kernel", kernel,
             "-initrd", initramfs,
-            "-drive", self._qemu_drive_arg(disk_path, qemu_fmt, opts),
-            "-device", blk_dev,
-            "-netdev", netdev,
-            "-device", net_dev,
-            "-device", f"vhost-vsock-pci,guest-cid={cid},packed={packed_flag}",
-            "-device", f"virtio-balloon-pci-non-transitional,packed={packed_flag}",
-            "-device", "virtio-iommu-pci",
-            "-device", f"virtio-serial-pci-non-transitional,packed={packed_flag}",
-            "-object", "rng-random,id=rng0,filename=/dev/urandom",
-            "-device", f"virtio-rng-pci-non-transitional,rng=rng0,packed={packed_flag}",
+        ]
+        if want("blk"):
+            cmd += ["-drive", self._qemu_drive_arg(disk_path, qemu_fmt, opts),
+                    "-device", blk_dev]
+        if want("net"):
+            cmd += ["-netdev", netdev, "-device", net_dev]
+        if want("vsock"):
+            cmd += ["-device",
+                    f"vhost-vsock-pci,guest-cid={cid},packed={packed_flag}"]
+        if want("balloon"):
+            cmd += ["-device",
+                    f"virtio-balloon-pci-non-transitional,packed={packed_flag}"]
+        if want("iommu"):
+            cmd += ["-device", "virtio-iommu-pci"]
+        if want("console"):
+            cmd += ["-device",
+                    f"virtio-serial-pci-non-transitional,packed={packed_flag}"]
+        if want("rng"):
+            cmd += ["-object", "rng-random,id=rng0,filename=/dev/urandom",
+                    "-device",
+                    f"virtio-rng-pci-non-transitional,rng=rng0"
+                    f",packed={packed_flag}"]
+        cmd += [
             "-append", cmdline,
             "-nographic",
             "-no-reboot",
@@ -587,12 +607,12 @@ class Qemu(VmmBackend):
         ]
         if arch != "aarch64":
             cmd += ["-device", "isa-debug-exit,iobase=0x501,iosize=1"]
-        if pmem_path and arch == "x86_64":
+        if want("pmem") and pmem_path and arch == "x86_64":
             cmd += [
                 "-object", f"memory-backend-file,id=pmem0,mem-path={pmem_path},size=128M",
                 "-device", f"virtio-pmem-pci,memdev=pmem0,packed={packed_flag}",
             ]
-        if fs_socket:
+        if fs_socket and want("fs"):
             cmd += [
                 "-chardev", f"socket,id=fs0,path={fs_socket}",
                 "-device", f"vhost-user-fs-pci,chardev=fs0,tag=vvfs,packed={packed_flag}",
@@ -601,18 +621,19 @@ class Qemu(VmmBackend):
             ]
         # virtio-crypto with a builtin software cryptodev backend. CH has
         # no crypto device model, so crypto tests only run under QEMU.
-        cmd += [
-            "-object", "cryptodev-backend-builtin,id=cryptodev0",
-            "-device",
-            f"virtio-crypto-pci,id=crypto0,cryptodev=cryptodev0,packed={packed_flag}",
-        ]
+        if want("crypto"):
+            cmd += [
+                "-object", "cryptodev-backend-builtin,id=cryptodev0",
+                "-device",
+                f"virtio-crypto-pci,id=crypto0,cryptodev=cryptodev0,packed={packed_flag}",
+            ]
         # virtio-scsi with backing scsi-hd LUNs. CH has no virtio-scsi
         # device model, so scsi tests only run under QEMU. A real LUN is
         # needed so a SCSI READ reaches the block backend. A second LUN
         # with a 4K logical block exercises multi LUN addressing and non
         # 512 geometry, and multiple request queues are advertised.
         scsi_path = opts.get("scsi_path")
-        if scsi_path:
+        if scsi_path and want("scsi"):
             scsi_path2 = opts.get("scsi_path2")
             cmd += [
                 "-drive", f"file={scsi_path},if=none,id=scsidisk,format=raw",

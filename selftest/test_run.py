@@ -470,6 +470,31 @@ def test_unit_qemu_net_device_disables_option_rom():
     assert net_dev.endswith(",romfile=")
 
 
+def test_unit_qemu_fuzz_device_attaches_only_that_device():
+    """With opts.fuzz_device set the QEMU command carries just that
+    device so the fuzz guest boots faster."""
+    be = RUN_MOD.Qemu("/usr/bin/qemu-system-x86_64")
+    cmd = be.build_cmd("/k", "/i", "/d.raw", "console=ttyS0",
+                       {"fuzz_device": "blk"})
+    assert any(str(a).startswith("virtio-blk-pci") for a in cmd)
+    assert not any(str(a).startswith("virtio-net-pci") for a in cmd)
+    assert not any(str(a).startswith("vhost-vsock-pci") for a in cmd)
+    assert not any(str(a).startswith("virtio-rng-pci") for a in cmd)
+    assert not any("virtio-crypto" in str(a) for a in cmd)
+
+
+def test_unit_qemu_no_fuzz_device_attaches_full_set():
+    """Without a fuzz device focus every device stays present, so the
+    conformance command is unchanged."""
+    be = RUN_MOD.Qemu("/usr/bin/qemu-system-x86_64")
+    cmd = be.build_cmd("/k", "/i", "/d.raw", "console=ttyS0", {})
+    assert any(str(a).startswith("virtio-blk-pci") for a in cmd)
+    assert any(str(a).startswith("virtio-net-pci") for a in cmd)
+    assert any(str(a).startswith("vhost-vsock-pci") for a in cmd)
+    assert any(str(a).startswith("virtio-rng-pci") for a in cmd)
+    assert any("virtio-crypto" in str(a) for a in cmd)
+
+
 def test_unit_qemu_aarch64_build_cmd_sets_machine():
     original = RUN_MOD.platform.machine
     try:
