@@ -1472,12 +1472,12 @@ def run_vmm(vmm_path, initramfs_path, profraw_dir, timeout=3,
     else:
         # QEMU and OpenVMM reuse the run module backends, which stand up
         # the same virtio devices. QEMU adds isa-debug-exit and -no-reboot
-        # so the guest reboot ends the VM. The guest needs no console, and
-        # the kernel blk initcall is dropped so the harness owns that
-        # device. The guest suppresses ring interrupts, so the device
-        # never storms the shared INTx line the kernel left unhandled.
+        # so the guest reboot ends the VM. Drop the guest virtio-pci
+        # transport initcall so the kernel binds no virtio driver at all:
+        # the harness owns every device through sysfs, and no kernel driver
+        # probe (iommu or balloon) can race the harness or stall the boot.
         cmdline = ("console=" + backend.console_device
-                   + " initcall_blacklist=virtio_blk_init")
+                   + " initcall_blacklist=virtio_pci_driver_init")
         opts = {"cpus": cpus, "memory": memory, "pmem_path": pmem_path,
                 "fuzz_device": fuzz_device}
         cmd = backend.build_cmd(kernel, initramfs_path, disk, cmdline, opts)
