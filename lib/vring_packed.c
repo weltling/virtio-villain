@@ -41,6 +41,10 @@ void vring_packed_attach(struct virtio_dev *dev, struct vring_packed *vr,
     cfg->queue_avail = vr->driver_event_phys;
     cfg->queue_used = vr->device_event_phys;
     cfg->queue_msix_vector = 0xffff;
+    // The harness polls the descriptor ring, so disable driver event
+    // notifications. Otherwise a device the kernel bound with no matching
+    // driver storms the shared INTx line into "nobody cared".
+    vr->driver_event->flags = VRING_PACKED_EVENT_FLAG_DISABLE;
     cfg->queue_enable = 1;
     __sync_synchronize();
 }

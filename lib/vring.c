@@ -33,6 +33,10 @@ void vring_attach(struct virtio_dev *dev, struct vring *vr, uint16_t queue)
     cfg->queue_avail = vr->avail_phys;
     cfg->queue_used = vr->used_phys;
     cfg->queue_msix_vector = 0xffff;
+    // The harness polls the used ring, so tell the device never to raise
+    // a used buffer interrupt. Otherwise a device the kernel bound with
+    // no matching driver storms the shared INTx line into "nobody cared".
+    vr->avail->flags = VRING_AVAIL_F_NO_INTERRUPT;
     cfg->queue_enable = 1;
     __sync_synchronize();
 }
