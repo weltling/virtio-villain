@@ -1487,6 +1487,12 @@ def run_vmm(vmm_path, initramfs_path, profraw_dir, timeout=3,
         spawn["stdin"] = slave_fd
         spawn["preexec_fn"] = _run_mod._ctty_preexec(
             os.ttyname(slave_fd).encode())
+    else:
+        # QEMU -nographic muxes the serial console onto stdio and puts the
+        # inherited stdin into raw mode, then never restores it when a VM
+        # is killed on timeout, leaving the caller's terminal broken. Hand
+        # it /dev/null so it never touches the controlling terminal.
+        spawn["stdin"] = subprocess.DEVNULL
 
     try:
         result = subprocess.run(cmd, **spawn)
