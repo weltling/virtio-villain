@@ -2628,6 +2628,16 @@ def cmd_fuzz(args):
     else:
         print(f"[*] Loaded {len(corpus)} corpus entries")
 
+    # In replay mode run each corpus entry exactly once, unmutated, in a
+    # deterministic order. Snapshot the list so the (coverage-mode) append
+    # of new inputs cannot shift the indexing mid sweep.
+    replay_items = None
+    if getattr(args, "replay_corpus", False):
+        replay_items = list(corpus)
+        args.iterations = len(replay_items)
+        print(f"[*] Replay mode: running {args.iterations} corpus entries "
+              "once, no mutation")
+
     # Wire up corpus for splice mutation
     global _corpus_ref
     _corpus_ref = corpus
@@ -2686,11 +2696,16 @@ def cmd_fuzz(args):
         w = worker_dirs[worker_id % jobs]
         tm = {}
 
-        with lock:
-            parent = random.choice(corpus)
-        t = time.perf_counter()
-        blob = mutate(parent)
-        tm["mutate"] = time.perf_counter() - t
+        if replay_items is not None:
+            parent = replay_items[iteration % len(replay_items)]
+            blob = parent
+            tm["mutate"] = 0.0
+        else:
+            with lock:
+                parent = random.choice(corpus)
+            t = time.perf_counter()
+            blob = mutate(parent)
+            tm["mutate"] = time.perf_counter() - t
 
         # Patch into this worker's binary
         t = time.perf_counter()
@@ -2957,6 +2972,11 @@ def main():
     g.add_argument("--no-confirm-timeouts", action="store_true",
                    help="save timeouts as crashes without reconfirming "
                         "them with a longer timeout")
+    g.add_argument("--replay-corpus", action="store_true",
+                   dest="replay_corpus",
+                   help="run every corpus entry once unmutated instead of "
+                        "mutating (sweep an existing corpus, e.g. under "
+                        "ASan)")
     _add_sysconfig(p_fuzz)
     _add_help(p_fuzz)
 

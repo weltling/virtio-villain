@@ -2953,6 +2953,17 @@ def test_list_devices_lists_all_without_vmm():
         assert name in r.stdout
 
 
+def test_replay_corpus_flag_is_accepted():
+    """--replay-corpus is a wired fuzz flag, not an argparse error."""
+    r = subprocess.run(
+        [sys.executable, RUN_FUZZ, "fuzz", "--replay-corpus", "-n", "1"],
+        capture_output=True, text=True, cwd=ROOT_DIR)
+    # No --vmm, so it must fail on the missing VMM, never on an
+    # unrecognized argument.
+    assert r.returncode != 0
+    assert "unrecognized arguments" not in r.stderr
+
+
 def test_fuzz_without_vmm_errors_clearly():
     """A real run still requires --vmm and says so."""
     r = subprocess.run([sys.executable, RUN_FUZZ, "fuzz", "-n", "1"],
