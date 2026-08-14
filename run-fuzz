@@ -1515,8 +1515,17 @@ def run_vmm(vmm_path, initramfs_path, profraw_dir, timeout=3,
         # CAP_SYS_PTRACE and remove that artifact at the source.
         crashed = _fault_class(result.returncode, output) is not None
         return result.returncode, crashed, output, False
-    except subprocess.TimeoutExpired:
-        return -1, True, "", True
+    except subprocess.TimeoutExpired as e:
+        # Keep whatever the VMM printed before the kill so triage and
+        # replay can see how far the guest got (a FUZZ: marker means the
+        # guest ran and the VMM hung after; its absence means an earlier
+        # hang). subprocess populates these on capture_output timeouts.
+        partial = b""
+        if e.stderr:
+            partial += e.stderr
+        if e.stdout:
+            partial += e.stdout
+        return -1, True, partial.decode(errors="replace"), True
     finally:
         if slave_fd is not None:
             os.close(slave_fd)
