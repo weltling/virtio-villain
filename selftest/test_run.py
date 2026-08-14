@@ -2893,6 +2893,7 @@ def test_run_vmm_routes_qemu_binary_through_qemu_backend():
     class _Result:
         returncode = 0
         stderr = b""
+        stdout = b""
 
     captured = {}
     orig_run = FUZZ_MOD.subprocess.run

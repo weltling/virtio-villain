@@ -1488,7 +1488,11 @@ def run_vmm(vmm_path, initramfs_path, profraw_dir, timeout=3,
 
     try:
         result = subprocess.run(cmd, **spawn)
-        output = result.stderr.decode(errors="replace")
+        # Merge both streams: VMM logs, sanitizer reports and panics land
+        # on stderr, but the guest serial console (the FUZZ: marker and
+        # any guest side panic) lands on stdout under QEMU -nographic.
+        output = (result.stderr.decode(errors="replace")
+                  + result.stdout.decode(errors="replace"))
         # A non zero exit on its own is not a fault. The fuzz guest
         # reboots on a VMM without isa-debug-exit, and the VMM correctly
         # rejects malformed rings with NEEDS_RESET or a handled ERROR
