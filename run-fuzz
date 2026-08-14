@@ -2852,6 +2852,12 @@ def cmd_fuzz(args):
                 if not os.path.exists(crash_path):
                     with open(crash_path, "wb") as fh:
                         fh.write(blob)
+                    # Save the VMM output next to the blob so the crash
+                    # evidence survives even when the boot is flaky and a
+                    # later replay does not reproduce it.
+                    if vmm_output:
+                        with open(crash_path + ".log", "w") as fh:
+                            fh.write(vmm_output)
                     print(f"\n[!] CRASH #{stats['crashes']} "
                           f"saved: {crash_path}")
                     _print_crash_detail(blob, vmm_output, crash_path)
