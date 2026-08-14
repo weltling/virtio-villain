@@ -2860,15 +2860,63 @@ def test_run_vmm_timeout_reports_timed_out():
     with tempfile.TemporaryDirectory() as d:
         kernel = os.path.join(d, "vmlinux")
         open(kernel, "wb").close()
+        vmm = os.path.join(d, "cloud-hypervisor")
         try:
             FUZZ_MOD.subprocess.run = _raise_timeout
             rc, crashed, out, timed_out = FUZZ_MOD.run_vmm(
-                "/bin/true", os.path.join(d, "initramfs"), d,
+                vmm, os.path.join(d, "initramfs"), d,
                 timeout=1, kernel_path=kernel)
         finally:
             FUZZ_MOD.subprocess.run = orig_run
     assert crashed is True
     assert timed_out is True
+
+
+def test_detect_backend_maps_binary_names():
+    """The fuzzer resolves each VMM binary to the matching backend."""
+    cases = [("cloud-hypervisor", "ch"),
+             ("qemu-system-aarch64", "qemu"),
+             ("qemu-system-x86_64", "qemu"),
+             ("openvmm", "openvmm")]
+    for base, expect in cases:
+        FUZZ_MOD._BACKEND_CACHE.clear()
+        backend = FUZZ_MOD._detect_backend("/opt/bin/" + base)
+        assert backend.name == expect
+    FUZZ_MOD._BACKEND_CACHE.clear()
+
+
+def test_run_vmm_routes_qemu_binary_through_qemu_backend():
+    """A qemu-system binary boots via the QEMU backend command, so the
+    fuzzer can target QEMU, not only Cloud Hypervisor."""
+    import tempfile
+
+    class _Result:
+        returncode = 0
+        stderr = b""
+
+    captured = {}
+    orig_run = FUZZ_MOD.subprocess.run
+
+    def _capture(cmd, *a, **k):
+        captured["cmd"] = cmd
+        return _Result()
+
+    with tempfile.TemporaryDirectory() as d:
+        kernel = os.path.join(d, "vmlinux")
+        open(kernel, "wb").close()
+        vmm = os.path.join(d, "qemu-system-x86_64")
+        FUZZ_MOD._BACKEND_CACHE.clear()
+        try:
+            FUZZ_MOD.subprocess.run = _capture
+            FUZZ_MOD.run_vmm(vmm, os.path.join(d, "initramfs"), d,
+                             timeout=5, kernel_path=kernel)
+        finally:
+            FUZZ_MOD.subprocess.run = orig_run
+            FUZZ_MOD._BACKEND_CACHE.clear()
+    cmd = captured["cmd"]
+    assert vmm == cmd[0]
+    assert "-no-reboot" in cmd
+    assert any("virtio-blk" in str(x) for x in cmd)
 
 
 def test_sweep_stale_workdirs_ages_out_only_old_dirs():
@@ -2924,7 +2972,7 @@ def test_run_vmm_calls_overlap_across_threads():
     workers = 6
     sleep_s = 0.5
     with tempfile.TemporaryDirectory() as base:
-        vmm = os.path.join(base, "stubvmm")
+        vmm = os.path.join(base, "cloud-hypervisor")
         with open(vmm, "w") as fh:
             fh.write("#!/bin/sh\nsleep %s\nexit 0\n" % sleep_s)
         os.chmod(vmm, 0o755)

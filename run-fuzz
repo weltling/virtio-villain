@@ -13,6 +13,7 @@ import functools
 import glob
 import hashlib
 import os
+import pty
 import random
 import re
 import shutil
@@ -1403,6 +1404,24 @@ def _require_vmm(vmm_path):
         sys.exit(f"error: VMM binary is not executable: {vmm_path}")
 
 
+_BACKEND_CACHE = {}
+_BACKEND_CACHE_LOCK = threading.Lock()
+
+
+def _detect_backend(vmm_path):
+    """Return the VMM backend for a binary, cached and thread safe.
+
+    Only CH is special cased with a fuzz tuned command; QEMU and OpenVMM
+    are built through the run module backends.
+    """
+    with _BACKEND_CACHE_LOCK:
+        backend = _BACKEND_CACHE.get(vmm_path)
+        if backend is None:
+            backend = _run_mod.detect_vmm(vmm_path)
+            _BACKEND_CACHE[vmm_path] = backend
+        return backend
+
+
 def run_vmm(vmm_path, initramfs_path, profraw_dir, timeout=3,
             kernel_path=None, disk_path=None, cpus=2, memory="128M"):
     """Boot the VMM with the fuzz initramfs.
@@ -1443,13 +1462,32 @@ def run_vmm(vmm_path, initramfs_path, profraw_dir, timeout=3,
     env = os.environ.copy()
     env["LLVM_PROFILE_FILE"] = os.path.join(profraw_dir, "%p.profraw")
 
-    cmd = _fuzz_vmm_cmd(vmm_path, kernel, initramfs_path, disk, pmem_path,
-                        profraw_dir, cpus, memory)
+    backend = _detect_backend(vmm_path)
+    if backend.name == "ch":
+        cmd = _fuzz_vmm_cmd(vmm_path, kernel, initramfs_path, disk, pmem_path,
+                            profraw_dir, cpus, memory)
+    else:
+        # QEMU and OpenVMM reuse the run module backends, which stand up
+        # the same virtio devices. QEMU adds isa-debug-exit and -no-reboot
+        # so the guest reboot ends the VM. The guest needs no console, but
+        # the blk driver initcall is blacklisted so the harness owns it.
+        cmdline = ("console=" + backend.console_device
+                   + " initcall_blacklist=virtio_blk_init")
+        opts = {"cpus": cpus, "memory": memory, "pmem_path": pmem_path}
+        cmd = backend.build_cmd(kernel, initramfs_path, disk, cmdline, opts)
+
+    # OpenVMM always runs an interactive REPL that needs a controlling
+    # terminal; give it a private pty on stdin, as the runner does.
+    spawn = {"timeout": timeout, "capture_output": True, "env": env}
+    master_fd = slave_fd = None
+    if backend.name == "openvmm":
+        master_fd, slave_fd = pty.openpty()
+        spawn["stdin"] = slave_fd
+        spawn["preexec_fn"] = _run_mod._ctty_preexec(
+            os.ttyname(slave_fd).encode())
 
     try:
-        result = subprocess.run(
-            cmd, timeout=timeout, capture_output=True, env=env
-        )
+        result = subprocess.run(cmd, **spawn)
         output = result.stderr.decode(errors="replace")
         # A non zero exit on its own is not a fault. The fuzz guest
         # reboots on a VMM without isa-debug-exit, and the VMM correctly
@@ -1463,6 +1501,10 @@ def run_vmm(vmm_path, initramfs_path, profraw_dir, timeout=3,
         return result.returncode, crashed, output, False
     except subprocess.TimeoutExpired:
         return -1, True, "", True
+    finally:
+        if slave_fd is not None:
+            os.close(slave_fd)
+            os.close(master_fd)
 
 
 # --- Main Loop ---
@@ -2512,6 +2554,9 @@ def cmd_fuzz(args):
     if not args.vmm:
         sys.exit("error: --vmm is required (or use --list-devices)")
     _require_vmm(args.vmm)
+    # Resolve the backend on the main thread so an unknown VMM name fails
+    # with a clear message rather than in a worker thread mid run.
+    _detect_backend(args.vmm)
     os.makedirs(args.corpus_dir, exist_ok=True)
     os.makedirs(args.crashes_dir, exist_ok=True)
 
