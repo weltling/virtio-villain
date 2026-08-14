@@ -598,6 +598,10 @@ class Qemu(VmmBackend):
                     "-device",
                     f"virtio-rng-pci-non-transitional,rng=rng0"
                     f",packed={packed_flag}"]
+        if not want("net"):
+            # Suppress QEMU's default NIC so a non-net focus does not pay
+            # to emulate an unused virtio-net and its option ROM.
+            cmd += ["-net", "none"]
         cmd += [
             "-append", cmdline,
             "-nographic",

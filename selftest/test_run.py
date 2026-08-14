@@ -481,6 +481,8 @@ def test_unit_qemu_fuzz_device_attaches_only_that_device():
     assert not any(str(a).startswith("vhost-vsock-pci") for a in cmd)
     assert not any(str(a).startswith("virtio-rng-pci") for a in cmd)
     assert not any("virtio-crypto" in str(a) for a in cmd)
+    # QEMU's default NIC is suppressed so no unused net device is emulated.
+    assert "-net" in cmd and cmd[cmd.index("-net") + 1] == "none"
 
 
 def test_unit_qemu_no_fuzz_device_attaches_full_set():
@@ -493,6 +495,8 @@ def test_unit_qemu_no_fuzz_device_attaches_full_set():
     assert any(str(a).startswith("vhost-vsock-pci") for a in cmd)
     assert any(str(a).startswith("virtio-rng-pci") for a in cmd)
     assert any("virtio-crypto" in str(a) for a in cmd)
+    # The full set includes an explicit NIC, so no default suppression.
+    assert "none" not in cmd
 
 
 def test_unit_qemu_aarch64_build_cmd_sets_machine():
