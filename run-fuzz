@@ -316,6 +316,12 @@ def device_seeds():
     # buf_alloc, fwd_cnt. type=STREAM(1), op=REQUEST(1), dst_cid=HOST(2).
     vsock_req = struct.pack("<QQIIIHHIII", 3, 2, 1234, 5678, 0, 1, 1,
                             0, 262144, 0)
+    # A vsock stream data packet (op=RW=5) with a matching payload length,
+    # to exercise the length check and the data descriptor path in the
+    # packet parser, a route the request seed does not take.
+    vsock_data = b"vv-fuzz-data"
+    vsock_rw = struct.pack("<QQIIIHHIII", 3, 2, 1234, 5678, len(vsock_data),
+                           1, 5, 0, 262144, 0) + vsock_data
     return {
         # rng: one writable buffer the device fills with random bytes
         ("rng", "fill"): _device_seg_blob("rng", 0, [[16, w, 0]],
@@ -333,6 +339,10 @@ def device_seeds():
         # the muxer and connection state machine actually run
         ("vsock", "tx"): _device_seg_blob("vsock", 1, [[44, 0, 0]],
                                           vsock_req),
+        # vsock: a stream data packet, header then payload, to reach the
+        # length check and data descriptor path in the packet parser
+        ("vsock", "rw"): _device_seg_blob(
+            "vsock", 1, [[44, n, 1], [len(vsock_data), 0, 0]], vsock_rw),
         # balloon: a readable page frame number on the inflate queue
         ("balloon", "inflate"): _device_seg_blob("balloon", 0, [[4, 0, 0]],
                                                  b"\x00" * 4),

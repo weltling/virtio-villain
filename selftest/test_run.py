@@ -2285,6 +2285,7 @@ def test_device_seeds_target_expected_queues():
         ("net", "tx"): ("net", 1),
         ("net", "rx"): ("net", 0),
         ("vsock", "tx"): ("vsock", 1),
+        ("vsock", "rw"): ("vsock", 1),
         ("balloon", "inflate"): ("balloon", 0),
         ("mem", "state"): ("mem", 0),
     }
@@ -2313,6 +2314,20 @@ def test_vsock_seed_is_valid_stream_request():
     assert dst_cid == 2      # VMADDR_CID_HOST
     assert vtype == 1        # VIRTIO_VSOCK_TYPE_STREAM
     assert op == 1           # VIRTIO_VSOCK_OP_REQUEST
+
+
+def test_vsock_rw_seed_length_matches_payload():
+    """The vsock rw seed declares a length equal to its trailing data,
+    so the packet parser reaches the data descriptor path."""
+    import struct
+    vq = FUZZ_MOD.FuzzBlob.parse(
+        FUZZ_MOD.device_seeds()[("vsock", "rw")]).segments[0].vq
+    hdr = struct.unpack("<QQIIIHHIII", bytes(vq.payload[:44]))
+    length, vtype, op = hdr[4], hdr[5], hdr[6]
+    assert op == 5           # VIRTIO_VSOCK_OP_RW
+    assert vtype == 1        # VIRTIO_VSOCK_TYPE_STREAM
+    assert length > 0
+    assert bytes(vq.payload[44:44 + length]) == b"vv-fuzz-data"
 
 
 def test_mutate_returns_versioned_container():
