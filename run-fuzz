@@ -2050,11 +2050,12 @@ def cmd_replay(args):
     """Replay a crash blob against the VMM."""
     _require_vmm(args.vmm)
     fuzz_binary = os.path.join(_SCRIPT_DIR, "target", "fuzz")
-    if not os.path.exists(fuzz_binary):
-        print("[*] Building fuzz guest...")
-        result = subprocess.run(["make", "fuzz"], capture_output=True, text=True)
-        if result.returncode != 0:
-            sys.exit(f"Build failed: {result.stderr}")
+    # Always rebuild: make is incremental and cheap, and a stale binary
+    # would silently replay old guest behavior after a source change.
+    print("[*] Building fuzz guest...")
+    result = subprocess.run(["make", "fuzz"], capture_output=True, text=True)
+    if result.returncode != 0:
+        sys.exit(f"Build failed: {result.stderr}")
 
     section_offset = find_fuzz_section_offset(fuzz_binary)
     if section_offset is None:
