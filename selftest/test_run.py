@@ -2633,6 +2633,23 @@ def test_boot_stall_false_without_a_guest_boot_log():
     assert FUZZ_MOD._is_boot_stall(output) is False
 
 
+def test_exit_status_names_a_fatal_signal():
+    """A crash with no output marker is labeled by its killing signal."""
+    import signal as _sig
+    s = FUZZ_MOD._exit_status_str(-_sig.SIGSEGV)
+    assert "SIGSEGV" in s
+
+
+def test_exit_status_names_a_timeout():
+    s = FUZZ_MOD._exit_status_str(-1, timed_out=True)
+    assert "timed out" in s
+
+
+def test_exit_status_plain_exit_code():
+    s = FUZZ_MOD._exit_status_str(1)
+    assert "exit code 1" in s
+
+
 def test_classify_real_error_after_ptrace_noise():
     """A real ERROR line is reported even when ptrace noise precedes it."""
     output = (

@@ -2061,10 +2061,24 @@ def _annotate_container(blob):
     return notes
 
 
-def _print_crash_detail(blob, vmm_output, crash_path):
+def _exit_status_str(exit_code, timed_out=False):
+    """One line describing how the VMM process ended, for the crash log."""
+    if timed_out:
+        return "VMM: timed out (hang)"
+    if exit_code is not None and exit_code < 0:
+        name = _FATAL_SIGNALS.get(-exit_code, f"signal {-exit_code}")
+        return f"VMM: killed by {name}"
+    return f"VMM: exit code {exit_code}"
+
+
+def _print_crash_detail(blob, vmm_output, crash_path, exit_code=None,
+                        timed_out=False):
     """Print decoded crash with annotations and VMM error."""
     notes = _annotate_container(blob)
-    error_class = _classify_vmm_output(vmm_output)
+    if timed_out:
+        error_class = "timeout (VMM hang)"
+    else:
+        error_class = _classify_vmm_output(vmm_output, exit_code)
     print(f"    class: {error_class}")
     if notes:
         for note in notes:
@@ -2116,7 +2130,7 @@ def cmd_replay(args):
         tier, rationale = _security_triage(output, exit_code)
         print(f"    security: {tier} -- {rationale}")
         if crashed:
-            _print_crash_detail(blob, output, path)
+            _print_crash_detail(blob, output, path, exit_code, _timed_out)
         if getattr(args, "verbose", False):
             print("    --- full VMM stderr ---")
             for line in output.splitlines():
@@ -2835,12 +2849,13 @@ def cmd_fuzz(args):
             edges = collect_coverage(args.vmm, profdata_path, w["dir"])
         tm["coverage"] = time.perf_counter() - t
 
-        return iteration, crashed, blob, vmm_output, edges, tm
+        return iteration, crashed, blob, vmm_output, edges, tm, \
+            exit_code, timed_out
 
     def _record_result(result):
         """Fold one worker result into stats, corpus and crashes."""
         nonlocal baseline_edges
-        it, crashed, blob, vmm_output, edges, tm = result
+        it, crashed, blob, vmm_output, edges, tm, exit_code, timed_out = result
         with lock:
             stats["iterations"] += 1
             for k, v in tm.items():
@@ -2854,13 +2869,16 @@ def cmd_fuzz(args):
                         fh.write(blob)
                     # Save the VMM output next to the blob so the crash
                     # evidence survives even when the boot is flaky and a
-                    # later replay does not reproduce it.
-                    if vmm_output:
-                        with open(crash_path + ".log", "w") as fh:
-                            fh.write(vmm_output)
+                    # later replay does not reproduce it. The first line
+                    # records how the VMM ended, since a fatal signal
+                    # leaves no marker in the output itself.
+                    with open(crash_path + ".log", "w") as fh:
+                        fh.write(_exit_status_str(exit_code, timed_out)
+                                 + "\n" + vmm_output)
                     print(f"\n[!] CRASH #{stats['crashes']} "
                           f"saved: {crash_path}")
-                    _print_crash_detail(blob, vmm_output, crash_path)
+                    _print_crash_detail(blob, vmm_output, crash_path,
+                                        exit_code, timed_out)
 
             if not args.no_coverage and edges:
                 new_edges = edges - baseline_edges
