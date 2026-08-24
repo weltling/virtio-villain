@@ -49,9 +49,9 @@ static test_result_t test_queue_setup_after_driver_ok(struct virtio_dev *dev,
     }
 
     /* Write queue addresses for queue 1 while in DRIVER_OK */
-    cfg->queue_desc = vr2.desc_phys;
-    cfg->queue_avail = vr2.avail_phys;
-    cfg->queue_used = vr2.used_phys;
+    virtio_store64(&cfg->queue_desc, vr2.desc_phys);
+    virtio_store64(&cfg->queue_avail, vr2.avail_phys);
+    virtio_store64(&cfg->queue_used, vr2.used_phys);
     cfg->queue_msix_vector = 0xffff;
     cfg->queue_enable = 1;
     __sync_synchronize();

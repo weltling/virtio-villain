@@ -41,11 +41,11 @@ static test_result_t test_queue_addr_reset_clears(struct virtio_dev *dev,
     for (uint16_t q = 0; q < nq; q++) {
         cfg->queue_select = q;
         __sync_synchronize();
-        if (cfg->queue_desc != 0)
+        if (virtio_load64(&cfg->queue_desc) != 0)
             TFAIL("cfg->queue_desc != 0");
-        if (cfg->queue_avail != 0)
+        if (virtio_load64(&cfg->queue_avail) != 0)
             TFAIL("cfg->queue_avail != 0");
-        if (cfg->queue_used != 0)
+        if (virtio_load64(&cfg->queue_used) != 0)
             TFAIL("cfg->queue_used != 0");
     }
 

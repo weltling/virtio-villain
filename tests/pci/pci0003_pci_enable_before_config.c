@@ -42,9 +42,9 @@ static test_result_t test_pci_enable_before_config(struct virtio_dev *dev,
     dev->common->queue_size = 16;
     struct vring vr2;
     vring_alloc(&vr2, 16);
-    dev->common->queue_desc = vr2.desc_phys;
-    dev->common->queue_avail = vr2.avail_phys;
-    dev->common->queue_used = vr2.used_phys;
+    virtio_store64(&dev->common->queue_desc, vr2.desc_phys);
+    virtio_store64(&dev->common->queue_avail, vr2.avail_phys);
+    virtio_store64(&dev->common->queue_used, vr2.used_phys);
     __sync_synchronize();
 
     dev->common->device_status |= VIRTIO_STATUS_DRIVER_OK;

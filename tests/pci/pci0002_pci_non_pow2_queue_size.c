@@ -40,9 +40,9 @@ static test_result_t test_pci_non_pow2_queue_size(struct virtio_dev *dev,
 
     struct vring vr2;
     vring_alloc(&vr2, 7);
-    dev->common->queue_desc = vr2.desc_phys;
-    dev->common->queue_avail = vr2.avail_phys;
-    dev->common->queue_used = vr2.used_phys;
+    virtio_store64(&dev->common->queue_desc, vr2.desc_phys);
+    virtio_store64(&dev->common->queue_avail, vr2.avail_phys);
+    virtio_store64(&dev->common->queue_used, vr2.used_phys);
     dev->common->queue_enable = 1;
     __sync_synchronize();
 

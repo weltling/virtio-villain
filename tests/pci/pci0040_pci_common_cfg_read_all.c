@@ -62,9 +62,9 @@ static test_result_t test_pci_common_cfg_read_all(struct virtio_dev *dev,
         uint16_t qmv = cfg->queue_msix_vector;
         uint16_t qe = cfg->queue_enable;
         uint16_t qno = cfg->queue_notify_off;
-        uint64_t qd = cfg->queue_desc;
-        uint64_t qa = cfg->queue_avail;
-        uint64_t qu = cfg->queue_used;
+        uint64_t qd = virtio_load64(&cfg->queue_desc);
+        uint64_t qa = virtio_load64(&cfg->queue_avail);
+        uint64_t qu = virtio_load64(&cfg->queue_used);
         (void)qs; (void)qmv; (void)qe; (void)qno;
         (void)qd; (void)qa; (void)qu;
     }

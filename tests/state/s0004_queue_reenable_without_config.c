@@ -38,7 +38,7 @@ static test_result_t test_queue_reenable_without_config(struct virtio_dev *dev,
     __sync_synchronize();
 
     /* Save current addresses */
-    uint64_t saved_desc = cfg->queue_desc;
+    uint64_t saved_desc = virtio_load64(&cfg->queue_desc);
     (void)saved_desc;
 
     /* Disable queue */

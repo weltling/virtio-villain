@@ -29,9 +29,9 @@ void vring_attach(struct virtio_dev *dev, struct vring *vr, uint16_t queue)
     cfg->queue_select = queue;
     __sync_synchronize();
     cfg->queue_size = vr->size;
-    cfg->queue_desc = vr->desc_phys;
-    cfg->queue_avail = vr->avail_phys;
-    cfg->queue_used = vr->used_phys;
+    virtio_store64(&cfg->queue_desc, vr->desc_phys);
+    virtio_store64(&cfg->queue_avail, vr->avail_phys);
+    virtio_store64(&cfg->queue_used, vr->used_phys);
     cfg->queue_msix_vector = 0xffff;
     // The harness polls the used ring, so tell the device never to raise
     // a used buffer interrupt. Otherwise a device the kernel bound with

@@ -54,9 +54,9 @@ static test_result_t test_long_pause_after_ack(struct virtio_dev *dev,
     cfg->queue_select = 0;
     __sync_synchronize();
     cfg->queue_size = 16;
-    cfg->queue_desc = nv.desc_phys;
-    cfg->queue_avail = nv.avail_phys;
-    cfg->queue_used = nv.used_phys;
+    virtio_store64(&cfg->queue_desc, nv.desc_phys);
+    virtio_store64(&cfg->queue_avail, nv.avail_phys);
+    virtio_store64(&cfg->queue_used, nv.used_phys);
     cfg->queue_msix_vector = 0xffff;
     cfg->queue_enable = 1;
     __sync_synchronize();

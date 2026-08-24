@@ -50,9 +50,9 @@ static test_result_t test_ring_reset_new_size(struct virtio_dev *dev,
     cfg->queue_select = 0;
     __sync_synchronize();
     cfg->queue_size = new_size;
-    cfg->queue_desc = vr2.desc_phys;
-    cfg->queue_avail = vr2.avail_phys;
-    cfg->queue_used = vr2.used_phys;
+    virtio_store64(&cfg->queue_desc, vr2.desc_phys);
+    virtio_store64(&cfg->queue_avail, vr2.avail_phys);
+    virtio_store64(&cfg->queue_used, vr2.used_phys);
     cfg->queue_enable = 1;
     __sync_synchronize();
     usleep(10000);

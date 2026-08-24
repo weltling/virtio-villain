@@ -159,4 +159,23 @@ int virtio_pci_queue_reset(struct virtio_dev *dev, uint16_t queue);
 /* Send a queue notification (kick). */
 void virtio_pci_kick(struct virtio_dev *dev, uint16_t queue);
 
+/*
+ * Spec 4.1.3.1: For 64-bit wide fields in PCI device configuration, the driver
+ * MUST use 32-bit wide and aligned accesses.
+ */
+static inline void virtio_store64(volatile void *dst, uint64_t val)
+{
+    volatile uint32_t *p = (volatile uint32_t *)dst;
+    p[0] = (uint32_t)val;
+    p[1] = (uint32_t)(val >> 32);
+}
+
+static inline uint64_t virtio_load64(volatile const void *src)
+{
+    volatile const uint32_t *p = (volatile const uint32_t *)src;
+    uint64_t lo = p[0];
+    uint64_t hi = p[1];
+    return lo | (hi << 32);
+}
+
 #endif /* VV_VIRTIO_PCI_H */
