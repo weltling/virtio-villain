@@ -37,9 +37,9 @@ static test_result_t test_queue_addrs_overlap(struct virtio_dev *dev,
     __sync_synchronize();
     dev->common->queue_size = 16;
     /* All three point to the same address */
-    dev->common->queue_desc = phys;
-    dev->common->queue_avail = phys;
-    dev->common->queue_used = phys;
+    virtio_store64(&dev->common->queue_desc, phys);
+    virtio_store64(&dev->common->queue_avail, phys);
+    virtio_store64(&dev->common->queue_used, phys);
     dev->common->queue_enable = 1;
     __sync_synchronize();
 

@@ -28,7 +28,7 @@ static test_result_t test_state_queue_device_in_bar(struct virtio_dev *dev,
     cfg->queue_select = vr->queue;
     __sync_synchronize();
 
-    cfg->queue_used = mmio_phys;
+    virtio_store64(&cfg->queue_used, mmio_phys);
     __sync_synchronize();
 
     vring_raw_set_desc(vr, 0, vv_virt_to_phys(vv_alloc_pages(1)), 8,

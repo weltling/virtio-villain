@@ -35,9 +35,9 @@ static test_result_t test_enable_without_addrs(struct virtio_dev *dev,
     __sync_synchronize();
     dev->common->queue_size = 16;
     /* Leave queue_desc, queue_avail, queue_used at 0 */
-    dev->common->queue_desc = 0;
-    dev->common->queue_avail = 0;
-    dev->common->queue_used = 0;
+    virtio_store64(&dev->common->queue_desc, 0);
+    virtio_store64(&dev->common->queue_avail, 0);
+    virtio_store64(&dev->common->queue_used, 0);
     dev->common->queue_enable = 1;
     __sync_synchronize();
 

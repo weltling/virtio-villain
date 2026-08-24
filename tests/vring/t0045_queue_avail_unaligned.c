@@ -35,10 +35,10 @@ static test_result_t test_queue_avail_unaligned(struct virtio_dev *dev,
     dev->common->queue_select = 0;
     __sync_synchronize();
     dev->common->queue_size = 16;
-    dev->common->queue_desc = phys;
+    virtio_store64(&dev->common->queue_desc, phys);
     /* Set avail to odd address */
-    dev->common->queue_avail = phys + 257;
-    dev->common->queue_used = phys + 512;
+    virtio_store64(&dev->common->queue_avail, phys + 257);
+    virtio_store64(&dev->common->queue_used, phys + 512);
     dev->common->queue_enable = 1;
     __sync_synchronize();
 

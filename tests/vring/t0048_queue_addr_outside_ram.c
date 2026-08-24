@@ -33,9 +33,9 @@ static test_result_t test_queue_addr_outside_ram(struct virtio_dev *dev,
     __sync_synchronize();
     dev->common->queue_size = 16;
     /* All addresses beyond guest RAM */
-    dev->common->queue_desc = 0xFFFFFFFFFFFF0000ULL;
-    dev->common->queue_avail = 0xFFFFFFFFFFFF1000ULL;
-    dev->common->queue_used = 0xFFFFFFFFFFFF2000ULL;
+    virtio_store64(&dev->common->queue_desc, 0xFFFFFFFFFFFF0000ULL);
+    virtio_store64(&dev->common->queue_avail, 0xFFFFFFFFFFFF1000ULL);
+    virtio_store64(&dev->common->queue_used, 0xFFFFFFFFFFFF2000ULL);
     dev->common->queue_enable = 1;
     __sync_synchronize();
 

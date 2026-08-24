@@ -37,9 +37,9 @@ static test_result_t test_queue_desc_unaligned(struct virtio_dev *dev,
     __sync_synchronize();
     dev->common->queue_size = 16;
     /* Set desc to misaligned address (offset by 3) */
-    dev->common->queue_desc = phys + 3;
-    dev->common->queue_avail = phys + 256;
-    dev->common->queue_used = phys + 512;
+    virtio_store64(&dev->common->queue_desc, phys + 3);
+    virtio_store64(&dev->common->queue_avail, phys + 256);
+    virtio_store64(&dev->common->queue_used, phys + 512);
     dev->common->queue_enable = 1;
     __sync_synchronize();
 

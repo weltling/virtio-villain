@@ -17,13 +17,13 @@ static test_result_t test_pci_qdesc_misaligned(struct virtio_dev *dev,
                                                struct vring *vr)
 {
     (void)vr;
-    uint64_t saved = dev->common->queue_desc;
+    uint64_t saved = virtio_load64(&dev->common->queue_desc);
     dev->common->queue_select = 0;
     __sync_synchronize();
-    dev->common->queue_desc = saved + 1;
+    virtio_store64(&dev->common->queue_desc, saved + 1);
     __sync_synchronize();
     usleep(5000);
-    dev->common->queue_desc = saved;
+    virtio_store64(&dev->common->queue_desc, saved);
     return TEST_PASS;
 }
 

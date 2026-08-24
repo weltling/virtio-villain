@@ -27,7 +27,7 @@ static test_result_t test_state_queue_desc_in_bar(struct virtio_dev *dev,
 
     cfg->queue_select = vr->queue;
     __sync_synchronize();
-    cfg->queue_desc = mmio_phys;
+    virtio_store64(&cfg->queue_desc, mmio_phys);
     __sync_synchronize();
 
     vring_raw_set_avail(vr, 0, 0);

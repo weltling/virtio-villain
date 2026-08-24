@@ -57,9 +57,9 @@ static test_result_t test_blk_cross_queue(struct virtio_dev *dev,
     cfg->queue_select = 1;
     __sync_synchronize();
     cfg->queue_size = q0.size;
-    cfg->queue_desc = q0.desc_phys;
-    cfg->queue_avail = q0.avail_phys;
-    cfg->queue_used = q0.used_phys;
+    virtio_store64(&cfg->queue_desc, q0.desc_phys);
+    virtio_store64(&cfg->queue_avail, q0.avail_phys);
+    virtio_store64(&cfg->queue_used, q0.used_phys);
     cfg->queue_msix_vector = 0xffff;
     __sync_synchronize();
     cfg->queue_enable = 1;

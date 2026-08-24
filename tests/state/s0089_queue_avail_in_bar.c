@@ -26,7 +26,7 @@ static test_result_t test_state_queue_avail_in_bar(struct virtio_dev *dev,
 
     cfg->queue_select = vr->queue;
     __sync_synchronize();
-    cfg->queue_avail = mmio_phys;
+    virtio_store64(&cfg->queue_avail, mmio_phys);
     __sync_synchronize();
 
     virtio_pci_kick(dev, vr->queue);

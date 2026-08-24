@@ -35,10 +35,10 @@ static test_result_t test_queue_used_unaligned(struct virtio_dev *dev,
     dev->common->queue_select = 0;
     __sync_synchronize();
     dev->common->queue_size = 16;
-    dev->common->queue_desc = phys;
-    dev->common->queue_avail = phys + 256;
+    virtio_store64(&dev->common->queue_desc, phys);
+    virtio_store64(&dev->common->queue_avail, phys + 256);
     /* Set used to address with 2-byte alignment (not 4) */
-    dev->common->queue_used = phys + 514;
+    virtio_store64(&dev->common->queue_used, phys + 514);
     dev->common->queue_enable = 1;
     __sync_synchronize();
 

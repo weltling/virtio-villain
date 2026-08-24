@@ -46,9 +46,9 @@ static test_result_t test_desc_table_unaligned(struct virtio_dev *dev,
     cfg->queue_size = 16;
 
     /* Set desc table to misaligned address (offset +7, not 16-byte aligned) */
-    cfg->queue_desc = phys + 7;
-    cfg->queue_avail = phys + 4096;
-    cfg->queue_used = phys + 8192;
+    virtio_store64(&cfg->queue_desc, phys + 7);
+    virtio_store64(&cfg->queue_avail, phys + 4096);
+    virtio_store64(&cfg->queue_used, phys + 8192);
     cfg->queue_enable = 1;
     __sync_synchronize();
 

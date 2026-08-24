@@ -34,9 +34,9 @@ static test_result_t test_packed_unaligned(struct virtio_dev *dev,
     uint64_t page_phys = vv_virt_to_phys(page);
     uint64_t misaligned_phys = page_phys + 3;
 
-    dev->common->queue_desc = misaligned_phys;
-    dev->common->queue_avail = page_phys + PAGE_SIZE;
-    dev->common->queue_used = page_phys + PAGE_SIZE + 64;
+    virtio_store64(&dev->common->queue_desc, misaligned_phys);
+    virtio_store64(&dev->common->queue_avail, page_phys + PAGE_SIZE);
+    virtio_store64(&dev->common->queue_used, page_phys + PAGE_SIZE + 64);
     dev->common->queue_msix_vector = 0xffff;
     dev->common->queue_enable = 1;
     __sync_synchronize();

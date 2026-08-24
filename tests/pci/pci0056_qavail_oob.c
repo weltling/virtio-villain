@@ -18,13 +18,13 @@ static test_result_t test_pci_qavail_oob(struct virtio_dev *dev,
                                          struct vring *vr)
 {
     (void)vr;
-    uint64_t saved = dev->common->queue_avail;
+    uint64_t saved = virtio_load64(&dev->common->queue_avail);
     dev->common->queue_select = 0;
     __sync_synchronize();
-    dev->common->queue_avail = 0xFFFFFFFFF0000000ULL;
+    virtio_store64(&dev->common->queue_avail, 0xFFFFFFFFF0000000ULL);
     __sync_synchronize();
     usleep(5000);
-    dev->common->queue_avail = saved;
+    virtio_store64(&dev->common->queue_avail, saved);
     return TEST_PASS;
 }
 
