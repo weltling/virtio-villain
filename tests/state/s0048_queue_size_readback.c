@@ -19,6 +19,9 @@ static test_result_t test_queue_size_readback(struct virtio_dev *dev,
 
     (void)vr;
 
+    if (virtio_pci_init(dev) != 0)
+        TFAIL("Failed to init device");
+
     cfg->queue_select = 0;
     __sync_synchronize();
     uint16_t qmax = cfg->queue_size;
