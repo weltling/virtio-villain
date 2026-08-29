@@ -684,6 +684,45 @@ def _payload_only_mutate(data):
     return data
 
 
+def _blob_ring_plausible(blob):
+    """True if the blob's first segment describes a ring the device is
+    likely to accept, so payload-only mutation reaches the handler.
+
+    Checks a power of two queue size, a descriptor count within it, a non
+    empty avail ring whose head points at a real descriptor, and a
+    descriptor chain that terminates without a cycle. This is a bias, not
+    a validator: it just steers structure-preserving mutation onto
+    parents that run rather than ones the device rejects at parse.
+    """
+    try:
+        fb = FuzzBlob.parse(blob)
+    except ValueError:
+        return False
+    if not fb.segments:
+        return False
+    vq = fb.segments[0].vq
+    qs = vq.queue_size
+    nd = len(vq.descs)
+    if qs == 0 or (qs & (qs - 1)) != 0 or qs > MAX_AVAIL:
+        return False
+    if nd == 0 or nd > qs:
+        return False
+    if not vq.avail_ring or vq.avail_idx == 0:
+        return False
+    head = vq.avail_ring[0]
+    if head >= nd:
+        return False
+    seen = set()
+    i = head
+    while True:
+        if i >= nd or i in seen:
+            return False
+        seen.add(i)
+        if not (vq.descs[i][1] & 0x1):  # VRING_DESC_F_NEXT clear: chain ends
+            return True
+        i = vq.descs[i][2]
+
+
 # --- Structure-aware mutation ---
 #
 # The byte-level strategies above edit a flat bytearray with fixed offset
@@ -2847,6 +2886,15 @@ def cmd_fuzz(args):
         else:
             with lock:
                 parent = random.choice(corpus)
+                # Structure-preserving mutation only pays off on a parent
+                # whose ring the device accepts; most corpus entries have
+                # adversarial rings, so resample toward a plausible one.
+                if _STRUCT_PRESERVE and not _blob_ring_plausible(parent):
+                    for _ in range(8):
+                        cand = random.choice(corpus)
+                        if _blob_ring_plausible(cand):
+                            parent = cand
+                            break
             t = time.perf_counter()
             blob = mutate(parent)
             tm["mutate"] = time.perf_counter() - t

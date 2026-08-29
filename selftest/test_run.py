@@ -3108,6 +3108,18 @@ def test_payload_only_mutate_keeps_the_ring_valid():
     assert after.payload != before.payload
 
 
+def test_ring_plausible_accepts_a_valid_seed():
+    """A minimal valid seed has a ring the device would accept."""
+    assert FUZZ_MOD._blob_ring_plausible(FUZZ_MOD.make_seed()) is True
+
+
+def test_ring_plausible_rejects_a_broken_ring():
+    """A zero queue size with a self looping chain is not plausible."""
+    descs = [(16, 0x1, 0)]  # single descriptor whose NEXT points to itself
+    blob = FUZZ_MOD.make_blob(0, descs, 1, [0], b"\x00" * 32)
+    assert FUZZ_MOD._blob_ring_plausible(blob) is False
+
+
 def test_fuzz_without_vmm_errors_clearly():
     """A real run still requires --vmm and says so."""
     r = subprocess.run([sys.executable, RUN_FUZZ, "fuzz", "-n", "1"],
