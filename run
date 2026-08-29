@@ -750,13 +750,28 @@ class OpenVmm(VmmBackend):
         mem = opts.get("memory", "512M")
         pmem_path = opts.get("pmem_path")
         fs_socket = opts.get("fs_socket")
+        # When fuzzing one device, attach only that device so the guest
+        # boots faster. None (the conformance runs) attaches the full set.
+        only = opts.get("fuzz_device")
+        exit_on_end = bool(opts.get("exit_on_guest_end"))
+
+        def want(dev):
+            return only is None or only == dev
 
         rc = self._ROOT_COMPLEX
         # Declare a PCIe root port per virtio device that is present.
-        ports = ["disk", "net", "console", "rng"]
-        if pmem_path:
+        ports = []
+        if want("blk"):
+            ports.append("disk")
+        if want("net"):
+            ports.append("net")
+        if want("console"):
+            ports.append("console")
+        if want("rng"):
+            ports.append("rng")
+        if want("pmem") and pmem_path:
             ports.append("pmem")
-        if fs_socket:
+        if want("fs") and fs_socket:
             ports.append("fs")
 
         cmd = [
@@ -777,22 +792,30 @@ class OpenVmm(VmmBackend):
         for port in ports:
             cmd += ["--pcie-root-port", f"{rc}:{port}"]
 
-        cmd += [
-            "--com1", "console",
-            "--virtio-blk", self._blk_arg(disk_path, "disk", opts),
-            "--virtio-net", "pcie_port=net:consomme",
+        cmd += ["--com1", "console"]
+        if want("blk"):
+            cmd += ["--virtio-blk", self._blk_arg(disk_path, "disk", opts)]
+        if want("net"):
+            cmd += ["--virtio-net", "pcie_port=net:consomme"]
+        if want("console"):
             # Present but idle, sunk to /dev/null so the console tests can
             # claim it while the runner keeps COM1.
-            "--virtio-console", "file=/dev/null",
-            "--virtio-console-pcie-port", "console",
-            "--virtio-rng",
-            "--virtio-rng-pcie-port", "rng",
-        ]
-        if pmem_path:
+            cmd += ["--virtio-console", "file=/dev/null",
+                    "--virtio-console-pcie-port", "console"]
+        if want("rng"):
+            cmd += ["--virtio-rng", "--virtio-rng-pcie-port", "rng"]
+        if want("pmem") and pmem_path:
             cmd += ["--virtio-pmem", f"pcie_port=pmem:{pmem_path}"]
-        if fs_socket:
+        if want("fs") and fs_socket:
             cmd += ["--vhost-user",
                     f"{fs_socket},type=fs,tag=vvfs,pcie_port=fs"]
+        if exit_on_end:
+            # Fuzzing: the guest ends every run by powering off or
+            # rebooting. The defaults halt or reset the VM, which would
+            # hang the VMM until the timeout; make it exit promptly.
+            cmd += ["--guest-shutdown-action", "exit",
+                    "--guest-reset-action", "exit"]
+        return cmd
         return cmd
 
 

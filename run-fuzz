@@ -1479,7 +1479,7 @@ def run_vmm(vmm_path, initramfs_path, profraw_dir, timeout=3,
         cmdline = ("console=" + backend.console_device
                    + " initcall_blacklist=virtio_pci_driver_init")
         opts = {"cpus": cpus, "memory": memory, "pmem_path": pmem_path,
-                "fuzz_device": fuzz_device}
+                "fuzz_device": fuzz_device, "exit_on_guest_end": True}
         cmd = backend.build_cmd(kernel, initramfs_path, disk, cmdline, opts)
 
     # OpenVMM always runs an interactive REPL that needs a controlling

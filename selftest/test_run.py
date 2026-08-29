@@ -686,6 +686,32 @@ def test_unit_openvmm_build_cmd_net_consomme():
     assert _openvmm_opt(cmd, "--virtio-net") == "pcie_port=net:consomme"
 
 
+def test_unit_openvmm_fuzz_device_attaches_only_that_device():
+    """A focused fuzz device attaches only that device and its port."""
+    be = RUN_MOD.OpenVmm("/opt/openvmm/openvmm")
+    cmd = be.build_cmd("/k", "/i", "/d.raw", "c", {"fuzz_device": "blk"})
+    assert _openvmm_ports(cmd) == ["disk"]
+    assert "--virtio-blk" in cmd
+    assert "--virtio-net" not in cmd
+    assert "--virtio-rng" not in cmd
+
+
+def test_unit_openvmm_exit_on_guest_end_sets_actions():
+    """Fuzzing makes the VMM exit on guest power off or reset."""
+    be = RUN_MOD.OpenVmm("/opt/openvmm/openvmm")
+    cmd = be.build_cmd("/k", "/i", "/d.raw", "c", {"exit_on_guest_end": True})
+    assert _openvmm_opt(cmd, "--guest-shutdown-action") == "exit"
+    assert _openvmm_opt(cmd, "--guest-reset-action") == "exit"
+
+
+def test_unit_openvmm_default_keeps_guest_actions_unset():
+    """Conformance runs do not force exit actions."""
+    be = RUN_MOD.OpenVmm("/opt/openvmm/openvmm")
+    cmd = be.build_cmd("/k", "/i", "/d.raw", "c", {})
+    assert "--guest-shutdown-action" not in cmd
+    assert "--guest-reset-action" not in cmd
+
+
 def test_unit_openvmm_build_cmd_no_vsock():
     """virtio-vsock has no PCIe port option, so it is never offered."""
     be = RUN_MOD.OpenVmm("/opt/openvmm/openvmm")
