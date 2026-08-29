@@ -1961,6 +1961,17 @@ _FATAL_SIGNALS = {
 }
 
 
+def _is_panic_line(low):
+    """True for a genuine VMM panic line, given a lowercased line.
+
+    Matches a Rust VMM panic ("panicked at", as CH and OpenVMM emit). A
+    guest Linux "kernel panic" is not matched: it is the guest kernel
+    reacting to the fuzzed input, not the VMM process faulting, and the
+    panic= kernel command line parameter must not match either.
+    """
+    return "panicked" in low
+
+
 def _fault_class(returncode, output):
     """Return a short fault class if the VMM genuinely faulted, else None.
 
@@ -1979,7 +1990,7 @@ def _fault_class(returncode, output):
             if _is_sanitizer_noise_line(line):
                 continue
             low = line.lower()
-            if "panic" in low:
+            if _is_panic_line(low):
                 return line.strip()[:160]
             if ("addresssanitizer" in low
                     or "runtime error:" in low
@@ -2025,7 +2036,7 @@ def _classify_vmm_output(output, returncode=None):
     for line in output.splitlines():
         if _is_sanitizer_noise_line(line):
             continue
-        if "panicked" in line or "panic" in line:
+        if _is_panic_line(line.lower()):
             return line.strip()
         if "seccomp" in line.lower():
             return "seccomp violation"

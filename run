@@ -2132,7 +2132,7 @@ def _security_triage(output, returncode=None):
         if any(m in line for m in _CORRUPTION_MARKERS):
             asan = True
         low = line.lower()
-        if "panicked" in line or "panic" in line:
+        if "panicked" in low:
             panic = True
         if "segv on unknown address" in low or "segmentation fault" in low:
             segv = True

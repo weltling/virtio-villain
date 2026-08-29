@@ -2717,6 +2717,20 @@ def test_fault_class_rust_panic():
     assert FUZZ_MOD._fault_class(1, out) is not None
 
 
+def test_fault_class_guest_kernel_panic_is_not_a_vmm_fault():
+    """A guest Linux kernel panic is the guest reacting to the input, not
+    the VMM process faulting, so it is not a VMM crash."""
+    out = ("[    0.8] Kernel panic - not syncing: Attempted to kill init! "
+           "exitcode=0x00000000\n")
+    assert FUZZ_MOD._fault_class(1, out) is None
+
+
+def test_fault_class_panic_cmdline_param_is_not_a_fault():
+    """The panic= kernel command line parameter is not a panic."""
+    out = "[    0.0] Command line: panic=-1 debug console=ttyS0\n"
+    assert FUZZ_MOD._fault_class(1, out) is None
+
+
 def test_fault_class_address_sanitizer():
     out = "==1==ERROR: AddressSanitizer: heap-buffer-overflow on 0xdead\n"
     assert FUZZ_MOD._fault_class(-6, out) is not None
