@@ -360,28 +360,31 @@ def mutate(blob):
     fb = FuzzBlob.parse(blob)
     segment = random.choice(fb.segments)
     data = bytearray(segment.vq.serialize())
-    strategy = random.choice([
-        _bit_flip,
-        _byte_arith,
-        _interesting_16,
-        _desc_flags,
-        _avail_corrupt,
-        _payload_noise,
-        _chain_shuffle,
-        _splice_corpus,
-        _grow_desc,
-        _shrink_desc,
-        _header_corrupt,
-        _avail_ring_replay,
-        _desc_addr_mutate,
-        _queue_size_mutate,
-        _endian_swap,
-        _zero_fill_region,
-        _duplicate_desc,
-        _indirect_inject,
-        _structural_mutate,
-        _multi_strategy,
-    ])
+    if _STRUCT_PRESERVE:
+        strategy = _payload_only_mutate
+    else:
+        strategy = random.choice([
+            _bit_flip,
+            _byte_arith,
+            _interesting_16,
+            _desc_flags,
+            _avail_corrupt,
+            _payload_noise,
+            _chain_shuffle,
+            _splice_corpus,
+            _grow_desc,
+            _shrink_desc,
+            _header_corrupt,
+            _avail_ring_replay,
+            _desc_addr_mutate,
+            _queue_size_mutate,
+            _endian_swap,
+            _zero_fill_region,
+            _duplicate_desc,
+            _indirect_inject,
+            _structural_mutate,
+            _multi_strategy,
+        ])
     segment.vq = VqBlob.parse(bytes(strategy(data)))
     return fb.serialize()
 
@@ -463,6 +466,10 @@ def _chain_shuffle(data):
 
 # Module-level corpus reference for splice mutation
 _corpus_ref = []
+
+# When True, mutate() fuzzes only the payload and leaves the ring valid,
+# so the device accepts the request and deeper handler code runs.
+_STRUCT_PRESERVE = False
 
 
 def _splice_corpus(data):
@@ -645,6 +652,35 @@ def _multi_strategy(data):
     count = random.randint(2, 3)
     for _ in range(count):
         data = bytearray(random.choice(strategies)(data))
+    return data
+
+
+def _payload_only_mutate(data):
+    """Fuzz only the payload, leaving the descriptor ring, avail ring and
+    header intact.
+
+    A broken ring makes the device reset and the guest worker exit before
+    the request runs, so most mutations never reach the device's request
+    handler. Keeping the ring valid and editing only the buffer contents
+    lets that handler run on fuzzed data (a blk request header, a net
+    header, and so on), which is where the deeper code lives.
+    """
+    _, nd, _, ac = struct.unpack_from(HEADER_FMT, data, 0)
+    nd = min(nd, MAX_DESCS)
+    ac = min(ac, MAX_AVAIL)
+    payload_off = HEADER_SIZE + nd * DESC_SIZE + ac * 2
+    if payload_off >= len(data):
+        return data
+    region = len(data) - payload_off
+    for _ in range(random.randint(1, 8)):
+        pos = payload_off + random.randint(0, region - 1)
+        r = random.random()
+        if r < 0.4:
+            data[pos] ^= (1 << random.randint(0, 7))
+        elif r < 0.7:
+            data[pos] = random.choice([0x00, 0x01, 0x7F, 0x80, 0xFF])
+        else:
+            data[pos] = random.randint(0, 255)
     return data
 
 
@@ -2724,6 +2760,8 @@ def cmd_fuzz(args):
     # Wire up corpus for splice mutation
     global _corpus_ref
     _corpus_ref = corpus
+    global _STRUCT_PRESERVE
+    _STRUCT_PRESERVE = getattr(args, "structure_preserving", False)
 
     # Fetch kernel once
     kernel = args.kernel or _fetch_kernel()
@@ -3098,6 +3136,11 @@ def main():
                    help="run every corpus entry once unmutated instead of "
                         "mutating (sweep an existing corpus, e.g. under "
                         "ASan)")
+    g.add_argument("--structure-preserving", action="store_true",
+                   dest="structure_preserving",
+                   help="mutate only the payload and keep the vring valid "
+                        "so the device accepts the request and deeper "
+                        "handler code runs")
     _add_sysconfig(p_fuzz)
     _add_help(p_fuzz)
 

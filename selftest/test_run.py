@@ -3082,6 +3082,32 @@ def test_replay_corpus_flag_is_accepted():
     assert "unrecognized arguments" not in r.stderr
 
 
+def test_structure_preserving_flag_is_accepted():
+    """--structure-preserving is a wired fuzz flag, not an argparse error."""
+    r = subprocess.run(
+        [sys.executable, RUN_FUZZ, "fuzz", "--structure-preserving",
+         "-n", "1"],
+        capture_output=True, text=True, cwd=ROOT_DIR)
+    assert r.returncode != 0
+    assert "unrecognized arguments" not in r.stderr
+
+
+def test_payload_only_mutate_keeps_the_ring_valid():
+    """Structure-preserving mutation edits only the payload and leaves the
+    descriptors, avail ring, queue size and avail_idx untouched."""
+    import random as _random
+    _random.seed(20260829)
+    seed = FUZZ_MOD.make_seed()
+    before = FUZZ_MOD.VqBlob.parse(seed)
+    mutated = FUZZ_MOD._payload_only_mutate(bytearray(before.serialize()))
+    after = FUZZ_MOD.VqBlob.parse(bytes(mutated))
+    assert after.queue_size == before.queue_size
+    assert after.avail_idx == before.avail_idx
+    assert after.descs == before.descs
+    assert after.avail_ring == before.avail_ring
+    assert after.payload != before.payload
+
+
 def test_fuzz_without_vmm_errors_clearly():
     """A real run still requires --vmm and says so."""
     r = subprocess.run([sys.executable, RUN_FUZZ, "fuzz", "-n", "1"],
