@@ -1188,22 +1188,29 @@ def select_coverage_tools(vmm):
 _PROFDATA_FUNC_RE = re.compile(r"^  (.+):\s*$")
 
 
-def _parse_profdata_counts(text):
+def _parse_profdata_counts(text, scope=None):
     """Turn llvm-profdata show --counts output into a covered set.
 
     Reads the merged profile alone, so it never loads the coverage map
     out of the VMM binary. Each function contributes an entry marker when
     its function count is nonzero and one marker per nonzero block
     counter, which gives a cheap edge like signal for the fuzzing loop.
+    When scope is set, only functions whose name contains it are counted,
+    so the signal reflects one crate (for example virtio_devices) rather
+    than the whole binary, which the common boot path dominates.
     """
     edges = set()
     func = None
     fhash = ""
+    emit = not scope
     for line in text.splitlines():
         m = _PROFDATA_FUNC_RE.match(line)
         if m:
             func = m.group(1)
             fhash = ""
+            emit = (not scope) or (scope in func)
+            continue
+        if not emit:
             continue
         s = line.strip()
         if s.startswith("Hash:"):
@@ -1236,8 +1243,10 @@ import sys, re, signal
 # child exits on EOF, so it must not raise and spew a traceback.
 signal.signal(signal.SIGINT, signal.SIG_IGN)
 FUNC = re.compile(r"^  (.+):\s*$")
+scope = sys.argv[1] if len(sys.argv) > 1 else ""
 func = None
 fhash = ""
+emit = not scope
 w = sys.stdout.write
 try:
     for line in sys.stdin:
@@ -1245,6 +1254,9 @@ try:
         if m:
             func = m.group(1)
             fhash = ""
+            emit = (not scope) or (scope in func)
+            continue
+        if not emit:
             continue
         s = line.strip()
         if s.startswith("Hash:"):
@@ -1266,7 +1278,7 @@ except BrokenPipeError:
 """
 
 
-def _show_counts_offloaded(show_cmd):
+def _show_counts_offloaded(show_cmd, scope=None):
     """Run the profdata show and parse it in a child process off the GIL.
 
     Returns a covered set matching _parse_profdata_counts, or None if the
@@ -1275,7 +1287,7 @@ def _show_counts_offloaded(show_cmd):
     try:
         show = subprocess.Popen(show_cmd, stdout=subprocess.PIPE)
         reduce = subprocess.Popen(
-            [sys.executable, "-c", _REDUCE_COUNTS_SRC],
+            [sys.executable, "-c", _REDUCE_COUNTS_SRC, scope or ""],
             stdin=show.stdout, stdout=subprocess.PIPE, text=True
         )
         show.stdout.close()
@@ -1290,12 +1302,13 @@ def _show_counts_offloaded(show_cmd):
     return set(out.splitlines())
 
 
-def collect_coverage(vmm_binary, profdata_path, profraw_dir):
+def collect_coverage(vmm_binary, profdata_path, profraw_dir, scope=None):
     """Merge profraw and derive a covered set from the profile counters.
 
     The signal comes from llvm-profdata alone, not llvm-cov, so it does
     not reload the large coverage map out of the VMM binary every
-    iteration. vmm_binary is unused but kept for call compatibility.
+    iteration. vmm_binary is unused but kept for call compatibility. When
+    scope is set, only functions whose name contains it are counted.
     """
     profraw_files = [
         os.path.join(profraw_dir, f)
@@ -1327,14 +1340,14 @@ def collect_coverage(vmm_binary, profdata_path, profraw_dir):
     show_cmd = [
         profdata_tool, "show", "--all-functions", "--counts", show_target
     ]
-    edges = _show_counts_offloaded(show_cmd)
+    edges = _show_counts_offloaded(show_cmd, scope)
     if edges is not None:
         return edges
     # Fallback: parse in this process if the child pipeline failed.
     result = subprocess.run(show_cmd, capture_output=True, text=True)
     if result.returncode != 0:
         return set()
-    return _parse_profdata_counts(result.stdout)
+    return _parse_profdata_counts(result.stdout, scope)
 
 
 # --- VMM Runner ---
@@ -2943,7 +2956,8 @@ def cmd_fuzz(args):
         edges = set()
         if not args.no_coverage:
             profdata_path = os.path.join(w["dir"], "merged.profdata")
-            edges = collect_coverage(args.vmm, profdata_path, w["dir"])
+            edges = collect_coverage(args.vmm, profdata_path, w["dir"],
+                                     args.cov_scope)
         tm["coverage"] = time.perf_counter() - t
 
         return iteration, crashed, blob, vmm_output, edges, tm, \
@@ -3159,6 +3173,11 @@ def main():
                         "(default: target/crashes)")
     g.add_argument("--no-coverage", action="store_true",
                    help="Skip coverage feedback (dumb fuzzing)")
+    g.add_argument("--cov-scope", default=None, metavar="SUBSTR",
+                   dest="cov_scope",
+                   help="Count coverage only in functions whose name "
+                        "contains SUBSTR (e.g. virtio_devices), so the "
+                        "signal reflects device code, not the boot path")
     g.add_argument("--device", default=None,
                    choices=sorted(_DEVICE_MAP), metavar="DEV",
                    help="Focus fuzzing on one virtio device "

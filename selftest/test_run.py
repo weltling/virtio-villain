@@ -2273,6 +2273,58 @@ def test_show_counts_offload_matches_parser():
     assert "core::fmt\t0x1234\t-1" in ref
 
 
+def test_parse_profdata_counts_scope_filters_functions():
+    """With a scope, only functions whose name contains it are counted,
+    so the boot path does not drown the device signal."""
+    sample = (
+        "Counters:\n"
+        "  virtio_devices::vsock::handle:\n"
+        "    Hash: 0x1111\n"
+        "    Counters: 1\n"
+        "    Function count: 3\n"
+        "    Block counts: [1]\n"
+        "  core::fmt::write:\n"
+        "    Hash: 0x2222\n"
+        "    Counters: 1\n"
+        "    Function count: 9\n"
+        "    Block counts: [1]\n"
+    )
+    scoped = FUZZ_MOD._parse_profdata_counts(sample, "virtio_devices")
+    assert any("virtio_devices" in e for e in scoped)
+    assert not any("core::fmt" in e for e in scoped)
+    # Without a scope both functions count.
+    whole = FUZZ_MOD._parse_profdata_counts(sample)
+    assert any("core::fmt" in e for e in whole)
+
+
+def test_show_counts_offload_honors_scope():
+    """The child reducer applies the scope the same way as the parser."""
+    import subprocess as _sp
+    sample = (
+        "Counters:\n"
+        "  virtio_devices::net::rx:\n"
+        "    Hash: 0x3333\n"
+        "    Counters: 1\n"
+        "    Function count: 1\n"
+        "    Block counts: [1]\n"
+        "  alloc::vec::grow:\n"
+        "    Hash: 0x4444\n"
+        "    Counters: 1\n"
+        "    Function count: 1\n"
+        "    Block counts: [1]\n"
+    )
+    ref = FUZZ_MOD._parse_profdata_counts(sample, "virtio_devices")
+    show = _sp.Popen(["printf", "%s", sample], stdout=_sp.PIPE)
+    reduce = _sp.Popen(
+        [sys.executable, "-c", FUZZ_MOD._REDUCE_COUNTS_SRC, "virtio_devices"],
+        stdin=show.stdout, stdout=_sp.PIPE, text=True)
+    show.stdout.close()
+    out, _ = reduce.communicate()
+    show.wait()
+    assert set(out.splitlines()) == ref
+    assert all("virtio_devices" in e for e in ref)
+
+
 def test_annotate_container_reads_segments_not_magic():
     """Annotating a crash blob uses the segments, not the outer magic."""
     seed = FUZZ_MOD.make_seed()
