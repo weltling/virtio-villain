@@ -1,0 +1,279 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: Apache-2.0
+"""Run virtio performance measurements in one guest boot."""
+
+import argparse
+import importlib.machinery
+import importlib.util
+import json
+import os
+import platform
+import pty
+import re
+import subprocess
+import sys
+import tempfile
+
+ROOT = os.path.dirname(os.path.abspath(__file__))
+DEVICE_INITCALL = {
+    "blk": "virtio_blk_init",
+    "net": "virtio_net_driver_init",
+    "rng": "virtio_rng_driver_init",
+    "vsock": "virtio_vsock_init",
+}
+DEVICE_LABEL = {
+    "blk": "block read",
+    "net": "network transmit",
+    "rng": "entropy fill",
+    "vsock": "socket connection round trip",
+}
+BACKEND_DEVICES = {
+    "ch": {"blk", "net", "rng", "vsock"},
+    "qemu": {"blk", "net", "rng", "vsock"},
+    "openvmm": {"blk", "net", "rng"},
+}
+RESULT_RE = re.compile(
+    r"VVPERF workload=(\w+) round=(\d+) block_size=(\d+) "
+    r"iterations=(\d+) duration_ns=(\d+)")
+
+
+def load_runner():
+    path = os.path.join(ROOT, "run")
+    loader = importlib.machinery.SourceFileLoader("vv_run_perf", path)
+    spec = importlib.util.spec_from_loader("vv_run_perf", loader)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def parse_results(output):
+    samples = []
+    for match in RESULT_RE.finditer(output):
+        workload, round_number, block_size, iterations, duration_ns = match.groups()
+        duration = int(duration_ns)
+        count = int(iterations)
+        iops = count * 1_000_000_000 / duration
+        samples.append({
+            "workload": workload,
+            "round": int(round_number),
+            "block_size": int(block_size),
+            "iterations": count,
+            "duration_ns": duration,
+            "iops": iops,
+            "average_latency_ns": duration / count,
+            "throughput_mib_s": iops * int(block_size) / (1024 * 1024),
+        })
+    return samples
+
+
+def summarize(samples):
+    iops = [sample["iops"] for sample in samples]
+    total_requests = sum(sample["iterations"] for sample in samples)
+    total_duration_ns = sum(sample["duration_ns"] for sample in samples)
+    combined_iops = total_requests * 1_000_000_000 / total_duration_ns
+    block_size = samples[0]["block_size"]
+    return {
+        "total_requests": total_requests,
+        "total_duration_ns": total_duration_ns,
+        "iops": combined_iops,
+        "iops_min": min(iops),
+        "iops_max": max(iops),
+        "average_latency_ns": total_duration_ns / total_requests,
+        "throughput_mib_s": combined_iops * block_size / (1024 * 1024),
+    }
+
+
+def get_version(path):
+    try:
+        result = subprocess.run(
+            [path, "--version"], capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    text = result.stdout.strip()
+    if text:
+        return text.splitlines()[0]
+    if result.returncode != 0:
+        return None
+    text = result.stderr.strip()
+    return text.splitlines()[0] if text else None
+
+
+def build_guest():
+    result = subprocess.run(
+        ["make", "perf-initramfs"], cwd=ROOT,
+        capture_output=True, text=True)
+    if result.returncode:
+        sys.stderr.write(result.stdout)
+        sys.stderr.write(result.stderr)
+    return result.returncode
+
+
+def run_vmm(cmd, spawn, rounds):
+    try:
+        result = subprocess.run(cmd, **spawn)
+        raw_output = result.stdout + result.stderr
+    except subprocess.TimeoutExpired as error:
+        raw_output = (error.stdout or b"") + (error.stderr or b"")
+    output = raw_output.decode(errors="replace")
+    samples = parse_results(output)
+    if len(samples) != rounds:
+        error = re.search(r"VVPERF error=(\w+)", output)
+        detail = error.group(1) if error else "missing guest results"
+        raise RuntimeError(f"Performance run failed with {detail}\n{output}")
+    return samples
+
+
+def run_guest(args, runner):
+    backend = runner.detect_vmm(args.vmm)
+    if args.device not in BACKEND_DEVICES.get(backend.name, set()):
+        raise RuntimeError(
+            f"{backend.name} does not provide virtio-{args.device}")
+    kernel = args.kernel or runner.fetch_kernel()
+    initramfs = os.path.join(ROOT, "target", "perf-initramfs.cpio.gz")
+    with tempfile.TemporaryDirectory(prefix="vvperf.") as temp_dir:
+        disk = os.path.join(temp_dir, "disk.raw")
+        with open(disk, "wb") as disk_file:
+            disk_file.truncate(args.disk_size * 1024 * 1024)
+        cmdline = (
+            f"console={backend.console_device} "
+            f"initcall_blacklist={DEVICE_INITCALL[args.device]} "
+            f"vv.perf_device={args.device} "
+            f"vv.perf_iterations={args.iterations} vv.perf_rounds={args.rounds} "
+            f"vv.perf_warmup={args.warmup}")
+        opts = {
+            "blk_queues": 1, "cpus": args.cpus, "direct": args.direct,
+            "exit_on_guest_end": True, "fuzz_device": args.device,
+            "io_engine": args.io_engine, "memory": args.memory,
+            "net_queues": 2, "packed": False,
+        }
+        cmd = backend.build_cmd(kernel, initramfs, disk, cmdline, opts)
+        spawn = {"capture_output": True, "timeout": args.timeout}
+        master_fd = None
+        slave_fd = None
+        if backend.name == "openvmm":
+            master_fd, slave_fd = pty.openpty()
+            spawn["stdin"] = slave_fd
+            spawn["preexec_fn"] = runner._ctty_preexec(
+                os.ttyname(slave_fd).encode())
+        else:
+            spawn["stdin"] = subprocess.DEVNULL
+        try:
+            samples = run_vmm(cmd, spawn, args.rounds)
+        finally:
+            if master_fd is not None:
+                os.close(master_fd)
+            if slave_fd is not None:
+                os.close(slave_fd)
+    return backend, samples
+
+
+def make_report(args, backend, samples):
+    return {
+        "schema_version": 2,
+        "host": {"machine": platform.machine(), "system": platform.system()},
+        "vmm": {"backend": backend.name, "path": os.path.abspath(args.vmm),
+                "version": get_version(args.vmm)},
+        "config": {"cpus": args.cpus, "direct": args.direct,
+                   "device": args.device,
+                   "disk_size_mib": args.disk_size,
+                   "io_engine": args.io_engine, "memory": args.memory,
+                   "iterations": args.iterations, "rounds": args.rounds,
+                   "warmup": args.warmup},
+        "samples": samples,
+        "summary": summarize(samples),
+    }
+
+
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="Measure serial virtio request latency")
+    parser.add_argument("-m", "--vmm", required=True, metavar="PATH")
+    parser.add_argument("--device", choices=tuple(DEVICE_INITCALL), default="blk")
+    parser.add_argument("-k", "--kernel", metavar="PATH")
+    parser.add_argument("-n", "--iterations", type=int, default=10000)
+    parser.add_argument("--rounds", type=int, default=5)
+    parser.add_argument("--warmup", type=int, default=1000)
+    parser.add_argument("--cpus", type=int, default=1)
+    parser.add_argument("--memory", default="256M")
+    parser.add_argument("--disk-size", type=int, default=64, metavar="MIB")
+    parser.add_argument("--timeout", type=int, default=60)
+    parser.add_argument("--io-engine", choices=("default", "io_uring", "aio", "sync"),
+                        default="default")
+    parser.add_argument("--direct", action="store_true")
+    parser.add_argument("-v", "--verbose", action="store_true")
+    parser.add_argument("--format", choices=("human", "json"), default="human")
+    parser.add_argument("-o", "--output", metavar="PATH")
+    args = parser.parse_args(argv)
+    for name in ("iterations", "rounds", "warmup", "cpus", "disk_size", "timeout"):
+        if getattr(args, name) < 1:
+            parser.error(f"--{name.replace('_', '-')} must be positive")
+    return args
+
+
+def format_human(report, verbose=False):
+    config = report["config"]
+    samples = report["samples"]
+    summary = report["summary"]
+    sample = samples[0]
+    latency_us = summary["average_latency_ns"] / 1000
+    round_latencies = [item["average_latency_ns"] / 1000 for item in samples]
+    request_size = sample["block_size"]
+    if request_size >= 1024 and request_size % 1024 == 0:
+        request_size_text = f"{request_size // 1024} KiB"
+    else:
+        request_size_text = f"{request_size} bytes"
+    lines = [
+        f"virtio {DEVICE_LABEL[config['device']]} latency",
+        "",
+        f"Request size:  {request_size_text}",
+        "Queue depth:   1",
+        f"Requests:      {summary['total_requests']}",
+        f"Result:        {latency_us:.2f} us per request",
+        (f"Variation:     {min(round_latencies):.2f} to "
+         f"{max(round_latencies):.2f} us between rounds"),
+    ]
+    if verbose:
+        lines += [
+            "",
+            f"VMM:           {report['vmm']['backend']}",
+            f"Binary:        {report['vmm']['path']}",
+            f"Warmup:        {config['warmup']} requests",
+            f"Rounds:        {len(samples)}",
+        ]
+        if report["vmm"]["version"]:
+            lines.append(f"Version:       {report['vmm']['version']}")
+        lines += [
+            "",
+            "Round  Requests  Elapsed s  Time per request us",
+        ]
+        for item in samples:
+            lines.append(
+                f"{item['round']:>5}  {item['iterations']:>8}  "
+                f"{item['duration_ns'] / 1_000_000_000:>9.3f}  "
+                f"{item['average_latency_ns'] / 1000:>19.2f}")
+    return "\n".join(lines)
+
+
+def main(argv=None):
+    args = parse_args(argv)
+    build_result = build_guest()
+    if build_result:
+        return build_result
+    runner = load_runner()
+    try:
+        backend, samples = run_guest(args, runner)
+    except RuntimeError as error:
+        sys.exit(str(error))
+    report = make_report(args, backend, samples)
+    encoded = json.dumps(report, indent=2) + "\n"
+    if args.output:
+        with open(args.output, "w", encoding="utf-8") as output_file:
+            output_file.write(encoded)
+    if args.format == "json":
+        print(encoded, end="")
+    else:
+        print(format_human(report, args.verbose))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

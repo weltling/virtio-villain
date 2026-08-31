@@ -135,11 +135,14 @@ selftest: selftest/test_lib
 	@echo ""
 	@echo "selftest/run:"
 	@python3 selftest/test_run.py
+	@echo ""
+	@echo "selftest/perf:"
+	@python3 selftest/test_perf.py
 
 selftest/test_lib: selftest/test_lib.c lib/vring.c lib/vring.h tests/test.h
 	$(CC) -O2 -Wall -Wextra -I. -o $@ selftest/test_lib.c lib/vring.c
 
-PY_SRCS = run run-fuzz $(shell find selftest tests -name '*.py' 2>/dev/null)
+PY_SRCS = run run-fuzz run-perf $(shell find selftest tests -name '*.py' 2>/dev/null)
 
 flake8-deps-check:
 	@command -v flake8 >/dev/null 2>&1 || python3 -m flake8 --version >/dev/null 2>&1 || { echo "error: flake8 not found. apt install flake8 or pip install flake8"; exit 1; }
