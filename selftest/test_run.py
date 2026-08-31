@@ -445,6 +445,18 @@ def test_unit_ch_build_cmd_omits_api_socket():
     assert "--api-socket" not in cmd
 
 
+def test_unit_ch_fuzz_device_attaches_only_that_device():
+    be = RUN_MOD.CloudHypervisor("/usr/bin/cloud-hypervisor")
+    cmd = be.build_cmd("/k", "/i", "/d.raw", "console=ttyS0",
+                       {"fuzz_device": "blk", "blk_queues": 1})
+    assert "--disk" in cmd
+    assert "--net" not in cmd
+    assert "--vsock" not in cmd
+    assert "--balloon" not in cmd
+    assert "--watchdog" not in cmd
+    assert "--rng" not in cmd
+
+
 def test_unit_qemu_build_cmd_adds_qmp():
     be = RUN_MOD.Qemu("/usr/bin/qemu-system-x86_64")
     opts = {"memory": "256M", "blk_queues": 1, "net_queues": 1,

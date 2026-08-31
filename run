@@ -472,6 +472,11 @@ class CloudHypervisor(VmmBackend):
         pmem_path = opts.get("pmem_path")
         fs_socket = opts.get("fs_socket")
         api_socket = opts.get("api_socket")
+        only = opts.get("fuzz_device")
+
+        def want(dev):
+            return only is None or only == dev
+
         # CH validation constraints (vmm/src/config.rs):
         #   blk:  num_queues       <= boot_vcpus
         #   net:  num_queues / 2   <= boot_vcpus  (rx+tx pairs)
@@ -480,7 +485,8 @@ class CloudHypervisor(VmmBackend):
         # added +3, inflating cpus far above what CH requires. With
         # parallel jobs this caused severe host oversubscription and
         # guest rcu_sched stalls. Use the real minimum.
-        min_cpus = max(blk_queues, (net_queues + 1) // 2, 1)
+        min_cpus = max(blk_queues if want("blk") else 1,
+                       (net_queues + 1) // 2 if want("net") else 1)
         cpus = max(cpus, min_cpus)
         cid = self._next_cid()
         vsock_sock = disk_path.rsplit(".", 1)[0] + ".vsock"
@@ -489,19 +495,13 @@ class CloudHypervisor(VmmBackend):
         disk_fmt = fmt_map.get(ext, "raw")
         memory_arg = (f"size={mem},shared=on"
                       f",hotplug_size=256M,hotplug_method=virtio-mem"
-                      if fs_socket
+                      if fs_socket and want("fs")
                       else f"size={mem},hotplug_size=256M,hotplug_method=virtio-mem")
         cmd = [
             self.binary,
             *(["-vv"] if os.environ.get("VV_CH_DEBUG") else []),
             "--kernel", kernel,
             "--initramfs", initramfs,
-            "--disk", self._ch_disk_arg(disk_path, disk_fmt, blk_queues, opts),
-            "--net", f"tap=,num_queues={net_queues}{',iommu=on' if opts.get('net_iommu') else ''}",
-            "--vsock", f"cid={cid},socket={vsock_sock}",
-            "--balloon", "size=0",
-            "--watchdog",
-            "--rng", "src=/dev/urandom",
             "--cmdline", cmdline,
             "--cpus", f"boot={cpus}",
             "--memory", memory_arg,
@@ -513,9 +513,23 @@ class CloudHypervisor(VmmBackend):
             # Disable it so VMM policy bugs do not surface as test FAILs.
             "--seccomp", "false",
         ]
-        if pmem_path:
+        if want("blk"):
+            cmd += ["--disk", self._ch_disk_arg(
+                disk_path, disk_fmt, blk_queues, opts)]
+        if want("net"):
+            cmd += ["--net", f"tap=,num_queues={net_queues}"
+                    f"{',iommu=on' if opts.get('net_iommu') else ''}"]
+        if want("vsock"):
+            cmd += ["--vsock", f"cid={cid},socket={vsock_sock}"]
+        if want("balloon"):
+            cmd += ["--balloon", "size=0"]
+        if want("watchdog"):
+            cmd += ["--watchdog"]
+        if want("rng"):
+            cmd += ["--rng", "src=/dev/urandom"]
+        if pmem_path and want("pmem"):
             cmd += ["--pmem", f"file={pmem_path},size=128M,discard_writes=on"]
-        if fs_socket:
+        if fs_socket and want("fs"):
             cmd += ["--fs", f"tag=vvfs,socket={fs_socket},num_queues=1,queue_size=128"]
         if api_socket:
             cmd += ["--api-socket", f"path={api_socket}"]
