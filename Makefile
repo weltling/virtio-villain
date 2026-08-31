@@ -88,6 +88,26 @@ $(OBJDIR)/fuzz/%.o: %.c
 
 -include $(FUZZ_DEPS)
 
+PERF_SRCS = bin/perf.c \
+            lib/pci.c \
+            lib/virtio_pci.c \
+            lib/vring.c
+
+PERF_OBJS = $(patsubst %.c,$(OBJDIR)/perf/%.o,$(PERF_SRCS))
+PERF_DEPS = $(PERF_OBJS:.o=.d)
+
+$(TARGET)/perf: $(PERF_OBJS)
+	@mkdir -p $(TARGET)
+	@echo "  LINK  $@"
+	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -I. -o $@ $(PERF_OBJS)
+
+$(OBJDIR)/perf/%.o: %.c
+	@mkdir -p $(dir $@)
+	@echo "  CC    $<"
+	$(Q)$(CC) $(CFLAGS) $(DEPFLAGS) -I. -c -o $@ $<
+
+-include $(PERF_DEPS)
+
 fuzz-initramfs: $(TARGET)/fuzz
 	@rm -rf $(TARGET)/.fuzzfs
 	@mkdir -p $(TARGET)/.fuzzfs/proc $(TARGET)/.fuzzfs/sys $(TARGET)/.fuzzfs/dev
@@ -96,6 +116,15 @@ fuzz-initramfs: $(TARGET)/fuzz
 	@cd $(TARGET)/.fuzzfs && find . | cpio -o -H newc 2>/dev/null | gzip > ../fuzz-initramfs.cpio.gz
 	@rm -rf $(TARGET)/.fuzzfs
 	@echo "$(TARGET)/fuzz-initramfs.cpio.gz ($$(du -h $(TARGET)/fuzz-initramfs.cpio.gz | cut -f1))"
+
+perf-initramfs: $(TARGET)/perf
+	@rm -rf $(TARGET)/.perffs
+	@mkdir -p $(TARGET)/.perffs/proc $(TARGET)/.perffs/sys $(TARGET)/.perffs/dev
+	@cp $(TARGET)/perf $(TARGET)/.perffs/init
+	@strip $(TARGET)/.perffs/init
+	@cd $(TARGET)/.perffs && find . | cpio -o -H newc 2>/dev/null | gzip > ../perf-initramfs.cpio.gz
+	@rm -rf $(TARGET)/.perffs
+	@echo "$(TARGET)/perf-initramfs.cpio.gz ($$(du -h $(TARGET)/perf-initramfs.cpio.gz | cut -f1))"
 
 clean:
 	rm -rf $(TARGET) selftest/test_lib selftest/cloud-hypervisor
@@ -124,6 +153,7 @@ flake8: flake8-deps-check
 
 init: $(TARGET)/init
 fuzz: $(TARGET)/fuzz
+perf: $(TARGET)/perf
 
 help:
 	@echo "Targets:"
@@ -131,6 +161,8 @@ help:
 	@echo "  initramfs           Pack init into $(TARGET)/initramfs.cpio.gz"
 	@echo "  fuzz                Build the fuzz guest at $(TARGET)/fuzz"
 	@echo "  fuzz-initramfs      Pack fuzz into $(TARGET)/fuzz-initramfs.cpio.gz"
+	@echo "  perf                Build the performance guest at $(TARGET)/perf"
+	@echo "  perf-initramfs      Pack perf into $(TARGET)/perf-initramfs.cpio.gz"
 	@echo "  selftest            Build and run runner and lib self tests"
 	@echo "  flake8              Run flake8 across run, run-fuzz, selftest, tests"
 	@echo "  deps-check          Verify build dependencies are present"
@@ -139,4 +171,4 @@ help:
 	@echo "  clean               Remove build outputs"
 	@echo "  help                Show this message"
 
-.PHONY: init fuzz initramfs fuzz-initramfs clean selftest flake8 flake8-deps-check help
+.PHONY: init fuzz perf initramfs fuzz-initramfs perf-initramfs clean selftest flake8 flake8-deps-check help
