@@ -407,6 +407,11 @@ instrumented VMM it feeds new edges back into the corpus, and crashes
 are grouped by error class for triage. See
 [docs/fuzzing.md](docs/fuzzing.md).
 
+## Performance
+
+`run-perf` measures valid virtio requests separately from test verdicts.
+See [docs/performance.md](docs/performance.md).
+
 ## Found Bugs
 
 ### Cloud Hypervisor
