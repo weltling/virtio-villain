@@ -198,6 +198,12 @@ static int run_test(struct test_entry *t)
         test_q = 1;
     }
 
+    /* The device lacks the queue this test drives, so it cannot run. */
+    if (test_q >= nq) {
+        printf("[SKIP] %s (queue %u absent)\n", t->name, test_q);
+        return 0;
+    }
+
     /* DRIVER_OK */
     dev.common->device_status |= VIRTIO_STATUS_DRIVER_OK;
     __sync_synchronize();
