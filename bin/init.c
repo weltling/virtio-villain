@@ -23,6 +23,14 @@
 #define QUEUE_SIZE 16
 
 /*
+ * Upper bound on how many virtqueues the runner sets up per device. It
+ * bounds the stack array below and guards against a device naming a
+ * bogus num_queues. Devices in this suite use far fewer (vsock 3, blk
+ * and scsi a handful, net about nine with the default queue pairs).
+ */
+#define VV_MAX_QUEUES 16
+
+/*
  * On reset the device reports its maximum supported queue size in the
  * queue_size register (spec 4.1.4.3.2). A driver must not program a
  * size larger than that. Some devices (e.g. the CH watchdog) advertise
@@ -177,8 +185,8 @@ static int run_test(struct test_entry *t)
         nq = 1;
 
     /* Set up all queues the device requires */
-    struct vring queues[16];
-    for (uint16_t q = 0; q < nq && q < 16; q++) {
+    struct vring queues[VV_MAX_QUEUES];
+    for (uint16_t q = 0; q < nq && q < VV_MAX_QUEUES; q++) {
         vring_alloc(&queues[q], queue_size_for(&dev, q));
         vring_attach(&dev, &queues[q], q);
     }
@@ -198,8 +206,11 @@ static int run_test(struct test_entry *t)
         test_q = 1;
     }
 
-    /* The device lacks the queue this test drives, so it cannot run. */
-    if (test_q >= nq) {
+    /*
+     * The test cannot run when the device lacks the queue it drives, or
+     * when that queue sits beyond the range the runner set up.
+     */
+    if (test_q >= nq || test_q >= VV_MAX_QUEUES) {
         printf("[SKIP] %s (queue %u absent)\n", t->name, test_q);
         return 0;
     }
@@ -235,10 +246,10 @@ static int run_test_packed(struct test_entry *t)
     if (nq == 0)
         nq = 1;
 
-    struct vring_packed extra[16];
+    struct vring_packed extra[VV_MAX_QUEUES];
     vring_packed_alloc(&vr, queue_size_for(&dev, 0));
     vring_packed_attach(&dev, &vr, 0);
-    for (uint16_t q = 1; q < nq && q < 16; q++) {
+    for (uint16_t q = 1; q < nq && q < VV_MAX_QUEUES; q++) {
         vring_packed_alloc(&extra[q], queue_size_for(&dev, q));
         vring_packed_attach(&dev, &extra[q], q);
     }
