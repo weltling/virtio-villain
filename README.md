@@ -401,10 +401,10 @@ the exact command line.
 ## Fuzzing
 
 Alongside the deterministic suite, a coverage guided mutation fuzzer
-encodes a descriptor chain into a 4096 byte blob, patches it into a
-fuzz guest, boots the VMM, and classifies the result. With a coverage
-instrumented VMM it feeds new edges back into the corpus, and crashes
-are grouped by error class for triage. See
+encodes device queue inputs into a versioned 64 KiB blob, patches it
+into a fuzz guest, boots the VMM, and classifies the result. With a
+coverage instrumented VMM it feeds new edges back into the corpus, and
+crashes are grouped by error class for triage. See
 [docs/fuzzing.md](docs/fuzzing.md).
 
 ## Performance
