@@ -60,7 +60,6 @@ VIRTIO_PCI_DEVICE_NET = 0x1041
 VIRTIO_PCI_DEVICE_BLK = 0x1042
 HEADER_FMT = "<HHHH"  # queue_size, num_descs, avail_idx, avail_count
 HEADER_SIZE = struct.calcsize(HEADER_FMT)
-DESC_FMT = "<HHI"  # next, flags, len  -- wait, actual struct is: u32 len, u16 flags, u16 next
 DESC_FMT = "<IHH"  # len: u32, flags: u16, next: u16
 DESC_SIZE = struct.calcsize(DESC_FMT)
 
