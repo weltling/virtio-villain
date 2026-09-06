@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 /*
- * A0033: admin command response writable addr plus len wraps 2^64.
+ * A0035: admin command response writable addr plus len wraps 2^64.
  *
  * Sibling to A0013, which gives the response a tiny buffer. Here the
  * response descriptor base sits near the top of the address space and
@@ -45,6 +45,6 @@ static test_result_t test_admin_resp_addr_len_wrap(struct virtio_dev *dev,
     return vv_kick_and_wait(dev, &avr, 0, VV_TIMEOUT_MS);
 }
 
-REGISTER_TEST(A0033, VIRTIO_PCI_DEVICE_BLK, test_admin_resp_addr_len_wrap,
+REGISTER_TEST(A0035, VIRTIO_PCI_DEVICE_BLK, test_admin_resp_addr_len_wrap,
               "Admin response writable addr plus len wraps 64 bits",
               VIRTIO_SPEC_V1_3, "2.13");
