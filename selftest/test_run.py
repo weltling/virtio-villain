@@ -3597,6 +3597,17 @@ def test_spec_sections_consistent():
         "spec section defects:\n  " + "\n  ".join(sorted(problems)))
 
 
+def test_test_ids_unique():
+    """Every REGISTER_TEST identifier is unique."""
+    paths_by_id = {}
+    for tid, _dirname, _version, _section, path in iter_registrations():
+        paths_by_id.setdefault(tid, []).append(os.path.relpath(path, ROOT_DIR))
+    duplicates = [f"{tid} {', '.join(paths)}"
+                  for tid, paths in paths_by_id.items() if len(paths) > 1]
+    assert not duplicates, (
+        "duplicate test identifiers\n  " + "\n  ".join(sorted(duplicates)))
+
+
 def test_unit_load_spec_map_shapes():
     devices, rules = load_spec_map()
     assert devices["mem"]["V1_2"] == "5.15"
