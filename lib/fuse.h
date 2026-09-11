@@ -21,6 +21,7 @@
 #define FUSE_OPEN          14
 #define FUSE_READ          15
 #define FUSE_WRITE         16
+#define FUSE_STATFS        17
 #define FUSE_INIT          26
 #define FUSE_READDIR       28
 #define FUSE_INTERRUPT     36
@@ -108,6 +109,31 @@ struct fuse_forget_in {
 struct fuse_open_in {
     uint32_t flags;
     uint32_t unused;
+} __attribute__((packed));
+
+/* Header prepended to every FUSE response. */
+struct fuse_out_header {
+    uint32_t len;
+    int32_t  error;
+    uint64_t unique;
+} __attribute__((packed));
+
+/* FUSE_STATFS response body (linux/fuse.h fuse_kstatfs / fuse_statfs_out). */
+struct fuse_kstatfs {
+    uint64_t blocks;
+    uint64_t bfree;
+    uint64_t bavail;
+    uint64_t files;
+    uint64_t ffree;
+    uint32_t bsize;
+    uint32_t namelen;
+    uint32_t frsize;
+    uint32_t padding;
+    uint32_t spare[6];
+} __attribute__((packed));
+
+struct fuse_statfs_out {
+    struct fuse_kstatfs st;
 } __attribute__((packed));
 
 #endif /* VV_FUSE_H */
