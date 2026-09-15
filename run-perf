@@ -32,9 +32,13 @@ BACKEND_DEVICES = {
     "qemu": {"blk", "net", "rng", "vsock"},
     "openvmm": {"blk", "net", "rng"},
 }
-RESULT_RE = re.compile(
-    r"VVPERF workload=(\w+) round=(\d+) block_size=(\d+) "
-    r"iterations=(\d+) duration_ns=(\d+)")
+RESULT_PREFIX = "VVPERF "
+RESULT_FIELDS = {
+    "version", "experiment", "changed", "workload", "operation", "round",
+    "request_bytes", "iterations", "duration_ns", "queue_format",
+    "queue_depth", "batch_size", "submissions", "completions",
+    "notifications", "timing_mode", "clock_source", "features",
+}
 
 
 def load_runner():
@@ -48,20 +52,68 @@ def load_runner():
 
 def parse_results(output):
     samples = []
-    for match in RESULT_RE.finditer(output):
-        workload, round_number, block_size, iterations, duration_ns = match.groups()
-        duration = int(duration_ns)
-        count = int(iterations)
+    rounds = set()
+    common = None
+    for line in output.splitlines():
+        if not line.startswith(RESULT_PREFIX) or "error=" in line:
+            continue
+        try:
+            fields = dict(item.split("=", 1) for item in
+                          line[len(RESULT_PREFIX):].split())
+        except ValueError as error:
+            raise RuntimeError("Invalid performance result record") from error
+        missing = RESULT_FIELDS - fields.keys()
+        if missing:
+            raise RuntimeError(
+                f"Performance result missing {', '.join(sorted(missing))}")
+        if fields["version"] != "3":
+            raise RuntimeError(
+                f"Unsupported performance result version {fields['version']}")
+        try:
+            numeric = {name: int(fields[name]) for name in (
+                "round", "request_bytes", "iterations", "duration_ns",
+                "queue_depth", "batch_size", "submissions", "completions",
+                "notifications")}
+        except ValueError as error:
+            raise RuntimeError("Invalid numeric performance result field") from error
+        round_number = numeric["round"]
+        if round_number in rounds:
+            raise RuntimeError(f"Duplicate performance round {round_number}")
+        rounds.add(round_number)
+        stable = {name: fields[name] for name in RESULT_FIELDS
+                  if name not in {"round", "duration_ns"}}
+        if common is None:
+            common = stable
+        elif stable != common:
+            raise RuntimeError("Performance result settings changed between rounds")
+        duration = numeric["duration_ns"]
+        count = numeric["iterations"]
+        if duration <= 0 or count <= 0:
+            raise RuntimeError("Performance duration and iterations must be positive")
         iops = count * 1_000_000_000 / duration
         samples.append({
-            "workload": workload,
-            "round": int(round_number),
-            "block_size": int(block_size),
+            "experiment_class": fields["experiment"],
+            "changed_dimension": (None if fields["changed"] == "none"
+                                  else fields["changed"]),
+            "workload": fields["workload"],
+            "operation": fields["operation"],
+            "round": round_number,
+            "request_bytes": numeric["request_bytes"],
             "iterations": count,
             "duration_ns": duration,
+            "queue_format": fields["queue_format"],
+            "queue_depth": numeric["queue_depth"],
+            "batch_size": numeric["batch_size"],
+            "submissions": numeric["submissions"],
+            "completions": numeric["completions"],
+            "notifications": numeric["notifications"],
+            "timing_mode": fields["timing_mode"],
+            "clock_source": fields["clock_source"],
+            "negotiated_features": fields["features"],
             "iops": iops,
-            "average_latency_ns": duration / count,
-            "throughput_mib_s": iops * int(block_size) / (1024 * 1024),
+            "mean_service_time_ns": duration / count,
+            "throughput_mib_s": (
+                iops * numeric["request_bytes"] / (1024 * 1024)),
         })
     return samples
 
@@ -71,15 +123,15 @@ def summarize(samples):
     total_requests = sum(sample["iterations"] for sample in samples)
     total_duration_ns = sum(sample["duration_ns"] for sample in samples)
     combined_iops = total_requests * 1_000_000_000 / total_duration_ns
-    block_size = samples[0]["block_size"]
+    request_bytes = samples[0]["request_bytes"]
     return {
         "total_requests": total_requests,
         "total_duration_ns": total_duration_ns,
         "iops": combined_iops,
         "iops_min": min(iops),
         "iops_max": max(iops),
-        "average_latency_ns": total_duration_ns / total_requests,
-        "throughput_mib_s": combined_iops * block_size / (1024 * 1024),
+        "mean_service_time_ns": total_duration_ns / total_requests,
+        "throughput_mib_s": combined_iops * request_bytes / (1024 * 1024),
     }
 
 
@@ -139,7 +191,9 @@ def run_guest(args, runner):
             f"initcall_blacklist={DEVICE_INITCALL[args.device]} "
             f"vv.perf_device={args.device} "
             f"vv.perf_iterations={args.iterations} vv.perf_rounds={args.rounds} "
-            f"vv.perf_warmup={args.warmup}")
+            f"vv.perf_warmup={args.warmup} "
+            f"vv.perf_experiment={args.experiment_class} "
+            f"vv.perf_changed={args.changed_dimension}")
         opts = {
             "blk_queues": 1, "cpus": args.cpus, "direct": args.direct,
             "exit_on_guest_end": True, "fuzz_device": args.device,
@@ -164,24 +218,80 @@ def run_guest(args, runner):
                 os.close(master_fd)
             if slave_fd is not None:
                 os.close(slave_fd)
-    return backend, samples
+    return backend, samples, kernel
 
 
-def make_report(args, backend, samples):
+def make_report(args, backend, samples, kernel):
+    sample = samples[0]
     return {
-        "schema_version": 2,
-        "host": {"machine": platform.machine(), "system": platform.system()},
+        "schema_version": 3,
+        "experiment": {
+            "class": sample["experiment_class"],
+            "changed_dimension": sample["changed_dimension"],
+        },
+        "host": {"machine": platform.machine(), "system": platform.system(),
+                 "kernel": platform.release(),
+                 "processor": platform.processor() or None},
+        "guest": {"kernel": os.path.abspath(kernel)},
         "vmm": {"backend": backend.name, "path": os.path.abspath(args.vmm),
-                "version": get_version(args.vmm)},
-        "config": {"cpus": args.cpus, "direct": args.direct,
-                   "device": args.device,
-                   "disk_size_mib": args.disk_size,
-                   "io_engine": args.io_engine, "memory": args.memory,
-                   "iterations": args.iterations, "rounds": args.rounds,
-                   "warmup": args.warmup},
+                "version": get_version(args.vmm),
+                "process_mode": ("single" if backend.name == "openvmm"
+                                 else "default")},
+        "execution": {"cpus": args.cpus, "memory": args.memory,
+                      "iterations": args.iterations, "rounds": args.rounds,
+                      "warmup": args.warmup},
+        "queue": {"transport": "pci", "format": sample["queue_format"],
+                  "depth": sample["queue_depth"],
+                  "batch_size": sample["batch_size"],
+                  "negotiated_features": sample["negotiated_features"]},
+        "workload": {"device": sample["workload"],
+                     "operation": sample["operation"],
+                     "request_bytes": sample["request_bytes"]},
+        "backend": {"direct": args.direct,
+                    "disk_size_mib": args.disk_size,
+                    "io_engine": args.io_engine},
+        "instrumentation": {"enabled": False},
         "samples": samples,
         "summary": summarize(samples),
     }
+
+
+def compatibility_mismatches(baseline, candidate):
+    """Return fields that prevent a valid report comparison."""
+    ignored = {"samples", "summary"}
+    fixed_vmm = {"backend", "process_mode"}
+    mismatches = []
+    experiment = baseline.get("experiment", {})
+    if candidate.get("experiment") != experiment:
+        return ["experiment"]
+    changed = experiment.get("changed_dimension")
+    allowed = None
+    if changed:
+        allowed = f"{experiment.get('class')}.{changed}"
+        if experiment.get("class") == "queue":
+            allowed = f"queue.{changed}"
+        elif experiment.get("class") == "frontend":
+            allowed = f"workload.{changed}"
+        elif experiment.get("class") == "backend":
+            allowed = f"backend.{changed}"
+
+    def compare(path, left, right):
+        if path in ignored or path == allowed:
+            return
+        if path == "vmm":
+            for name in fixed_vmm:
+                if left.get(name) != right.get(name):
+                    mismatches.append(f"vmm.{name}")
+            return
+        if isinstance(left, dict) and isinstance(right, dict):
+            for name in sorted(left.keys() | right.keys()):
+                compare(f"{path}.{name}" if path else name,
+                        left.get(name), right.get(name))
+        elif left != right:
+            mismatches.append(path)
+
+    compare("", baseline, candidate)
+    return mismatches
 
 
 def parse_args(argv=None):
@@ -199,6 +309,10 @@ def parse_args(argv=None):
     parser.add_argument("--io-engine", choices=("default", "io_uring", "aio", "sync"),
                         default="default")
     parser.add_argument("--direct", action="store_true")
+    parser.add_argument("--experiment-class",
+                        choices=("queue", "frontend", "backend"),
+                        default="queue")
+    parser.add_argument("--changed-dimension", default="none", metavar="NAME")
     parser.add_argument("-v", "--verbose", action="store_true")
     parser.add_argument("--format", choices=("human", "json"), default="human")
     parser.add_argument("-o", "--output", metavar="PATH")
@@ -210,24 +324,24 @@ def parse_args(argv=None):
 
 
 def format_human(report, verbose=False):
-    config = report["config"]
+    workload = report["workload"]
     samples = report["samples"]
     summary = report["summary"]
     sample = samples[0]
-    latency_us = summary["average_latency_ns"] / 1000
-    round_latencies = [item["average_latency_ns"] / 1000 for item in samples]
-    request_size = sample["block_size"]
+    latency_us = summary["mean_service_time_ns"] / 1000
+    round_latencies = [item["mean_service_time_ns"] / 1000 for item in samples]
+    request_size = sample["request_bytes"]
     if request_size >= 1024 and request_size % 1024 == 0:
         request_size_text = f"{request_size // 1024} KiB"
     else:
         request_size_text = f"{request_size} bytes"
     lines = [
-        f"virtio {DEVICE_LABEL[config['device']]} latency",
+        f"virtio {DEVICE_LABEL[workload['device']]} latency",
         "",
         f"Request size:  {request_size_text}",
         "Queue depth:   1",
         f"Requests:      {summary['total_requests']}",
-        f"Result:        {latency_us:.2f} us per request",
+        f"Mean service:  {latency_us:.2f} us per request",
         (f"Variation:     {min(round_latencies):.2f} to "
          f"{max(round_latencies):.2f} us between rounds"),
     ]
@@ -236,7 +350,7 @@ def format_human(report, verbose=False):
             "",
             f"VMM:           {report['vmm']['backend']}",
             f"Binary:        {report['vmm']['path']}",
-            f"Warmup:        {config['warmup']} requests",
+            f"Warmup:        {report['execution']['warmup']} requests",
             f"Rounds:        {len(samples)}",
         ]
         if report["vmm"]["version"]:
@@ -249,7 +363,7 @@ def format_human(report, verbose=False):
             lines.append(
                 f"{item['round']:>5}  {item['iterations']:>8}  "
                 f"{item['duration_ns'] / 1_000_000_000:>9.3f}  "
-                f"{item['average_latency_ns'] / 1000:>19.2f}")
+                f"{item['mean_service_time_ns'] / 1000:>19.2f}")
     return "\n".join(lines)
 
 
@@ -260,10 +374,10 @@ def main(argv=None):
         return build_result
     runner = load_runner()
     try:
-        backend, samples = run_guest(args, runner)
+        backend, samples, kernel = run_guest(args, runner)
     except RuntimeError as error:
         sys.exit(str(error))
-    report = make_report(args, backend, samples)
+    report = make_report(args, backend, samples, kernel)
     encoded = json.dumps(report, indent=2) + "\n"
     if args.output:
         with open(args.output, "w", encoding="utf-8") as output_file:

@@ -20,23 +20,55 @@ def load_module():
     return module
 
 
+def expect_runtime_error(function, text):
+    try:
+        function()
+        assert False
+    except RuntimeError as error:
+        assert text in str(error)
+
+
 def main():
     module = load_module()
     output = (
-        "VVPERF workload=blk_read round=1 block_size=4096 "
-        "iterations=100 duration_ns=2000000\n"
-        "VVPERF workload=blk_read round=2 block_size=4096 "
-        "iterations=100 duration_ns=1000000\n")
+        "VVPERF version=3 experiment=queue changed=depth "
+        "workload=blk operation=read round=1 request_bytes=4096 "
+        "iterations=100 duration_ns=2000000 queue_format=split "
+        "queue_depth=1 batch_size=1 submissions=100 completions=100 "
+        "notifications=100 timing_mode=throughput "
+        "clock_source=monotonic features=0x0\n"
+        "VVPERF version=3 experiment=queue changed=depth "
+        "workload=blk operation=read round=2 request_bytes=4096 "
+        "iterations=100 duration_ns=1000000 queue_format=split "
+        "queue_depth=1 batch_size=1 submissions=100 completions=100 "
+        "notifications=100 timing_mode=throughput "
+        "clock_source=monotonic features=0x0\n")
     samples = module.parse_results(output)
     assert len(samples) == 2
     assert samples[0]["iops"] == 50000
-    assert samples[1]["average_latency_ns"] == 10000
+    assert samples[1]["mean_service_time_ns"] == 10000
     assert samples[1]["throughput_mib_s"] == 390.625
+    assert samples[0]["request_bytes"] == 4096
+    assert samples[0]["notifications"] == 100
+    expect_runtime_error(
+        lambda: module.parse_results(output.replace(" features=0x0", "", 1)),
+        "missing features")
+    expect_runtime_error(
+        lambda: module.parse_results(output + output.splitlines()[0] + "\n"),
+        "Duplicate performance round 1")
+    expect_runtime_error(
+        lambda: module.parse_results(output.replace("queue_depth=1",
+                                                    "queue_depth=2", 1)),
+        "settings changed between rounds")
+    expect_runtime_error(
+        lambda: module.parse_results(output.replace("duration_ns=2000000",
+                                                    "duration_ns=invalid", 1)),
+        "Invalid numeric performance result field")
     summary = module.summarize(samples)
     assert summary["total_requests"] == 200
     assert summary["total_duration_ns"] == 3000000
     assert round(summary["iops"], 2) == 66666.67
-    assert summary["average_latency_ns"] == 15000
+    assert summary["mean_service_time_ns"] == 15000
     timeout = subprocess.TimeoutExpired(
         ["vmm"], 1, output=output.encode())
     with mock.patch.object(module.subprocess, "run", side_effect=timeout):
@@ -74,14 +106,30 @@ def main():
             assert False
         except ValueError:
             pass
-    args = module.parse_args(["-m", "openvmm", "--device", "blk"])
+    args = module.parse_args(["-m", "openvmm", "--device", "blk",
+                              "--changed-dimension", "depth"])
     backend = type("Backend", (), {"name": "openvmm"})()
     with mock.patch.object(module, "get_version", return_value=None):
-        report = module.make_report(args, backend, samples)
+        report = module.make_report(args, backend, samples, "/boot/vmlinux")
+    assert report["schema_version"] == 3
+    assert report["experiment"] == {"class": "queue",
+                                    "changed_dimension": "depth"}
+    assert report["queue"]["format"] == "split"
+    assert report["queue"]["depth"] == 1
+    assert report["workload"]["device"] == "blk"
+    assert report["backend"]["io_engine"] == "default"
+    assert report["guest"]["kernel"] == "/boot/vmlinux"
+    assert report["vmm"]["process_mode"] == "single"
+    assert module.compatibility_mismatches(report, report) == []
+    changed = module.json.loads(module.json.dumps(report))
+    changed["queue"]["depth"] = 16
+    assert module.compatibility_mismatches(report, changed) == []
+    changed["workload"]["device"] = "rng"
+    assert "workload.device" in module.compatibility_mismatches(report, changed)
     human = module.format_human(report)
     assert "virtio block read latency" in human
     assert "Requests:      200" in human
-    assert "Result:        15.00 us per request" in human
+    assert "Mean service:  15.00 us per request" in human
     assert "Variation:     10.00 to 20.00 us between rounds" in human
     assert "Round  Requests" not in human
     assert "VMM unknown" not in human
@@ -90,8 +138,8 @@ def main():
     assert "Round  Requests" in verbose
     assert "20.00" in verbose
     assert "10.00" in verbose
-    report["config"]["device"] = "net"
-    report["samples"][0]["block_size"] = 64
+    report["workload"]["device"] = "net"
+    report["samples"][0]["request_bytes"] = 64
     assert "Request size:  64 bytes" in module.format_human(report)
     assert "vsock" not in module.BACKEND_DEVICES["openvmm"]
     assert "vsock" in module.BACKEND_DEVICES["ch"]

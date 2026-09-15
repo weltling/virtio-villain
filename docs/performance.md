@@ -40,17 +40,32 @@ block backend configuration.
 
 ## Results
 
-The default output reports the average time for one request across all measured
-rounds. It also shows the fastest and slowest round averages so run stability is
-visible. Use `--verbose` to print the elapsed time and average request time for
-every round. JSON output keeps all samples for automated comparison.
+The default output reports mean service time across all measured rounds. It
+also shows the fastest and slowest round means so run stability is visible.
+Use `--verbose` to print elapsed time and mean service time for every round.
+JSON output keeps all samples for automated comparison.
 
 This workload has queue depth one, so only one request is active at a time.
-Average request latency is therefore the measured time divided by the request
-count. It is not a latency percentile.
+Mean service time is the measured round duration divided by the request count.
+It is not a latency sample or percentile.
 
-JSON output includes every sample and the host, VMM, and run settings. A VMM
-version is omitted when the binary has no supported version query.
+JSON schema version 3 separates experiment, host, guest, VMM, execution, queue,
+workload, backend, and instrumentation settings. Each sample records request
+bytes, submissions, completions, notifications, timing mode, and clock source.
+A VMM version is omitted when the binary has no supported version query.
+
+The current queue depth and batch size are one. The guest submits, completes,
+and notifies once for each request. Vsock uses one request queue operation and
+one response queue operation for each measured transaction.
+
+Use `--experiment-class` and `--changed-dimension` to identify the one layer
+changed by a comparison. The available experiment classes are `queue`,
+`frontend`, and `backend`.
+
+```bash
+./run-perf -m ./openvmm --device blk \
+	--experiment-class queue --changed-dimension none
+```
 
 ```bash
 ./run-perf -m ./cloud-hypervisor --format json
@@ -68,6 +83,6 @@ host load stable and run enough rounds to expose variance.
 ## Scope
 
 This runner measures serial request processing in the current split queue
-workload. It is not a replacement for storage benchmarks such as fio. Packed
-queues, request batches, writes, indirect descriptors, and multiple queues
-are candidates for additional workloads.
+workload over PCI. It is not a replacement for storage benchmarks such as fio.
+Packed queues, request batches, writes, indirect descriptors, and multiple
+queues are candidates for additional workloads.

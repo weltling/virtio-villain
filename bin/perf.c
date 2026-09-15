@@ -23,7 +23,7 @@
 
 struct perf_workload {
     const char *device;
-    const char *name;
+    const char *operation;
     uint16_t device_id;
     uint16_t queue;
     uint32_t request_size;
@@ -226,6 +226,8 @@ int main(void)
     struct timespec start;
     struct timespec end;
     char device[16];
+    char experiment[16];
+    char changed[32];
 
     if (getpid() != 1) {
         fprintf(stderr, "perf guest must run as PID 1\n");
@@ -240,6 +242,9 @@ int main(void)
     unsigned rounds = read_cmdline_value("vv.perf_rounds", DEFAULT_ROUNDS);
     unsigned warmup = read_cmdline_value("vv.perf_warmup", DEFAULT_WARMUP);
     read_cmdline_string("vv.perf_device", device, sizeof(device), "blk");
+    read_cmdline_string("vv.perf_experiment", experiment,
+                        sizeof(experiment), "queue");
+    read_cmdline_string("vv.perf_changed", changed, sizeof(changed), "none");
 
     if (select_workload(device, &workload) < 0) {
         printf("VVPERF error=unsupported_device\n");
@@ -313,10 +318,21 @@ int main(void)
         }
 
         uint64_t duration_ns = elapsed_ns(&start, &end);
-                printf("VVPERF workload=%s round=%u block_size=%u "
-               "iterations=%u duration_ns=%llu\n",
-                             workload.name, round + 1, workload.request_size, iterations,
-               (unsigned long long)duration_ns);
+        uint64_t queue_operations = workload.response_vr ? 2 : 1;
+        uint64_t queue_requests = iterations * queue_operations;
+
+        printf("VVPERF version=3 experiment=%s changed=%s "
+               "workload=%s operation=%s round=%u request_bytes=%u "
+               "iterations=%u duration_ns=%llu queue_format=split "
+               "queue_depth=1 batch_size=1 submissions=%llu "
+               "completions=%llu notifications=%llu timing_mode=throughput "
+               "clock_source=monotonic features=0x0\n",
+               experiment, changed, workload.device, workload.operation,
+               round + 1, workload.request_size, iterations,
+               (unsigned long long)duration_ns,
+               (unsigned long long)queue_requests,
+               (unsigned long long)queue_requests,
+               (unsigned long long)queue_requests);
     }
     shutdown_guest(0);
     return 0;
