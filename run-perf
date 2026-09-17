@@ -34,6 +34,7 @@ BACKEND_DEVICES = {
     "qemu": {"blk", "net", "rng", "vsock"},
     "openvmm": {"blk", "net", "rng"},
 }
+PAYLOAD_RATE_WORKLOADS = {"blk", "rng"}
 RESULT_PREFIX = "VVPERF "
 RESULT_FIELDS = {
     "version", "experiment", "changed", "workload", "operation", "round",
@@ -139,8 +140,12 @@ def parse_results(output):
         count = numeric["iterations"]
         if duration <= 0 or count <= 0:
             raise RuntimeError("Performance duration and iterations must be positive")
-        iops = count * 1_000_000_000 / duration
-        samples.append({
+        queue_counts = (numeric["submissions"], numeric["completions"],
+                        numeric["notifications"])
+        if any(value <= 0 for value in queue_counts):
+            raise RuntimeError("Performance queue counts must be positive")
+        operations_per_second = count * 1_000_000_000 / duration
+        sample = {
             "experiment_class": fields["experiment"],
             "changed_dimension": (None if fields["changed"] == "none"
                                   else fields["changed"]),
@@ -159,29 +164,39 @@ def parse_results(output):
             "timing_mode": fields["timing_mode"],
             "clock_source": fields["clock_source"],
             "negotiated_features": fields["features"],
-            "iops": iops,
+            "operations_per_second": operations_per_second,
             "mean_service_time_ns": duration / count,
-            "throughput_mib_s": (
-                iops * numeric["request_bytes"] / (1024 * 1024)),
-        })
+            "notifications_per_submission": (
+                numeric["notifications"] / numeric["submissions"]),
+        }
+        if fields["workload"] in PAYLOAD_RATE_WORKLOADS:
+            sample["payload_bytes_per_second"] = (
+                operations_per_second * numeric["request_bytes"])
+        samples.append(sample)
     return samples
 
 
 def summarize(samples):
-    iops = [sample["iops"] for sample in samples]
+    operation_rates = [sample["operations_per_second"] for sample in samples]
     total_requests = sum(sample["iterations"] for sample in samples)
     total_duration_ns = sum(sample["duration_ns"] for sample in samples)
-    combined_iops = total_requests * 1_000_000_000 / total_duration_ns
-    request_bytes = samples[0]["request_bytes"]
-    return {
+    total_submissions = sum(sample["submissions"] for sample in samples)
+    total_notifications = sum(sample["notifications"] for sample in samples)
+    combined_rate = total_requests * 1_000_000_000 / total_duration_ns
+    summary = {
         "total_requests": total_requests,
         "total_duration_ns": total_duration_ns,
-        "iops": combined_iops,
-        "iops_min": min(iops),
-        "iops_max": max(iops),
+        "operations_per_second": combined_rate,
+        "operations_per_second_min": min(operation_rates),
+        "operations_per_second_max": max(operation_rates),
         "mean_service_time_ns": total_duration_ns / total_requests,
-        "throughput_mib_s": combined_iops * request_bytes / (1024 * 1024),
+        "notifications_per_submission": (
+            total_notifications / total_submissions),
     }
+    if "payload_bytes_per_second" in samples[0]:
+        summary["payload_bytes_per_second"] = (
+            combined_rate * samples[0]["request_bytes"])
+    return summary
 
 
 def get_version(path):
@@ -197,6 +212,18 @@ def get_version(path):
         return None
     text = result.stderr.strip()
     return text.splitlines()[0] if text else None
+
+
+def get_processor_model():
+    try:
+        with open("/proc/cpuinfo", encoding="utf-8") as cpuinfo:
+            for line in cpuinfo:
+                name, separator, value = line.partition(":")
+                if separator and name.strip() in {"model name", "Hardware"}:
+                    return value.strip()
+    except OSError:
+        pass
+    return platform.processor() or None
 
 
 def build_guest():
@@ -284,6 +311,31 @@ def run_guest(args, runner):
 
 def make_report(args, backend, samples, kernel):
     sample = samples[0]
+    vmm = {"backend": backend.name, "path": os.path.abspath(args.vmm),
+           "version": get_version(args.vmm),
+           "process_mode": ("single" if backend.name == "openvmm"
+                            else "default")}
+    if backend.name == "qemu":
+        vmm["machine"] = ("virt" if platform.machine() == "aarch64"
+                          else "default")
+        vmm["accelerator"] = "kvm"
+    if sample["workload"] == "blk":
+        direct = args.direct or (
+            backend.name == "openvmm" and args.io_engine == "aio")
+        resource = {"type": "file", "format": "raw",
+                    "direct": direct,
+                    "disk_size_mib": args.disk_size,
+                    "io_engine": args.io_engine}
+    elif sample["workload"] == "net":
+        endpoints = {"qemu": "user", "ch": "tap", "openvmm": "consomme"}
+        resource = {"type": "network",
+                    "endpoint": endpoints[backend.name]}
+    elif sample["workload"] == "rng":
+        source = ("default" if backend.name == "openvmm" else "/dev/urandom")
+        resource = {"type": "rng", "source": source}
+    else:
+        endpoints = {"qemu": "vhost", "ch": "unix"}
+        resource = {"type": "vsock", "endpoint": endpoints[backend.name]}
     return {
         "schema_version": 3,
         "experiment": {
@@ -292,12 +344,9 @@ def make_report(args, backend, samples, kernel):
         },
         "host": {"machine": platform.machine(), "system": platform.system(),
                  "kernel": platform.release(),
-                 "processor": platform.processor() or None},
+                 "processor": get_processor_model()},
         "guest": {"kernel": os.path.abspath(kernel)},
-        "vmm": {"backend": backend.name, "path": os.path.abspath(args.vmm),
-                "version": get_version(args.vmm),
-                "process_mode": ("single" if backend.name == "openvmm"
-                                 else "default")},
+        "vmm": vmm,
         "execution": {"cpus": args.cpus, "memory": args.memory,
                       "iterations": args.iterations, "rounds": args.rounds,
                       "warmup": args.warmup},
@@ -308,10 +357,10 @@ def make_report(args, backend, samples, kernel):
         "workload": {"device": sample["workload"],
                      "operation": sample["operation"],
                      "request_bytes": sample["request_bytes"]},
-        "backend": {"direct": args.direct,
-                    "disk_size_mib": args.disk_size,
-                    "io_engine": args.io_engine},
+        "backend": resource,
         "instrumentation": {"enabled": False},
+        "timing": {"mode": sample["timing_mode"],
+                   "clock_source": sample["clock_source"]},
         "samples": samples,
         "summary": summarize(samples),
     }
@@ -320,7 +369,7 @@ def make_report(args, backend, samples, kernel):
 def compatibility_mismatches(baseline, candidate):
     """Return fields that prevent a valid report comparison."""
     ignored = {"samples", "summary"}
-    fixed_vmm = {"backend", "process_mode"}
+    fixed_vmm = {"accelerator", "backend", "machine", "process_mode"}
     mismatches = []
     experiment = baseline.get("experiment", {})
     if candidate.get("experiment") != experiment:
@@ -356,7 +405,7 @@ def compatibility_mismatches(baseline, candidate):
 
 
 def parse_args(argv=None):
-    parser = argparse.ArgumentParser(description="Measure serial virtio request latency")
+    parser = argparse.ArgumentParser(description="Measure virtio request throughput")
     parser.add_argument("-m", "--vmm", required=True, metavar="PATH")
     parser.add_argument("--device", choices=tuple(DEVICE_INITCALL), default="blk")
     parser.add_argument("-k", "--kernel", metavar="PATH")
@@ -367,6 +416,8 @@ def parse_args(argv=None):
                         default=1)
     parser.add_argument("--batch-size", type=int, choices=(1, 4, 8, 16),
                         default=1)
+    parser.add_argument("--timing-mode", choices=("throughput",),
+                        default="throughput")
     parser.add_argument("--cpus", type=int, default=1)
     parser.add_argument("--memory", default="256M")
     parser.add_argument("--disk-size", type=int, default=64, metavar="MIB")
@@ -395,24 +446,31 @@ def format_human(report, verbose=False):
     samples = report["samples"]
     summary = report["summary"]
     sample = samples[0]
-    latency_us = summary["mean_service_time_ns"] / 1000
-    round_latencies = [item["mean_service_time_ns"] / 1000 for item in samples]
+    operation_rate = summary["operations_per_second"]
+    round_rates = [item["operations_per_second"] for item in samples]
     request_size = sample["request_bytes"]
     if request_size >= 1024 and request_size % 1024 == 0:
         request_size_text = f"{request_size // 1024} KiB"
     else:
         request_size_text = f"{request_size} bytes"
     lines = [
-        f"virtio {DEVICE_LABEL[workload['device']]} latency",
+        f"virtio {DEVICE_LABEL[workload['device']]} throughput",
         "",
         f"Request size:  {request_size_text}",
         f"Queue depth:   {report['queue']['depth']}",
         f"Batch size:    {report['queue']['batch_size']}",
         f"Requests:      {summary['total_requests']}",
-        f"Mean service:  {latency_us:.2f} us per request",
-        (f"Variation:     {min(round_latencies):.2f} to "
-         f"{max(round_latencies):.2f} us between rounds"),
+        f"Operation rate: {operation_rate:.2f} operations/s",
+        (f"Round range:    {min(round_rates):.2f} to "
+         f"{max(round_rates):.2f} operations/s"),
+        (f"Mean service:  {summary['mean_service_time_ns'] / 1000:.2f} "
+         "us per operation"),
+        (f"Notify ratio:  {summary['notifications_per_submission']:.4f} "
+         "per submission"),
     ]
+    if "payload_bytes_per_second" in summary:
+        lines.append(
+            f"Payload rate: {summary['payload_bytes_per_second'] / (1024 * 1024):.2f} MiB/s")
     if verbose:
         lines += [
             "",
@@ -425,13 +483,13 @@ def format_human(report, verbose=False):
             lines.append(f"Version:       {report['vmm']['version']}")
         lines += [
             "",
-            "Round  Requests  Elapsed s  Time per request us",
+            "Round  Requests  Elapsed s  Operations/s",
         ]
         for item in samples:
             lines.append(
                 f"{item['round']:>5}  {item['iterations']:>8}  "
                 f"{item['duration_ns'] / 1_000_000_000:>9.3f}  "
-                f"{item['mean_service_time_ns'] / 1000:>19.2f}")
+                f"{item['operations_per_second']:>12.2f}")
     return "\n".join(lines)
 
 

@@ -632,10 +632,10 @@ int main(void)
 
     for (unsigned round = 0; round < rounds; round++) {
         perf_stats_init(&stats);
-        clock_gettime(CLOCK_MONOTONIC, &start);
+        clock_gettime(CLOCK_MONOTONIC_RAW, &start);
         result = run_requests(&dev, &workload, iterations, batch_size,
                               &stats);
-        clock_gettime(CLOCK_MONOTONIC, &end);
+        clock_gettime(CLOCK_MONOTONIC_RAW, &end);
         if (result != PERF_REQUEST_OK) {
             printf("VVPERF error=%s phase=measured\n",
                    request_error(result));
@@ -649,7 +649,7 @@ int main(void)
                "iterations=%u duration_ns=%llu queue_format=split "
                "queue_depth=%u batch_size=%u submissions=%llu "
                "completions=%llu notifications=%llu timing_mode=throughput "
-               "clock_source=monotonic features=0x0\n",
+               "clock_source=CLOCK_MONOTONIC_RAW features=0x0\n",
                experiment, changed, workload.device, workload.operation,
                round + 1, workload.request_size, iterations,
                (unsigned long long)duration_ns, workload.queue_depth,

@@ -4,7 +4,7 @@
 robustness verdicts. It boots one guest, runs a warmup, then records several
 rounds without including VM startup in the samples.
 
-Each workload submits one request at a time through a split virtqueue. Block
+Each workload submits concurrent requests through a split virtqueue. Block
 reads 4 KiB. RNG fills 4 KiB. Network transmits a 64 byte Ethernet frame.
 Vsock sends a connection request and consumes the response. The guest owns
 the virtqueues directly without a guest filesystem or kernel device driver.
@@ -33,6 +33,11 @@ Use `--iterations`, `--warmup`, and `--rounds` to change the sample shape.
 Use `--cpus`, `--memory`, `--io-engine`, and `--direct` to change the VM and
 block backend configuration.
 
+Use `--queue-depth` to select a power of two depth from 1 through 16. Use
+`--batch-size` to publish 1, 4, 8, or 16 descriptor heads before each device
+notification. Batch size must not exceed queue depth. Throughput is the only
+current timing mode.
+
 ```bash
 ./run-perf -m ./cloud-hypervisor --warmup 5000 --rounds 10 -n 50000
 ./run-perf -m ./cloud-hypervisor --io-engine io_uring --direct
@@ -40,24 +45,29 @@ block backend configuration.
 
 ## Results
 
-The default output reports mean service time across all measured rounds. It
-also shows the fastest and slowest round means so run stability is visible.
-Use `--verbose` to print elapsed time and mean service time for every round.
-JSON output keeps all samples for automated comparison.
+The default output reports completed operations per second across all measured
+rounds. It also shows the fastest and slowest round rates so run stability is
+visible. Mean service time is derived from the duration of the complete round.
+It is not a latency sample or percentile. Use `--verbose` to print elapsed time
+and operation rate for every round. JSON output keeps all samples for automated
+comparison.
 
-This workload has queue depth one, so only one request is active at a time.
-Mean service time is the measured round duration divided by the request count.
-It is not a latency sample or percentile.
+Block and RNG reports include payload bytes per second. Network transmit only
+proves that the device consumed the buffer, so it does not report delivered
+payload rate. Vsock also omits payload rate. Every workload reports device
+notifications per submission.
 
 JSON schema version 3 separates experiment, host, guest, VMM, execution, queue,
-workload, backend, and instrumentation settings. Each sample records request
-bytes, submissions, completions, notifications, timing mode, and clock source.
-A VMM version is omitted when the binary has no supported version query.
+workload, backend, instrumentation, and timing settings. Each sample records
+request bytes, submissions, completions, notifications, timing mode, and clock
+source. Throughput rounds use `CLOCK_MONOTONIC_RAW` with one read at each round
+boundary. A VMM version is omitted when the binary has no supported version
+query.
 
-The current queue depth and batch size are one. The guest submits, completes,
-and notifies once for each request. Vsock uses one request queue operation and
-one response queue operation for each measured transaction. It uses one more
-request queue operation to reset the completed connection.
+Queue depth and batch size default to one. Vsock uses one request queue
+operation and one response queue operation for each measured transaction. It
+uses one more request queue operation to reset the completed connection. Exact
+submission, completion, and notification counts include all three operations.
 
 Use `--experiment-class` and `--changed-dimension` to identify the one layer
 changed by a comparison. The available experiment classes are `queue`,
@@ -83,7 +93,7 @@ host load stable and run enough rounds to expose variance.
 
 ## Scope
 
-This runner measures serial request processing in the current split queue
-workload over PCI. It is not a replacement for storage benchmarks such as fio.
-Packed queues, request batches, writes, indirect descriptors, and multiple
-queues are candidates for additional workloads.
+This runner measures request throughput in the current split queue workload
+over PCI. It is not a replacement for storage benchmarks such as fio. Packed
+queues, writes, indirect descriptors, and multiple device queues are candidates
+for additional work.

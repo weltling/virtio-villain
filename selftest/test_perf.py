@@ -69,27 +69,33 @@ def main():
     failed_socket.close.assert_called_once_with()
     output = (
         "VVPERF version=3 experiment=queue changed=depth "
-        "workload=blk operation=read round=1 request_bytes=4096 "
+        "workload=blk operation=blk_read round=1 request_bytes=4096 "
         "iterations=100 duration_ns=2000000 queue_format=split "
         "queue_depth=1 batch_size=1 submissions=100 completions=100 "
         "notifications=100 timing_mode=throughput "
-        "clock_source=monotonic features=0x0\n"
+        "clock_source=CLOCK_MONOTONIC_RAW features=0x0\n"
         "VVPERF version=3 experiment=queue changed=depth "
-        "workload=blk operation=read round=2 request_bytes=4096 "
+        "workload=blk operation=blk_read round=2 request_bytes=4096 "
         "iterations=100 duration_ns=1000000 queue_format=split "
         "queue_depth=1 batch_size=1 submissions=100 completions=100 "
         "notifications=100 timing_mode=throughput "
-        "clock_source=monotonic features=0x0\n")
+        "clock_source=CLOCK_MONOTONIC_RAW features=0x0\n")
     samples = module.parse_results(output)
     assert len(samples) == 2
-    assert samples[0]["iops"] == 50000
+    assert samples[0]["operations_per_second"] == 50000
     assert samples[1]["mean_service_time_ns"] == 10000
-    assert samples[1]["throughput_mib_s"] == 390.625
+    assert samples[1]["payload_bytes_per_second"] == 409600000
+    assert samples[0]["notifications_per_submission"] == 1
     assert samples[0]["request_bytes"] == 4096
     assert samples[0]["batch_size"] == 1
     assert samples[0]["submissions"] == 100
     assert samples[0]["completions"] == 100
     assert samples[0]["notifications"] == 100
+    network_samples = module.parse_results(
+        output.replace("workload=blk", "workload=net").replace(
+            "request_bytes=4096", "request_bytes=64"))
+    assert "payload_bytes_per_second" not in network_samples[0]
+    assert "payload_bytes_per_second" not in module.summarize(network_samples)
     batched_output = output.replace("batch_size=1", "batch_size=4").replace(
         "notifications=100", "notifications=25")
     batched_samples = module.parse_results(batched_output)
@@ -97,6 +103,7 @@ def main():
     assert batched_samples[0]["submissions"] == 100
     assert batched_samples[0]["completions"] == 100
     assert batched_samples[0]["notifications"] == 25
+    assert batched_samples[0]["notifications_per_submission"] == 0.25
     expect_runtime_error(
         lambda: module.parse_results(output.replace(" features=0x0", "", 1)),
         "missing features")
@@ -111,11 +118,21 @@ def main():
         lambda: module.parse_results(output.replace("duration_ns=2000000",
                                                     "duration_ns=invalid", 1)),
         "Invalid numeric performance result field")
+    expect_runtime_error(
+        lambda: module.parse_results(output.replace("submissions=100",
+                                                    "submissions=0", 1)),
+        "queue counts must be positive")
+    expect_runtime_error(
+        lambda: module.parse_results(output.replace("notifications=100",
+                                                    "notifications=0", 1)),
+        "queue counts must be positive")
     summary = module.summarize(samples)
     assert summary["total_requests"] == 200
     assert summary["total_duration_ns"] == 3000000
-    assert round(summary["iops"], 2) == 66666.67
+    assert round(summary["operations_per_second"], 2) == 66666.67
     assert summary["mean_service_time_ns"] == 15000
+    assert round(summary["payload_bytes_per_second"], 2) == 273066666.67
+    assert summary["notifications_per_submission"] == 1
     timeout = subprocess.TimeoutExpired(
         ["vmm"], 1, output=output.encode())
     with mock.patch.object(module.subprocess, "run", side_effect=timeout):
@@ -142,12 +159,18 @@ def main():
                            return_value=sanitizer_version):
         assert module.get_version("cloud-hypervisor") == (
             "cloud-hypervisor v53.0")
+    cpuinfo = mock.mock_open(read_data="model name : Example CPU 1000\n")
+    with mock.patch("builtins.open", cpuinfo):
+        assert module.get_processor_model() == "Example CPU 1000"
     assert module.parse_args(["-m", "vmm"]).device == "blk"
     assert module.parse_args(
         ["-m", "vmm", "--queue-depth", "16"]).queue_depth == 16
     assert module.parse_args(
         ["-m", "vmm", "--queue-depth", "16",
          "--batch-size", "16"]).batch_size == 16
+    assert module.parse_args(
+        ["-m", "vmm", "--timing-mode", "throughput"]).timing_mode == (
+            "throughput")
     with mock.patch.object(module.argparse.ArgumentParser, "error",
                            side_effect=ValueError):
         try:
@@ -195,21 +218,43 @@ def main():
                                     "changed_dimension": "depth"}
     assert report["queue"]["format"] == "split"
     assert report["queue"]["depth"] == 1
+    assert report["timing"] == {
+        "mode": "throughput", "clock_source": "CLOCK_MONOTONIC_RAW"}
     assert report["workload"]["device"] == "blk"
     assert report["backend"]["io_engine"] == "default"
+    assert report["backend"]["type"] == "file"
     assert report["guest"]["kernel"] == "/boot/vmlinux"
     assert report["vmm"]["process_mode"] == "single"
     assert module.compatibility_mismatches(report, report) == []
     changed = module.json.loads(module.json.dumps(report))
     changed["queue"]["depth"] = 16
     assert module.compatibility_mismatches(report, changed) == []
+    changed["timing"]["clock_source"] = "another_clock"
+    assert "timing.clock_source" in module.compatibility_mismatches(
+        report, changed)
+    changed["timing"]["clock_source"] = "CLOCK_MONOTONIC_RAW"
+    changed["vmm"]["machine"] = "another_machine"
+    assert "vmm.machine" in module.compatibility_mismatches(report, changed)
+    changed["vmm"].pop("machine")
     changed["workload"]["device"] = "rng"
     assert "workload.device" in module.compatibility_mismatches(report, changed)
+    qemu_args = module.parse_args(["-m", "qemu", "--device", "net"])
+    qemu_backend = type("Backend", (), {"name": "qemu"})()
+    with mock.patch.object(module, "get_version", return_value="QEMU 10"):
+        qemu_report = module.make_report(
+            qemu_args, qemu_backend, network_samples, "/boot/vmlinux")
+    assert qemu_report["vmm"]["accelerator"] == "kvm"
+    assert qemu_report["vmm"]["machine"] in {"default", "virt"}
+    assert qemu_report["backend"] == {
+        "type": "network", "endpoint": "user"}
     human = module.format_human(report)
-    assert "virtio block read latency" in human
+    assert "virtio block read throughput" in human
     assert "Requests:      200" in human
-    assert "Mean service:  15.00 us per request" in human
-    assert "Variation:     10.00 to 20.00 us between rounds" in human
+    assert "Operation rate: 66666.67 operations/s" in human
+    assert "Round range:    50000.00 to 100000.00 operations/s" in human
+    assert "Mean service:  15.00 us per operation" in human
+    assert "Notify ratio:  1.0000 per submission" in human
+    assert "Payload rate: 260.42 MiB/s" in human
     assert "Queue depth:   1" in human
     assert "Batch size:    1" in human
     assert "Round  Requests" not in human
@@ -217,8 +262,8 @@ def main():
     verbose = module.format_human(report, verbose=True)
     assert "VMM:           openvmm" in verbose
     assert "Round  Requests" in verbose
-    assert "20.00" in verbose
-    assert "10.00" in verbose
+    assert "50000.00" in verbose
+    assert "100000.00" in verbose
     report["workload"]["device"] = "net"
     report["samples"][0]["request_bytes"] = 64
     assert "Request size:  64 bytes" in module.format_human(report)
@@ -226,6 +271,13 @@ def main():
     assert "Queue depth:   16" in module.format_human(report)
     assert "vsock" not in module.BACKEND_DEVICES["openvmm"]
     assert "vsock" in module.BACKEND_DEVICES["ch"]
+    with open(os.path.join(ROOT, "bin", "perf.c"), encoding="utf-8") as source_file:
+        guest_source = source_file.read()
+    request_start = guest_source.index(
+        "static enum perf_request_result run_requests")
+    request_end = guest_source.index("static const char *request_error")
+    assert "clock_gettime" not in guest_source[request_start:request_end]
+    assert guest_source.count("clock_gettime(CLOCK_MONOTONIC_RAW") == 2
     print("performance runner tests passed")
 
 
