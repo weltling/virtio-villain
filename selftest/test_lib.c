@@ -137,6 +137,28 @@ static void test_vring_submit_wrap(void)
       CHECK(avail_buf.hdr.idx == 0, "available index wraps to zero");
 }
 
+static void test_vring_submit_batch(void)
+{
+      struct {
+            struct vring_avail hdr;
+            uint16_t ring[16];
+      } avail_buf;
+      struct vring vr = {
+            .avail = &avail_buf.hdr,
+            .size = 16,
+      };
+      const uint16_t heads[] = {3, 7, 11};
+
+      memset(&avail_buf, 0, sizeof(avail_buf));
+      avail_buf.hdr.idx = 15;
+      vring_submit_batch(&vr, heads, 3);
+      CHECK(avail_buf.ring[15] == 3 && avail_buf.ring[0] == 7 &&
+              avail_buf.ring[1] == 11,
+              "batch submission wraps across ring cells");
+      CHECK(avail_buf.hdr.idx == 18,
+              "batch publishes one final available index");
+}
+
 static void test_perf_slot_lifecycle(void)
 {
     uint8_t memory;
@@ -182,6 +204,50 @@ static void test_perf_slots_complete_by_identifier(void)
           "unknown completion identifier is rejected");
 }
 
+static void test_perf_batch_accounting(void)
+{
+      const unsigned batch_sizes[] = {1, 4, 8, 16};
+
+      for (unsigned test = 0; test < sizeof(batch_sizes) / sizeof(batch_sizes[0]);
+             test++) {
+            struct perf_run_stats stats;
+            unsigned batch_size = batch_sizes[test];
+
+            perf_stats_init(&stats);
+            for (unsigned first = 0; first < 18; first += batch_size) {
+                  unsigned count = batch_size;
+
+                  if (count > 18 - first)
+                        count = 18 - first;
+                  perf_stats_submit(&stats, count);
+                  for (unsigned completion = 0; completion < count; completion++)
+                        perf_stats_complete(&stats);
+            }
+            CHECK(stats.submissions == 18 && stats.completions == 18,
+                    "batch size %u counts 18 requests", batch_size);
+            CHECK(stats.notifications == (18 + batch_size - 1) / batch_size,
+                    "batch size %u counts partial batch notification", batch_size);
+      }
+}
+
+static void test_perf_multi_queue_accounting(void)
+{
+      struct perf_run_stats stats;
+
+      perf_stats_init(&stats);
+      perf_stats_submit(&stats, 16);
+      perf_stats_submit(&stats, 16);
+      for (unsigned completion = 0; completion < 32; completion++)
+            perf_stats_complete(&stats);
+      perf_stats_submit(&stats, 16);
+      for (unsigned completion = 0; completion < 16; completion++)
+            perf_stats_complete(&stats);
+      CHECK(stats.submissions == 48 && stats.completions == 48,
+              "two queues and cleanup count every request");
+      CHECK(stats.notifications == 3,
+              "two queues and cleanup count each notification");
+}
+
 /* --- Test registry --- */
 
 static void test_registry(void)
@@ -221,8 +287,11 @@ int main(void)
     test_raw_set_desc();
     test_raw_set_avail();
       test_vring_submit_wrap();
+      test_vring_submit_batch();
             test_perf_slot_lifecycle();
             test_perf_slots_complete_by_identifier();
+            test_perf_batch_accounting();
+            test_perf_multi_queue_accounting();
     test_registry();
     int ok = (tests_passed == tests_run);
     const char *tag = ok ? c_pass : c_fail;

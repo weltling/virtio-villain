@@ -58,7 +58,6 @@ struct perf_workload {
     struct perf_queue_request requests[MAX_WORKLOAD_QUEUES];
     unsigned request_count;
     unsigned queue_depth;
-    unsigned operations_per_iteration;
     uint8_t *status[MAX_QUEUE_DEPTH];
     struct virtio_vsock_hdr *vsock_request[MAX_QUEUE_DEPTH];
     struct virtio_vsock_hdr *response[MAX_QUEUE_DEPTH];
@@ -133,19 +132,29 @@ static uint64_t elapsed_ns(const struct timespec *start,
     return (uint64_t)(seconds * 1000000000LL + nanoseconds);
 }
 
-static int submit_slot(struct virtio_dev *dev, struct vring *vr,
-                       struct perf_request_slot *slot)
+static int submit_slots(struct virtio_dev *dev,
+                        struct perf_queue_request *request,
+                        unsigned first, unsigned count,
+                        struct perf_run_stats *stats)
 {
-    if (perf_slot_submit(slot) < 0)
-        return -1;
-    vring_submit(vr, slot->head);
-    virtio_pci_kick(dev, vr->queue);
+    uint16_t heads[MAX_QUEUE_DEPTH];
+
+    for (unsigned i = 0; i < count; i++) {
+        struct perf_request_slot *slot = &request->slots[first + i];
+
+        if (perf_slot_submit(slot) < 0)
+            return -1;
+        heads[i] = slot->head;
+    }
+    vring_submit_batch(request->vr, heads, count);
+    virtio_pci_kick(dev, request->vr->queue);
+    perf_stats_submit(stats, count);
     return 0;
 }
 
 static int complete_next(struct perf_queue_request *request,
                          unsigned active_slots, uint16_t *used_idx,
-                         uint32_t *lengths)
+                         uint32_t *lengths, struct perf_run_stats *stats)
 {
     while (request->vr->used->idx == *used_idx)
         __sync_synchronize();
@@ -155,6 +164,7 @@ static int complete_next(struct perf_queue_request *request,
     if (slot < 0)
         return -1;
     (*used_idx)++;
+    perf_stats_complete(stats);
     if (lengths)
         lengths[slot] = used->len;
     return slot;
@@ -162,7 +172,9 @@ static int complete_next(struct perf_queue_request *request,
 
 static enum perf_request_result run_requests(struct virtio_dev *dev,
                                              struct perf_workload *workload,
-                                             unsigned count)
+                                             unsigned count,
+                                             unsigned batch_size,
+                                             struct perf_run_stats *stats)
 {
     uint16_t used_idx[MAX_WORKLOAD_QUEUES];
 
@@ -181,11 +193,17 @@ static enum perf_request_result run_requests(struct virtio_dev *dev,
             struct perf_queue_request *queue_request =
                 &workload->requests[request];
 
-            for (unsigned slot = 0; slot < active_slots; slot++) {
+            for (unsigned slot = 0; slot < active_slots; slot++)
                 if (perf_slot_prepare(&queue_request->slots[slot]) < 0)
                     return PERF_REQUEST_PREPARE;
-                if (submit_slot(dev, queue_request->vr,
-                                &queue_request->slots[slot]) < 0)
+            for (unsigned first = 0; first < active_slots;
+                 first += batch_size) {
+                unsigned batch_count = batch_size;
+
+                if (batch_count > active_slots - first)
+                    batch_count = active_slots - first;
+                if (submit_slots(dev, queue_request, first, batch_count,
+                                 stats) < 0)
                     return PERF_REQUEST_SUBMIT;
             }
         }
@@ -198,29 +216,49 @@ static enum perf_request_result run_requests(struct virtio_dev *dev,
                  completion++) {
                 uint32_t lengths[MAX_QUEUE_DEPTH] = {0};
                 int slot = complete_next(queue_request, active_slots,
-                                         &used_idx[request], lengths);
+                                         &used_idx[request], lengths, stats);
                 if (slot < 0)
                     return PERF_REQUEST_COMPLETE;
                 used_len[slot][request] = lengths[slot];
             }
         }
+        int cleanup_request = -1;
         for (unsigned slot = 0; slot < active_slots; slot++) {
             if (workload->ops->validate(workload, slot,
                                         used_len[slot]) < 0)
                 return PERF_REQUEST_VALIDATE;
-            int cleanup_request = workload->ops->cleanup(workload, slot);
-            if (cleanup_request >= 0) {
+            int slot_cleanup_request = workload->ops->cleanup(workload, slot);
+            if (slot_cleanup_request >= 0) {
                 struct perf_queue_request *queue_request =
-                    &workload->requests[cleanup_request];
+                    &workload->requests[slot_cleanup_request];
 
                 if (perf_slot_prepare(&queue_request->slots[slot]) < 0)
                     return PERF_REQUEST_PREPARE;
-                if (submit_slot(dev, queue_request->vr,
-                                &queue_request->slots[slot]) < 0)
+                if (cleanup_request >= 0 &&
+                    cleanup_request != slot_cleanup_request)
                     return PERF_REQUEST_SUBMIT;
+                cleanup_request = slot_cleanup_request;
+            }
+        }
+        if (cleanup_request >= 0) {
+            struct perf_queue_request *queue_request =
+                &workload->requests[cleanup_request];
+
+            for (unsigned first = 0; first < active_slots;
+                 first += batch_size) {
+                unsigned batch_count = batch_size;
+
+                if (batch_count > active_slots - first)
+                    batch_count = active_slots - first;
+                if (submit_slots(dev, queue_request, first, batch_count,
+                                 stats) < 0)
+                    return PERF_REQUEST_SUBMIT;
+            }
+            for (unsigned completion = 0; completion < active_slots;
+                 completion++) {
                 if (complete_next(queue_request, active_slots,
-                                  &used_idx[cleanup_request], NULL) !=
-                    (int)slot)
+                                  &used_idx[cleanup_request], NULL,
+                                  stats) < 0)
                     return PERF_REQUEST_COMPLETE;
             }
         }
@@ -269,7 +307,6 @@ static int prepare_blk(struct virtio_dev *dev, struct vring *vr,
     }
     workload->requests[0].vr = vr;
     workload->request_count = 1;
-    workload->operations_per_iteration = 1;
     return workload->queue_depth * 3;
 }
 
@@ -299,7 +336,6 @@ static int prepare_rng(struct virtio_dev *dev, struct vring *vr,
     }
     workload->requests[0].vr = vr;
     workload->request_count = 1;
-    workload->operations_per_iteration = 1;
     return workload->queue_depth;
 }
 
@@ -346,7 +382,6 @@ static int prepare_net(struct virtio_dev *dev, struct vring *vr,
     }
     workload->requests[0].vr = vr;
     workload->request_count = 1;
-    workload->operations_per_iteration = 1;
     return workload->queue_depth * 2;
 }
 
@@ -382,7 +417,6 @@ static int prepare_vsock(struct virtio_dev *dev, struct vring *vr,
     }
     workload->requests[1].vr = vr;
     workload->request_count = 2;
-    workload->operations_per_iteration = 3;
     return workload->queue_depth;
 }
 
@@ -488,6 +522,7 @@ int main(void)
     struct vring queues[MAX_QUEUES];
     struct vring *vr;
     struct perf_workload workload;
+    struct perf_run_stats stats;
     struct timespec start;
     struct timespec end;
     char device[16];
@@ -507,6 +542,7 @@ int main(void)
     unsigned rounds = read_cmdline_value("vv.perf_rounds", DEFAULT_ROUNDS);
     unsigned warmup = read_cmdline_value("vv.perf_warmup", DEFAULT_WARMUP);
     unsigned queue_depth = read_cmdline_value("vv.perf_queue_depth", 1);
+    unsigned batch_size = read_cmdline_value("vv.perf_batch_size", 1);
     read_cmdline_string("vv.perf_device", device, sizeof(device), "blk");
     read_cmdline_string("vv.perf_experiment", experiment,
                         sizeof(experiment), "queue");
@@ -519,6 +555,11 @@ int main(void)
     if (queue_depth > MAX_QUEUE_DEPTH ||
         (queue_depth & (queue_depth - 1)) != 0) {
         printf("VVPERF error=queue_depth\n");
+        shutdown_guest(1);
+    }
+    if (batch_size > queue_depth ||
+        (batch_size & (batch_size - 1)) != 0) {
+        printf("VVPERF error=batch_size\n");
         shutdown_guest(1);
     }
     workload.queue_depth = queue_depth;
@@ -581,15 +622,19 @@ int main(void)
     dev.common->device_status |= VIRTIO_STATUS_DRIVER_OK;
     __sync_synchronize();
 
-    enum perf_request_result result = run_requests(&dev, &workload, warmup);
+    perf_stats_init(&stats);
+    enum perf_request_result result = run_requests(&dev, &workload, warmup,
+                                                   batch_size, &stats);
     if (result != PERF_REQUEST_OK) {
         printf("VVPERF error=%s phase=warmup\n", request_error(result));
         shutdown_guest(1);
     }
 
     for (unsigned round = 0; round < rounds; round++) {
+        perf_stats_init(&stats);
         clock_gettime(CLOCK_MONOTONIC, &start);
-        result = run_requests(&dev, &workload, iterations);
+        result = run_requests(&dev, &workload, iterations, batch_size,
+                              &stats);
         clock_gettime(CLOCK_MONOTONIC, &end);
         if (result != PERF_REQUEST_OK) {
             printf("VVPERF error=%s phase=measured\n",
@@ -598,21 +643,19 @@ int main(void)
         }
 
         uint64_t duration_ns = elapsed_ns(&start, &end);
-        uint64_t queue_operations = workload.operations_per_iteration;
-        uint64_t queue_requests = iterations * queue_operations;
 
         printf("VVPERF version=3 experiment=%s changed=%s "
                "workload=%s operation=%s round=%u request_bytes=%u "
                "iterations=%u duration_ns=%llu queue_format=split "
-               "queue_depth=%u batch_size=1 submissions=%llu "
+               "queue_depth=%u batch_size=%u submissions=%llu "
                "completions=%llu notifications=%llu timing_mode=throughput "
                "clock_source=monotonic features=0x0\n",
                experiment, changed, workload.device, workload.operation,
                round + 1, workload.request_size, iterations,
                (unsigned long long)duration_ns, workload.queue_depth,
-               (unsigned long long)queue_requests,
-               (unsigned long long)queue_requests,
-               (unsigned long long)queue_requests);
+               batch_size, (unsigned long long)stats.submissions,
+               (unsigned long long)stats.completions,
+               (unsigned long long)stats.notifications);
     }
     shutdown_guest(0);
     return 0;

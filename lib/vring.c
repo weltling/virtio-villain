@@ -43,10 +43,18 @@ void vring_attach(struct virtio_dev *dev, struct vring *vr, uint16_t queue)
 
 void vring_submit(struct vring *vr, uint16_t head)
 {
+    vring_submit_batch(vr, &head, 1);
+}
+
+void vring_submit_batch(struct vring *vr, const uint16_t *heads,
+                        unsigned count)
+{
     uint16_t idx = vr->avail->idx;
-    vr->avail->ring[idx % vr->size] = head;
+
+    for (unsigned i = 0; i < count; i++)
+        vr->avail->ring[(idx + i) % vr->size] = heads[i];
     __sync_synchronize();
-    vr->avail->idx = idx + 1;
+    vr->avail->idx = idx + count;
     __sync_synchronize();
 }
 

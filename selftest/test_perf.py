@@ -86,7 +86,17 @@ def main():
     assert samples[1]["mean_service_time_ns"] == 10000
     assert samples[1]["throughput_mib_s"] == 390.625
     assert samples[0]["request_bytes"] == 4096
+    assert samples[0]["batch_size"] == 1
+    assert samples[0]["submissions"] == 100
+    assert samples[0]["completions"] == 100
     assert samples[0]["notifications"] == 100
+    batched_output = output.replace("batch_size=1", "batch_size=4").replace(
+        "notifications=100", "notifications=25")
+    batched_samples = module.parse_results(batched_output)
+    assert batched_samples[0]["batch_size"] == 4
+    assert batched_samples[0]["submissions"] == 100
+    assert batched_samples[0]["completions"] == 100
+    assert batched_samples[0]["notifications"] == 25
     expect_runtime_error(
         lambda: module.parse_results(output.replace(" features=0x0", "", 1)),
         "missing features")
@@ -135,6 +145,9 @@ def main():
     assert module.parse_args(["-m", "vmm"]).device == "blk"
     assert module.parse_args(
         ["-m", "vmm", "--queue-depth", "16"]).queue_depth == 16
+    assert module.parse_args(
+        ["-m", "vmm", "--queue-depth", "16",
+         "--batch-size", "16"]).batch_size == 16
     with mock.patch.object(module.argparse.ArgumentParser, "error",
                            side_effect=ValueError):
         try:
@@ -142,8 +155,15 @@ def main():
             assert False
         except ValueError:
             pass
+        try:
+            module.parse_args(["-m", "vmm", "--queue-depth", "4",
+                               "--batch-size", "8"])
+            assert False
+        except ValueError:
+            pass
     cmdline_args = module.parse_args(
-        ["-m", "vmm", "--device", "blk", "--queue-depth", "16"])
+        ["-m", "vmm", "--device", "blk", "--queue-depth", "16",
+         "--batch-size", "16"])
     command_backend = mock.Mock()
     command_backend.name = "qemu"
     command_backend.console_device = "ttyS0"
@@ -154,6 +174,7 @@ def main():
             fetch_kernel=mock.Mock(return_value="kernel")))
     guest_cmdline = command_backend.build_cmd.call_args.args[3]
     assert "vv.perf_queue_depth=16" in guest_cmdline
+    assert "vv.perf_batch_size=16" in guest_cmdline
     for device in ("blk", "rng", "net", "vsock"):
         assert module.parse_args(
             ["-m", "vmm", "--device", device]).device == device
@@ -190,6 +211,7 @@ def main():
     assert "Mean service:  15.00 us per request" in human
     assert "Variation:     10.00 to 20.00 us between rounds" in human
     assert "Queue depth:   1" in human
+    assert "Batch size:    1" in human
     assert "Round  Requests" not in human
     assert "VMM unknown" not in human
     verbose = module.format_human(report, verbose=True)

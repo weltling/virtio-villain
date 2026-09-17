@@ -44,3 +44,21 @@ int perf_slots_complete(struct perf_request_slot *slots, unsigned count,
     }
     return -1;
 }
+
+void perf_stats_init(struct perf_run_stats *stats)
+{
+    stats->submissions = 0;
+    stats->completions = 0;
+    stats->notifications = 0;
+}
+
+void perf_stats_submit(struct perf_run_stats *stats, unsigned count)
+{
+    stats->submissions += count;
+    stats->notifications++;
+}
+
+void perf_stats_complete(struct perf_run_stats *stats)
+{
+    stats->completions++;
+}

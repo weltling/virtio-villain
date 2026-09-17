@@ -242,6 +242,7 @@ def run_guest(args, runner):
             f"vv.perf_iterations={args.iterations} vv.perf_rounds={args.rounds} "
             f"vv.perf_warmup={args.warmup} "
             f"vv.perf_queue_depth={args.queue_depth} "
+            f"vv.perf_batch_size={args.batch_size} "
             f"vv.perf_experiment={args.experiment_class} "
             f"vv.perf_changed={args.changed_dimension}")
         opts = {
@@ -364,6 +365,8 @@ def parse_args(argv=None):
     parser.add_argument("--warmup", type=int, default=1000)
     parser.add_argument("--queue-depth", type=int, choices=(1, 2, 4, 8, 16),
                         default=1)
+    parser.add_argument("--batch-size", type=int, choices=(1, 4, 8, 16),
+                        default=1)
     parser.add_argument("--cpus", type=int, default=1)
     parser.add_argument("--memory", default="256M")
     parser.add_argument("--disk-size", type=int, default=64, metavar="MIB")
@@ -382,6 +385,8 @@ def parse_args(argv=None):
     for name in ("iterations", "rounds", "warmup", "cpus", "disk_size", "timeout"):
         if getattr(args, name) < 1:
             parser.error(f"--{name.replace('_', '-')} must be positive")
+    if args.batch_size > args.queue_depth:
+        parser.error("--batch-size must not exceed --queue-depth")
     return args
 
 
@@ -402,6 +407,7 @@ def format_human(report, verbose=False):
         "",
         f"Request size:  {request_size_text}",
         f"Queue depth:   {report['queue']['depth']}",
+        f"Batch size:    {report['queue']['batch_size']}",
         f"Requests:      {summary['total_requests']}",
         f"Mean service:  {latency_us:.2f} us per request",
         (f"Variation:     {min(round_latencies):.2f} to "

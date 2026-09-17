@@ -60,6 +60,8 @@ void vring_attach(struct virtio_dev *dev, struct vring *vr, uint16_t queue);
 
 /* Submit a descriptor chain head to the available ring and advance idx. */
 void vring_submit(struct vring *vr, uint16_t head);
+void vring_submit_batch(struct vring *vr, const uint16_t *heads,
+                        unsigned count);
 
 /* Poll the used ring for a completion. Returns 0 on success, -1 on timeout. */
 int vring_poll_used(struct vring *vr, uint32_t *id, uint32_t *len,
