@@ -247,6 +247,67 @@ def main():
     assert qemu_report["vmm"]["machine"] in {"default", "virt"}
     assert qemu_report["backend"] == {
         "type": "network", "endpoint": "user"}
+    candidate = module.json.loads(module.json.dumps(report))
+    candidate["summary"]["operations_per_second"] = 80000
+    candidate["summary"]["operations_per_second_min"] = 60000
+    candidate["summary"]["operations_per_second_max"] = 100000
+    comparison = module.compare_reports(report, candidate)
+    assert round(comparison["change_percent"], 2) == 20
+    assert comparison["round_ranges_overlap"] is True
+    assert round(comparison["baseline"]["relative_spread_percent"], 2) == 75
+    assert comparison["baseline"]["vmm"]["path"] == report["vmm"]["path"]
+    candidate["summary"]["operations_per_second"] = 115000
+    candidate["summary"]["operations_per_second_min"] = 110000
+    candidate["summary"]["operations_per_second_max"] = 120000
+    comparison = module.compare_reports(report, candidate)
+    assert comparison["round_ranges_overlap"] is False
+    incompatible = module.json.loads(module.json.dumps(candidate))
+    incompatible["timing"]["clock_source"] = "another_clock"
+    expect_runtime_error(
+        lambda: module.compare_reports(report, incompatible),
+        "Incompatible performance reports")
+    invalid_experiment = module.json.loads(module.json.dumps(report))
+    invalid_experiment["experiment"]["class"] = "unknown"
+    expect_runtime_error(
+        lambda: module.compare_reports(invalid_experiment,
+                                       invalid_experiment),
+        "invalid experiment class")
+    invalid_schema = module.json.loads(module.json.dumps(report))
+    invalid_schema["schema_version"] = 99
+    expect_runtime_error(
+        lambda: module.compare_reports(invalid_schema, invalid_schema),
+        "Unsupported performance report schema")
+    invalid_dimension = module.json.loads(module.json.dumps(report))
+    invalid_dimension["experiment"]["changed_dimension"] = "deph"
+    expect_runtime_error(
+        lambda: module.compare_reports(invalid_dimension,
+                                       invalid_dimension),
+        "invalid changed dimension")
+    invalid_range = module.json.loads(module.json.dumps(report))
+    invalid_range["summary"]["operations_per_second_min"] = 90000
+    expect_runtime_error(
+        lambda: module.compare_reports(report, invalid_range),
+        "round range is invalid")
+    single_round = module.json.loads(module.json.dumps(report))
+    single_round["summary"]["operations_per_second_min"] = (
+        single_round["summary"]["operations_per_second"])
+    single_round["summary"]["operations_per_second_max"] = (
+        single_round["summary"]["operations_per_second"])
+    single_comparison = module.compare_reports(single_round, single_round)
+    assert single_comparison["baseline"]["relative_spread_percent"] == 0
+    comparison_text = module.format_comparison(comparison)
+    assert "Change:       +72.50%" in comparison_text
+    assert "Ranges overlap:  no" in comparison_text
+    assert module.parse_args(
+        ["--compare", "baseline.json", "candidate.json"]).compare == [
+            "baseline.json", "candidate.json"]
+    with mock.patch.object(module, "load_report", side_effect=[report, report]), \
+            mock.patch.object(module, "build_guest") as build_guest, \
+            mock.patch("builtins.print") as print_output:
+        assert module.main(
+            ["--compare", "baseline.json", "candidate.json"]) == 0
+    build_guest.assert_not_called()
+    assert "Change:       +0.00%" in print_output.call_args.args[0]
     human = module.format_human(report)
     assert "virtio block read throughput" in human
     assert "Requests:      200" in human

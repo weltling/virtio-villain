@@ -83,6 +83,19 @@ changed by a comparison. The available experiment classes are `queue`,
 ./run-perf -m ./cloud-hypervisor --format json -o perf.json
 ```
 
+Compare two compatible JSON reports without starting a VMM.
+
+```bash
+./run-perf --compare baseline.json candidate.json
+./run-perf --compare baseline.json candidate.json --format json
+```
+
+Comparison reports show the combined operation rate change, each observed
+round range, relative spread, and whether the ranges overlap. They do not
+assign a regression verdict or apply a fixed threshold. Reports with different
+fixed inputs are rejected before a performance result is produced. The one
+dimension named by the experiment class may differ.
+
 The runner does not assign pass or fail thresholds. Performance depends on
 host load, CPU placement, VMM build settings, block backend settings, and
 instrumentation. Compare results only when these inputs match.

@@ -6,6 +6,7 @@ import argparse
 import importlib.machinery
 import importlib.util
 import json
+import math
 import os
 import platform
 import pty
@@ -374,15 +375,24 @@ def compatibility_mismatches(baseline, candidate):
     experiment = baseline.get("experiment", {})
     if candidate.get("experiment") != experiment:
         return ["experiment"]
+    experiment_class = experiment.get("class")
+    if experiment_class not in {"queue", "frontend", "backend"}:
+        raise RuntimeError("Performance report has invalid experiment class")
     changed = experiment.get("changed_dimension")
     allowed = None
     if changed:
-        allowed = f"{experiment.get('class')}.{changed}"
-        if experiment.get("class") == "queue":
+        section_names = {"queue": "queue", "frontend": "workload",
+                         "backend": "backend"}
+        section_name = section_names[experiment_class]
+        if (changed not in baseline.get(section_name, {}) or
+                changed not in candidate.get(section_name, {})):
+            raise RuntimeError(
+                "Performance report has invalid changed dimension")
+        if experiment_class == "queue":
             allowed = f"queue.{changed}"
-        elif experiment.get("class") == "frontend":
+        elif experiment_class == "frontend":
             allowed = f"workload.{changed}"
-        elif experiment.get("class") == "backend":
+        else:
             allowed = f"backend.{changed}"
 
     def compare(path, left, right):
@@ -404,9 +414,110 @@ def compatibility_mismatches(baseline, candidate):
     return mismatches
 
 
+def compare_reports(baseline, candidate):
+    for report in (baseline, candidate):
+        if report.get("schema_version") != 3:
+            raise RuntimeError("Unsupported performance report schema")
+        for section in ("experiment", "vmm", "workload", "summary"):
+            if not isinstance(report.get(section), dict):
+                raise RuntimeError(
+                    f"Performance report lacks {section} section")
+    mismatches = compatibility_mismatches(baseline, candidate)
+    if mismatches:
+        raise RuntimeError(
+            "Incompatible performance reports: " + ", ".join(mismatches))
+    try:
+        baseline_summary = baseline["summary"]
+        candidate_summary = candidate["summary"]
+        baseline_rate = baseline_summary["operations_per_second"]
+        candidate_rate = candidate_summary["operations_per_second"]
+        baseline_range = [
+            baseline_summary["operations_per_second_min"],
+            baseline_summary["operations_per_second_max"],
+        ]
+        candidate_range = [
+            candidate_summary["operations_per_second_min"],
+            candidate_summary["operations_per_second_max"],
+        ]
+    except (KeyError, TypeError) as error:
+        raise RuntimeError("Performance report lacks throughput summary") from error
+    numeric_values = [baseline_rate, candidate_rate, *baseline_range,
+                      *candidate_range]
+    if (not all(isinstance(value, (int, float)) for value in numeric_values) or
+            not all(math.isfinite(value) for value in numeric_values)):
+        raise RuntimeError("Performance report throughput summary is invalid")
+    if baseline_rate <= 0 or candidate_rate <= 0:
+        raise RuntimeError("Performance report operation rate must be positive")
+    for rate, round_range in ((baseline_rate, baseline_range),
+                              (candidate_rate, candidate_range)):
+        if (round_range[0] <= 0 or round_range[0] > round_range[1] or
+                not round_range[0] <= rate <= round_range[1]):
+            raise RuntimeError("Performance report round range is invalid")
+    ranges_overlap = (
+        baseline_range[0] <= candidate_range[1] and
+        candidate_range[0] <= baseline_range[1])
+    return {
+        "comparison_version": 1,
+        "metric": "operations_per_second",
+        "baseline": {
+            "value": baseline_rate,
+            "round_range": baseline_range,
+            "relative_spread_percent": (
+                (baseline_range[1] - baseline_range[0]) / baseline_rate * 100),
+            "vmm": baseline["vmm"],
+        },
+        "candidate": {
+            "value": candidate_rate,
+            "round_range": candidate_range,
+            "relative_spread_percent": (
+                (candidate_range[1] - candidate_range[0]) / candidate_rate * 100),
+            "vmm": candidate["vmm"],
+        },
+        "change_percent": (candidate_rate / baseline_rate - 1) * 100,
+        "round_ranges_overlap": ranges_overlap,
+        "experiment": baseline["experiment"],
+        "workload": baseline["workload"],
+    }
+
+
+def load_report(path):
+    try:
+        with open(path, encoding="utf-8") as report_file:
+            report = json.load(report_file)
+    except (OSError, json.JSONDecodeError) as error:
+        raise RuntimeError(f"Cannot read performance report {path}: {error}") from error
+    if not isinstance(report, dict):
+        raise RuntimeError(f"Performance report {path} must contain an object")
+    return report
+
+
+def format_comparison(comparison):
+    baseline = comparison["baseline"]
+    candidate = comparison["candidate"]
+    overlap = "yes" if comparison["round_ranges_overlap"] else "no"
+    return "\n".join([
+        "virtio performance comparison",
+        "",
+        f"Baseline VMM: {baseline['vmm']['path']}",
+        f"Candidate VMM: {candidate['vmm']['path']}",
+        f"Baseline:     {baseline['value']:.2f} operations/s",
+        f"Candidate:    {candidate['value']:.2f} operations/s",
+        f"Change:       {comparison['change_percent']:+.2f}%",
+        (f"Baseline range:  {baseline['round_range'][0]:.2f} to "
+         f"{baseline['round_range'][1]:.2f} operations/s"),
+        f"Baseline spread: {baseline['relative_spread_percent']:.2f}%",
+        (f"Candidate range: {candidate['round_range'][0]:.2f} to "
+         f"{candidate['round_range'][1]:.2f} operations/s"),
+        f"Candidate spread: {candidate['relative_spread_percent']:.2f}%",
+        f"Ranges overlap:  {overlap}",
+    ])
+
+
 def parse_args(argv=None):
     parser = argparse.ArgumentParser(description="Measure virtio request throughput")
-    parser.add_argument("-m", "--vmm", required=True, metavar="PATH")
+    parser.add_argument("-m", "--vmm", metavar="PATH")
+    parser.add_argument("--compare", nargs=2,
+                        metavar=("BASELINE", "CANDIDATE"))
     parser.add_argument("--device", choices=tuple(DEVICE_INITCALL), default="blk")
     parser.add_argument("-k", "--kernel", metavar="PATH")
     parser.add_argument("-n", "--iterations", type=int, default=10000)
@@ -433,6 +544,10 @@ def parse_args(argv=None):
     parser.add_argument("--format", choices=("human", "json"), default="human")
     parser.add_argument("-o", "--output", metavar="PATH")
     args = parser.parse_args(argv)
+    if args.compare and args.vmm:
+        parser.error("--compare cannot be used with --vmm")
+    if not args.compare and not args.vmm:
+        parser.error("--vmm is required unless --compare is used")
     for name in ("iterations", "rounds", "warmup", "cpus", "disk_size", "timeout"):
         if getattr(args, name) < 1:
             parser.error(f"--{name.replace('_', '-')} must be positive")
@@ -495,6 +610,22 @@ def format_human(report, verbose=False):
 
 def main(argv=None):
     args = parse_args(argv)
+    if args.compare:
+        try:
+            baseline = load_report(args.compare[0])
+            candidate = load_report(args.compare[1])
+            comparison = compare_reports(baseline, candidate)
+        except RuntimeError as error:
+            sys.exit(str(error))
+        encoded = json.dumps(comparison, indent=2) + "\n"
+        if args.output:
+            with open(args.output, "w", encoding="utf-8") as output_file:
+                output_file.write(encoded)
+        if args.format == "json":
+            print(encoded, end="")
+        else:
+            print(format_comparison(comparison))
+        return 0
     build_result = build_guest()
     if build_result:
         return build_result
