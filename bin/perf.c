@@ -9,6 +9,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "lib/perf_engine.h"
 #include "lib/util.h"
 #include "lib/virtio_pci.h"
 #include "lib/virtio_spec.h"
@@ -20,6 +21,30 @@
 #define DEFAULT_WARMUP 1000
 #define QUEUE_SIZE 128
 #define MAX_QUEUES 16
+#define MAX_WORKLOAD_QUEUES 2
+
+enum perf_request_result {
+    PERF_REQUEST_OK,
+    PERF_REQUEST_PREPARE,
+    PERF_REQUEST_SUBMIT,
+    PERF_REQUEST_COMPLETE,
+    PERF_REQUEST_VALIDATE,
+};
+
+struct perf_queue_request {
+    struct vring *vr;
+    struct perf_request_slot slot;
+};
+
+struct perf_workload;
+
+struct perf_workload_ops {
+    int (*prepare)(struct virtio_dev *dev, struct vring *vr,
+                   struct perf_workload *workload);
+    void (*reset)(struct perf_workload *workload);
+    int (*validate)(struct perf_workload *workload, const uint32_t *lengths);
+    int (*cleanup)(struct perf_workload *workload);
+};
 
 struct perf_workload {
     const char *device;
@@ -27,8 +52,13 @@ struct perf_workload {
     uint16_t device_id;
     uint16_t queue;
     uint32_t request_size;
+    const struct perf_workload_ops *ops;
+    struct perf_queue_request requests[MAX_WORKLOAD_QUEUES];
+    unsigned request_count;
+    unsigned operations_per_iteration;
     uint8_t *status;
-    struct vring *response_vr;
+    struct virtio_vsock_hdr *vsock_request;
+    struct virtio_vsock_hdr *response;
 };
 
 static void shutdown_guest(int status)
@@ -100,39 +130,105 @@ static uint64_t elapsed_ns(const struct timespec *start,
     return (uint64_t)(seconds * 1000000000LL + nanoseconds);
 }
 
-static int run_requests(struct virtio_dev *dev, struct vring *vr,
-                        struct vring *response_vr, uint8_t *status,
-                        unsigned count)
+static int submit_slot(struct virtio_dev *dev, struct vring *vr,
+                       struct perf_request_slot *slot)
 {
-    for (unsigned i = 0; i < count; i++) {
-        uint16_t expected = vr->used->idx + 1;
-        uint16_t response_expected = 0;
-
-        if (status)
-            *status = 0xff;
-        if (response_vr) {
-            response_expected = response_vr->used->idx + 1;
-            vring_submit(response_vr, 0);
-            virtio_pci_kick(dev, response_vr->queue);
-        }
-        vring_submit(vr, 0);
-        virtio_pci_kick(dev, vr->queue);
-        while (vr->used->idx != expected)
-            __sync_synchronize();
-        while (response_vr && response_vr->used->idx != response_expected)
-            __sync_synchronize();
-        if (status && *status != VIRTIO_BLK_S_OK)
-            return -1;
-    }
+    if (perf_slot_submit(slot) < 0)
+        return -1;
+    vring_submit(vr, slot->head);
+    virtio_pci_kick(dev, vr->queue);
     return 0;
 }
 
-static int setup_blk(struct vring *vr, struct perf_workload *workload)
+static int complete_slot(struct vring *vr, struct perf_request_slot *slot,
+                         uint16_t used_idx, uint32_t *len)
+{
+    uint16_t expected = used_idx + 1;
+
+    while (vr->used->idx != expected)
+        __sync_synchronize();
+    struct vring_used_elem *used = &vr->used->ring[used_idx % vr->size];
+    if (perf_slot_complete(slot, used->id) < 0)
+        return -1;
+    if (len)
+        *len = used->len;
+    return 0;
+}
+
+static enum perf_request_result run_requests(struct virtio_dev *dev,
+                                             struct perf_workload *workload,
+                                             unsigned count)
+{
+    for (unsigned i = 0; i < count; i++) {
+        uint16_t used_idx[MAX_WORKLOAD_QUEUES];
+        uint32_t used_len[MAX_WORKLOAD_QUEUES] = {0};
+
+        workload->ops->reset(workload);
+        for (unsigned request = 0; request < workload->request_count;
+             request++) {
+            struct perf_queue_request *queue_request =
+                &workload->requests[request];
+
+            used_idx[request] = queue_request->vr->used->idx;
+            if (perf_slot_prepare(&queue_request->slot) < 0)
+                return PERF_REQUEST_PREPARE;
+            if (submit_slot(dev, queue_request->vr,
+                            &queue_request->slot) < 0)
+                return PERF_REQUEST_SUBMIT;
+        }
+        for (unsigned request = 0; request < workload->request_count;
+             request++) {
+            struct perf_queue_request *queue_request =
+                &workload->requests[request];
+            if (complete_slot(queue_request->vr, &queue_request->slot,
+                              used_idx[request], &used_len[request]) < 0)
+                return PERF_REQUEST_COMPLETE;
+        }
+        if (workload->ops->validate(workload, used_len) < 0)
+            return PERF_REQUEST_VALIDATE;
+        int cleanup_request = workload->ops->cleanup(workload);
+        if (cleanup_request >= 0) {
+            struct perf_queue_request *queue_request =
+                &workload->requests[cleanup_request];
+            uint16_t cleanup_used_idx = queue_request->vr->used->idx;
+
+            if (perf_slot_prepare(&queue_request->slot) < 0)
+                return PERF_REQUEST_PREPARE;
+            if (submit_slot(dev, queue_request->vr,
+                            &queue_request->slot) < 0)
+                return PERF_REQUEST_SUBMIT;
+            if (complete_slot(queue_request->vr, &queue_request->slot,
+                              cleanup_used_idx, NULL) < 0)
+                return PERF_REQUEST_COMPLETE;
+        }
+    }
+    return PERF_REQUEST_OK;
+}
+
+static const char *request_error(enum perf_request_result result)
+{
+    switch (result) {
+    case PERF_REQUEST_PREPARE:
+        return "request_prepare";
+    case PERF_REQUEST_SUBMIT:
+        return "request_submit";
+    case PERF_REQUEST_COMPLETE:
+        return "request_complete";
+    case PERF_REQUEST_VALIDATE:
+        return "request_validate";
+    default:
+        return "request_unknown";
+    }
+}
+
+static int prepare_blk(struct virtio_dev *dev, struct vring *vr,
+                       struct perf_workload *workload)
 {
     struct virtio_blk_outhdr *header = vv_alloc_pages(1);
     uint8_t *data = vv_alloc_pages(1);
     uint8_t *status = vv_alloc_pages(1);
 
+    (void)dev;
     header->type = VIRTIO_BLK_T_IN;
     vring_raw_set_desc(vr, 0, vv_virt_to_phys(header), sizeof(*header),
                        VRING_DESC_F_NEXT, 1);
@@ -141,24 +237,64 @@ static int setup_blk(struct vring *vr, struct perf_workload *workload)
     vring_raw_set_desc(vr, 2, vv_virt_to_phys(status), 1,
                        VRING_DESC_F_WRITE, 0);
     workload->status = status;
+    workload->requests[0].vr = vr;
+    perf_slot_init(&workload->requests[0].slot, 0, 0, header);
+    workload->request_count = 1;
+    workload->operations_per_iteration = 1;
     return 3;
 }
 
-static int setup_rng(struct vring *vr, struct perf_workload *workload)
+static void reset_blk(struct perf_workload *workload)
+{
+    *workload->status = 0xff;
+}
+
+static int validate_blk(struct perf_workload *workload,
+                        const uint32_t *lengths)
+{
+    (void)lengths;
+    return *workload->status == VIRTIO_BLK_S_OK ? 0 : -1;
+}
+
+static int prepare_rng(struct virtio_dev *dev, struct vring *vr,
+                       struct perf_workload *workload)
 {
     uint8_t *data = vv_alloc_pages(1);
 
+    (void)dev;
     vring_raw_set_desc(vr, 0, vv_virt_to_phys(data), PERF_BLOCK_SIZE,
                        VRING_DESC_F_WRITE, 0);
-    workload->status = NULL;
+    workload->requests[0].vr = vr;
+    perf_slot_init(&workload->requests[0].slot, 0, 0, data);
+    workload->request_count = 1;
+    workload->operations_per_iteration = 1;
     return 1;
 }
 
-static int setup_net(struct vring *vr, struct perf_workload *workload)
+static void reset_nop(struct perf_workload *workload)
+{
+    (void)workload;
+}
+
+static int cleanup_nop(struct perf_workload *workload)
+{
+    (void)workload;
+    return -1;
+}
+
+static int validate_rng(struct perf_workload *workload,
+                        const uint32_t *lengths)
+{
+    return lengths[0] == workload->request_size ? 0 : -1;
+}
+
+static int prepare_net(struct virtio_dev *dev, struct vring *vr,
+                       struct perf_workload *workload)
 {
     struct virtio_net_hdr *header = vv_alloc_pages(1);
     uint8_t *frame = vv_alloc_pages(1);
 
+    (void)dev;
     memset(frame, 0xff, 6);
     memset(frame + 6, 0x02, 6);
     frame[12] = 0x08;
@@ -167,12 +303,22 @@ static int setup_net(struct vring *vr, struct perf_workload *workload)
     vring_raw_set_desc(vr, 0, vv_virt_to_phys(header), sizeof(*header),
                        VRING_DESC_F_NEXT, 1);
     vring_raw_set_desc(vr, 1, vv_virt_to_phys(frame), 64, 0, 0);
-    workload->status = NULL;
+    workload->requests[0].vr = vr;
+    perf_slot_init(&workload->requests[0].slot, 0, 0, header);
+    workload->request_count = 1;
+    workload->operations_per_iteration = 1;
     return 2;
 }
 
-static int setup_vsock(struct virtio_dev *dev, struct vring *vr,
-                       struct perf_workload *workload)
+static int validate_net(struct perf_workload *workload,
+                        const uint32_t *lengths)
+{
+    (void)workload;
+    return lengths[0] == 0 ? 0 : -1;
+}
+
+static int prepare_vsock(struct virtio_dev *dev, struct vring *vr,
+                         struct perf_workload *workload)
 {
     struct virtio_vsock_hdr *header = vv_alloc_pages(1);
 
@@ -186,30 +332,100 @@ static int setup_vsock(struct virtio_dev *dev, struct vring *vr,
     header->op = VIRTIO_VSOCK_OP_REQUEST;
     header->buf_alloc = 262144;
     vring_raw_set_desc(vr, 0, vv_virt_to_phys(header), sizeof(*header), 0, 0);
-    workload->status = NULL;
+    workload->requests[1].vr = vr;
+    perf_slot_init(&workload->requests[1].slot, 0, 0, header);
+    workload->request_count = 2;
+    workload->operations_per_iteration = 3;
+    workload->vsock_request = header;
     return 1;
 }
+
+static void reset_vsock(struct perf_workload *workload)
+{
+    workload->vsock_request->src_port++;
+    if (workload->vsock_request->src_port == 0)
+        workload->vsock_request->src_port = 1024;
+    workload->vsock_request->op = VIRTIO_VSOCK_OP_REQUEST;
+    memset(workload->response, 0, sizeof(*workload->response));
+}
+
+static int validate_vsock(struct perf_workload *workload,
+                          const uint32_t *lengths)
+{
+    struct virtio_vsock_hdr *request = workload->vsock_request;
+    struct virtio_vsock_hdr *response = workload->response;
+
+    if (lengths[0] == sizeof(*response) &&
+        response->src_cid == request->dst_cid &&
+        response->dst_cid == request->src_cid &&
+        response->src_port == request->dst_port &&
+        response->dst_port == request->src_port &&
+        response->type == request->type &&
+        response->op == VIRTIO_VSOCK_OP_RESPONSE && response->len == 0)
+        return 0;
+    printf("VVPERF_DETAIL type=vsock_response op=%u rx_len=%u tx_len=%u "
+           "src_port=%u dst_port=%u\n",
+           response->op, lengths[0], lengths[1],
+           response->src_port, response->dst_port);
+    return -1;
+}
+
+static int cleanup_vsock(struct perf_workload *workload)
+{
+    workload->vsock_request->op = VIRTIO_VSOCK_OP_RST;
+    return 1;
+}
+
+static const struct perf_workload_ops blk_ops = {
+    prepare_blk, reset_blk, validate_blk, cleanup_nop
+};
+static const struct perf_workload_ops rng_ops = {
+    prepare_rng, reset_nop, validate_rng, cleanup_nop
+};
+static const struct perf_workload_ops net_ops = {
+    prepare_net, reset_nop, validate_net, cleanup_nop
+};
+static const struct perf_workload_ops vsock_ops = {
+    prepare_vsock, reset_vsock, validate_vsock, cleanup_vsock
+};
 
 static int select_workload(const char *device, struct perf_workload *workload)
 {
     if (strcmp(device, "blk") == 0) {
         *workload = (struct perf_workload){
-            device, "blk_read", VIRTIO_PCI_DEVICE_BLK, 0,
-            PERF_BLOCK_SIZE, NULL, NULL
+            .device = device,
+            .operation = "blk_read",
+            .device_id = VIRTIO_PCI_DEVICE_BLK,
+            .queue = 0,
+            .request_size = PERF_BLOCK_SIZE,
+            .ops = &blk_ops,
         };
     } else if (strcmp(device, "rng") == 0) {
         *workload = (struct perf_workload){
-            device, "rng_fill", VIRTIO_PCI_DEVICE_RNG, 0,
-            PERF_BLOCK_SIZE, NULL, NULL
+            .device = device,
+            .operation = "rng_fill",
+            .device_id = VIRTIO_PCI_DEVICE_RNG,
+            .queue = 0,
+            .request_size = PERF_BLOCK_SIZE,
+            .ops = &rng_ops,
         };
     } else if (strcmp(device, "net") == 0) {
         *workload = (struct perf_workload){
-            device, "net_tx", VIRTIO_PCI_DEVICE_NET, 1, 64, NULL, NULL
+            .device = device,
+            .operation = "net_tx",
+            .device_id = VIRTIO_PCI_DEVICE_NET,
+            .queue = 1,
+            .request_size = 64,
+            .ops = &net_ops,
         };
     } else if (strcmp(device, "vsock") == 0) {
         *workload = (struct perf_workload){
-            device, "vsock_roundtrip", VIRTIO_PCI_DEVICE_VSOCK, 1,
-            sizeof(struct virtio_vsock_hdr), NULL, NULL
+            .device = device,
+            .operation = "vsock_roundtrip",
+            .device_id = VIRTIO_PCI_DEVICE_VSOCK,
+            .queue = 1,
+            .request_size = sizeof(struct virtio_vsock_hdr),
+            .ops = &vsock_ops,
         };
     } else {
         return -1;
@@ -277,48 +493,43 @@ int main(void)
     }
     vr = &queues[workload.queue];
 
-    int descriptor_count;
-    if (workload.device_id == VIRTIO_PCI_DEVICE_BLK)
-        descriptor_count = setup_blk(vr, &workload);
-    else if (workload.device_id == VIRTIO_PCI_DEVICE_RNG)
-        descriptor_count = setup_rng(vr, &workload);
-    else if (workload.device_id == VIRTIO_PCI_DEVICE_NET)
-        descriptor_count = setup_net(vr, &workload);
-    else
-        descriptor_count = setup_vsock(&dev, vr, &workload);
+    int descriptor_count = workload.ops->prepare(&dev, vr, &workload);
     if (descriptor_count < 0 || vr->size < descriptor_count) {
         printf("VVPERF error=request_setup\n");
         shutdown_guest(1);
     }
     if (workload.device_id == VIRTIO_PCI_DEVICE_VSOCK) {
-        struct virtio_vsock_hdr *response = vv_alloc_pages(1);
+        workload.response = vv_alloc_pages(1);
 
-        vring_raw_set_desc(&queues[0], 0, vv_virt_to_phys(response),
-                           sizeof(*response), VRING_DESC_F_WRITE, 0);
-        workload.response_vr = &queues[0];
+        vring_raw_set_desc(&queues[0], 0, vv_virt_to_phys(workload.response),
+                           sizeof(*workload.response),
+                           VRING_DESC_F_WRITE, 0);
+        workload.requests[0].vr = &queues[0];
+        perf_slot_init(&workload.requests[0].slot, 0, 0,
+                   workload.response);
     }
 
     dev.common->device_status |= VIRTIO_STATUS_DRIVER_OK;
     __sync_synchronize();
 
-    if (run_requests(&dev, vr, workload.response_vr, workload.status,
-                     warmup) < 0) {
-        printf("VVPERF error=warmup_io\n");
+    enum perf_request_result result = run_requests(&dev, &workload, warmup);
+    if (result != PERF_REQUEST_OK) {
+        printf("VVPERF error=%s phase=warmup\n", request_error(result));
         shutdown_guest(1);
     }
 
     for (unsigned round = 0; round < rounds; round++) {
         clock_gettime(CLOCK_MONOTONIC, &start);
-        int result = run_requests(&dev, vr, workload.response_vr,
-                                  workload.status, iterations);
+        result = run_requests(&dev, &workload, iterations);
         clock_gettime(CLOCK_MONOTONIC, &end);
-        if (result < 0) {
-            printf("VVPERF error=measured_io\n");
+        if (result != PERF_REQUEST_OK) {
+            printf("VVPERF error=%s phase=measured\n",
+                   request_error(result));
             shutdown_guest(1);
         }
 
         uint64_t duration_ns = elapsed_ns(&start, &end);
-        uint64_t queue_operations = workload.response_vr ? 2 : 1;
+        uint64_t queue_operations = workload.operations_per_iteration;
         uint64_t queue_requests = iterations * queue_operations;
 
         printf("VVPERF version=3 experiment=%s changed=%s "

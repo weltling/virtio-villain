@@ -30,6 +30,43 @@ def expect_runtime_error(function, text):
 
 def main():
     module = load_module()
+    listener_socket = mock.Mock()
+    listener_thread = mock.Mock()
+    connection = mock.Mock()
+    with mock.patch.object(module.socket, "socket",
+                           return_value=listener_socket), \
+            mock.patch.object(module.threading, "Thread",
+                              return_value=listener_thread):
+        listener = module.VsockListener(5678)
+        listener.start()
+        listener.connections.append(connection)
+        listener.stop()
+    listener_socket.bind.assert_called_once_with(
+        (module.socket.VMADDR_CID_ANY, 5678))
+    listener_socket.listen.assert_called_once_with(module.socket.SOMAXCONN)
+    listener_socket.settimeout.assert_called_once_with(0.1)
+    listener_thread.start.assert_called_once_with()
+    listener_thread.join.assert_called_once_with(timeout=1)
+    connection.close.assert_called_once_with()
+    unix_socket = mock.Mock()
+    unix_thread = mock.Mock()
+    with mock.patch.object(module.socket, "socket",
+                           return_value=unix_socket) as socket_factory, \
+            mock.patch.object(module.threading, "Thread",
+                              return_value=unix_thread):
+        listener = module.VsockListener(5678, path="/tmp/vsock_5678")
+        listener.start()
+        listener.stop()
+    socket_factory.assert_called_once_with(module.socket.AF_UNIX,
+                                           module.socket.SOCK_STREAM)
+    unix_socket.bind.assert_called_once_with("/tmp/vsock_5678")
+    failed_socket = mock.Mock()
+    failed_socket.bind.side_effect = OSError("bind failed")
+    with mock.patch.object(module.socket, "socket",
+                           return_value=failed_socket):
+        expect_runtime_error(module.VsockListener(5678).start,
+                             "Cannot listen on host vsock port 5678")
+    failed_socket.close.assert_called_once_with()
     output = (
         "VVPERF version=3 experiment=queue changed=depth "
         "workload=blk operation=read round=1 request_bytes=4096 "

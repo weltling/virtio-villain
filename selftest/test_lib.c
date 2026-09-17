@@ -11,6 +11,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "../lib/perf_engine.h"
 #include "../lib/vring.h"
 #include "../tests/test.h"
 
@@ -117,6 +118,26 @@ static void test_raw_set_avail(void)
           "avail.idx = %u (want 99)", avail_buf.hdr.idx);
 }
 
+static void test_perf_slot_lifecycle(void)
+{
+    uint8_t memory;
+    struct perf_request_slot slot;
+
+    perf_slot_init(&slot, 3, 3, &memory);
+    CHECK(slot.state == PERF_SLOT_FREE, "slot starts free");
+    CHECK(slot.head == 3 && slot.id == 3, "slot identifiers are retained");
+    CHECK(slot.workload_memory == &memory, "slot retains workload memory");
+    CHECK(perf_slot_submit(&slot) < 0, "free slot submission is rejected");
+    CHECK(perf_slot_prepare(&slot) == 0, "free slot can be prepared");
+    CHECK(perf_slot_prepare(&slot) < 0, "prepared slot reuse is rejected");
+    CHECK(perf_slot_submit(&slot) == 0, "prepared slot can be submitted");
+    CHECK(perf_slot_complete(&slot, 4) < 0,
+          "completion with another identifier is rejected");
+    CHECK(perf_slot_complete(&slot, 3) == 0,
+          "matching completion is accepted");
+    CHECK(perf_slot_prepare(&slot) == 0, "completed slot can be prepared");
+}
+
 /* --- Test registry --- */
 
 static void test_registry(void)
@@ -155,6 +176,7 @@ int main(void)
     test_struct_sizes();
     test_raw_set_desc();
     test_raw_set_avail();
+      test_perf_slot_lifecycle();
     test_registry();
     int ok = (tests_passed == tests_run);
     const char *tag = ok ? c_pass : c_fail;

@@ -56,7 +56,8 @@ A VMM version is omitted when the binary has no supported version query.
 
 The current queue depth and batch size are one. The guest submits, completes,
 and notifies once for each request. Vsock uses one request queue operation and
-one response queue operation for each measured transaction.
+one response queue operation for each measured transaction. It uses one more
+request queue operation to reset the completed connection.
 
 Use `--experiment-class` and `--changed-dimension` to identify the one layer
 changed by a comparison. The available experiment classes are `queue`,

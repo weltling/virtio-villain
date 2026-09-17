@@ -10,9 +10,11 @@ import os
 import platform
 import pty
 import re
+import socket
 import subprocess
 import sys
 import tempfile
+import threading
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 DEVICE_INITCALL = {
@@ -39,6 +41,53 @@ RESULT_FIELDS = {
     "queue_depth", "batch_size", "submissions", "completions",
     "notifications", "timing_mode", "clock_source", "features",
 }
+
+
+class VsockListener:
+    def __init__(self, port, path=None):
+        self.port = port
+        self.path = path
+        self.listener = None
+        self.connections = []
+        self.thread = None
+        self.running = False
+
+    def start(self):
+        try:
+            family = socket.AF_UNIX if self.path else socket.AF_VSOCK
+            address = self.path or (socket.VMADDR_CID_ANY, self.port)
+            self.listener = socket.socket(family,
+                                          socket.SOCK_STREAM)
+            self.listener.bind(address)
+            self.listener.listen(socket.SOMAXCONN)
+            self.listener.settimeout(0.1)
+        except OSError as error:
+            if self.listener is not None:
+                self.listener.close()
+            endpoint = self.path or f"host vsock port {self.port}"
+            raise RuntimeError(f"Cannot listen on {endpoint}: {error}")
+        self.running = True
+        self.thread = threading.Thread(target=self._accept, daemon=True)
+        self.thread.start()
+
+    def _accept(self):
+        while self.running:
+            try:
+                connection, _ = self.listener.accept()
+            except socket.timeout:
+                continue
+            except OSError:
+                return
+            self.connections.append(connection)
+
+    def stop(self):
+        self.running = False
+        if self.listener is not None:
+            self.listener.close()
+        if self.thread is not None:
+            self.thread.join(timeout=1)
+        for connection in self.connections:
+            connection.close()
 
 
 def load_runner():
@@ -211,9 +260,19 @@ def run_guest(args, runner):
                 os.ttyname(slave_fd).encode())
         else:
             spawn["stdin"] = subprocess.DEVNULL
+        vsock_listener = None
+        if args.device == "vsock" and backend.name == "qemu":
+            vsock_listener = VsockListener(5678)
+            vsock_listener.start()
+        elif args.device == "vsock" and backend.name == "ch":
+            vsock_path = disk.rsplit(".", 1)[0] + ".vsock_5678"
+            vsock_listener = VsockListener(5678, path=vsock_path)
+            vsock_listener.start()
         try:
             samples = run_vmm(cmd, spawn, args.rounds)
         finally:
+            if vsock_listener is not None:
+                vsock_listener.stop()
             if master_fd is not None:
                 os.close(master_fd)
             if slave_fd is not None:
