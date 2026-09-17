@@ -34,3 +34,13 @@ int perf_slot_complete(struct perf_request_slot *slot, uint32_t id)
     slot->state = PERF_SLOT_COMPLETED;
     return 0;
 }
+
+int perf_slots_complete(struct perf_request_slot *slots, unsigned count,
+                        uint32_t id)
+{
+    for (unsigned i = 0; i < count; i++) {
+        if (slots[i].id == id)
+            return perf_slot_complete(&slots[i], id) < 0 ? -1 : (int)i;
+    }
+    return -1;
+}

@@ -23,5 +23,7 @@ void perf_slot_init(struct perf_request_slot *slot, uint16_t head,
 int perf_slot_prepare(struct perf_request_slot *slot);
 int perf_slot_submit(struct perf_request_slot *slot);
 int perf_slot_complete(struct perf_request_slot *slot, uint32_t id);
+int perf_slots_complete(struct perf_request_slot *slots, unsigned count,
+                        uint32_t id);
 
 #endif /* VV_PERF_ENGINE_H */

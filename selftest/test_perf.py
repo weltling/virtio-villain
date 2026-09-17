@@ -133,6 +133,27 @@ def main():
         assert module.get_version("cloud-hypervisor") == (
             "cloud-hypervisor v53.0")
     assert module.parse_args(["-m", "vmm"]).device == "blk"
+    assert module.parse_args(
+        ["-m", "vmm", "--queue-depth", "16"]).queue_depth == 16
+    with mock.patch.object(module.argparse.ArgumentParser, "error",
+                           side_effect=ValueError):
+        try:
+            module.parse_args(["-m", "vmm", "--queue-depth", "3"])
+            assert False
+        except ValueError:
+            pass
+    cmdline_args = module.parse_args(
+        ["-m", "vmm", "--device", "blk", "--queue-depth", "16"])
+    command_backend = mock.Mock()
+    command_backend.name = "qemu"
+    command_backend.console_device = "ttyS0"
+    command_backend.build_cmd.return_value = ["vmm"]
+    with mock.patch.object(module, "run_vmm", return_value=samples):
+        module.run_guest(cmdline_args, mock.Mock(
+            detect_vmm=mock.Mock(return_value=command_backend),
+            fetch_kernel=mock.Mock(return_value="kernel")))
+    guest_cmdline = command_backend.build_cmd.call_args.args[3]
+    assert "vv.perf_queue_depth=16" in guest_cmdline
     for device in ("blk", "rng", "net", "vsock"):
         assert module.parse_args(
             ["-m", "vmm", "--device", device]).device == device
@@ -168,6 +189,7 @@ def main():
     assert "Requests:      200" in human
     assert "Mean service:  15.00 us per request" in human
     assert "Variation:     10.00 to 20.00 us between rounds" in human
+    assert "Queue depth:   1" in human
     assert "Round  Requests" not in human
     assert "VMM unknown" not in human
     verbose = module.format_human(report, verbose=True)
@@ -178,6 +200,8 @@ def main():
     report["workload"]["device"] = "net"
     report["samples"][0]["request_bytes"] = 64
     assert "Request size:  64 bytes" in module.format_human(report)
+    report["queue"]["depth"] = 16
+    assert "Queue depth:   16" in module.format_human(report)
     assert "vsock" not in module.BACKEND_DEVICES["openvmm"]
     assert "vsock" in module.BACKEND_DEVICES["ch"]
     print("performance runner tests passed")

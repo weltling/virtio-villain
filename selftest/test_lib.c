@@ -118,6 +118,25 @@ static void test_raw_set_avail(void)
           "avail.idx = %u (want 99)", avail_buf.hdr.idx);
 }
 
+static void test_vring_submit_wrap(void)
+{
+      struct {
+            struct vring_avail hdr;
+            uint16_t ring[16];
+      } avail_buf;
+      struct vring vr = {
+            .avail = &avail_buf.hdr,
+            .size = 16,
+      };
+
+      memset(&avail_buf, 0, sizeof(avail_buf));
+      avail_buf.hdr.idx = UINT16_MAX;
+      vring_submit(&vr, 7);
+      CHECK(avail_buf.ring[15] == 7,
+              "submission before wrap uses the final ring slot");
+      CHECK(avail_buf.hdr.idx == 0, "available index wraps to zero");
+}
+
 static void test_perf_slot_lifecycle(void)
 {
     uint8_t memory;
@@ -136,6 +155,31 @@ static void test_perf_slot_lifecycle(void)
     CHECK(perf_slot_complete(&slot, 3) == 0,
           "matching completion is accepted");
     CHECK(perf_slot_prepare(&slot) == 0, "completed slot can be prepared");
+}
+
+static void test_perf_slots_complete_by_identifier(void)
+{
+    struct perf_request_slot slots[2];
+
+    perf_slot_init(&slots[0], 0, 0, NULL);
+    perf_slot_init(&slots[1], 1, 1, NULL);
+    CHECK(perf_slot_prepare(&slots[0]) == 0 &&
+          perf_slot_submit(&slots[0]) == 0,
+          "first slot is submitted");
+    CHECK(perf_slot_prepare(&slots[1]) == 0 &&
+          perf_slot_submit(&slots[1]) == 0,
+          "second slot is submitted");
+      CHECK(perf_slots_complete(slots, 2, 1) == 1,
+          "second slot can complete first");
+    CHECK(slots[0].state == PERF_SLOT_SUBMITTED &&
+          slots[1].state == PERF_SLOT_COMPLETED,
+          "completion changes only the matching slot");
+    CHECK(perf_slot_prepare(&slots[0]) < 0,
+          "outstanding slot cannot be reused after partial completion");
+    CHECK(perf_slots_complete(slots, 2, 0) == 0,
+          "first slot completes by identifier");
+    CHECK(perf_slots_complete(slots, 2, 2) < 0,
+          "unknown completion identifier is rejected");
 }
 
 /* --- Test registry --- */
@@ -176,7 +220,9 @@ int main(void)
     test_struct_sizes();
     test_raw_set_desc();
     test_raw_set_avail();
-      test_perf_slot_lifecycle();
+      test_vring_submit_wrap();
+            test_perf_slot_lifecycle();
+            test_perf_slots_complete_by_identifier();
     test_registry();
     int ok = (tests_passed == tests_run);
     const char *tag = ok ? c_pass : c_fail;
