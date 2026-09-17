@@ -74,13 +74,15 @@ def main():
     failed_socket.close.assert_called_once_with()
     output = (
         "VVPERF version=3 experiment=queue changed=depth "
-        "workload=blk operation=blk_read round=1 request_bytes=4096 "
+        "workload=blk operation=blk_read address_pattern=fixed "
+        "round=1 request_bytes=4096 "
         "iterations=100 duration_ns=2000000 queue_format=split "
         "queue_depth=1 batch_size=1 submissions=100 completions=100 "
         "notifications=100 timing_mode=throughput "
         "clock_source=CLOCK_MONOTONIC_RAW sample_every=0 features=0x0\n"
         "VVPERF version=3 experiment=queue changed=depth "
-        "workload=blk operation=blk_read round=2 request_bytes=4096 "
+        "workload=blk operation=blk_read address_pattern=fixed "
+        "round=2 request_bytes=4096 "
         "iterations=100 duration_ns=1000000 queue_format=split "
         "queue_depth=1 batch_size=1 submissions=100 completions=100 "
         "notifications=100 timing_mode=throughput "
@@ -92,10 +94,16 @@ def main():
     assert samples[1]["payload_bytes_per_second"] == 409600000
     assert samples[0]["notifications_per_submission"] == 1
     assert samples[0]["request_bytes"] == 4096
+    assert samples[0]["address_pattern"] == "fixed"
     assert samples[0]["batch_size"] == 1
     assert samples[0]["submissions"] == 100
     assert samples[0]["completions"] == 100
     assert samples[0]["notifications"] == 100
+    write_samples = module.parse_results(
+        output.replace("operation=blk_read", "operation=blk_write").replace(
+            "address_pattern=fixed", "address_pattern=random"))
+    assert write_samples[0]["operation"] == "blk_write"
+    assert write_samples[0]["address_pattern"] == "random"
     latency_output = (
         "VVPERF_LATENCY round=1 sample=1 latency_ns=100\n"
         "VVPERF_LATENCY round=1 sample=2 latency_ns=300\n"
@@ -151,7 +159,9 @@ def main():
         "Latency result has an invalid clock source")
     network_samples = module.parse_results(
         output.replace("workload=blk", "workload=net").replace(
-            "request_bytes=4096", "request_bytes=64"))
+            "request_bytes=4096", "request_bytes=64").replace(
+            "operation=blk_read address_pattern=fixed",
+            "operation=net_tx address_pattern=none"))
     assert "payload_bytes_per_second" not in network_samples[0]
     assert "payload_bytes_per_second" not in module.summarize(network_samples)
     batched_output = output.replace("batch_size=1", "batch_size=4").replace(
@@ -184,6 +194,19 @@ def main():
         lambda: module.parse_results(output.replace("notifications=100",
                                                     "notifications=0", 1)),
         "queue counts must be positive")
+    expect_runtime_error(
+        lambda: module.parse_results(output.replace(
+            "operation=blk_read", "operation=blk_flush")),
+        "invalid operation")
+    expect_runtime_error(
+        lambda: module.parse_results(output.replace(
+            "address_pattern=fixed", "address_pattern=unknown")),
+        "invalid address pattern")
+    expect_runtime_error(
+        lambda: module.parse_results(output.replace(
+            "workload=blk operation=blk_read address_pattern=fixed",
+            "workload=rng operation=rng_fill address_pattern=random")),
+        "Nonblock result has an address pattern")
     summary = module.summarize(samples)
     assert summary["total_requests"] == 200
     assert summary["total_duration_ns"] == 3000000
@@ -229,6 +252,11 @@ def main():
     assert module.parse_args(
         ["-m", "vmm", "--timing-mode", "throughput"]).timing_mode == (
             "throughput")
+    block_args = module.parse_args(
+        ["-m", "vmm", "--device", "blk", "--block-operation", "write",
+         "--block-pattern", "random"])
+    assert block_args.block_operation == "write"
+    assert block_args.block_pattern == "random"
     with mock.patch.object(module.argparse.ArgumentParser, "error",
                            side_effect=ValueError):
         try:
@@ -239,6 +267,12 @@ def main():
         try:
             module.parse_args(["-m", "vmm", "--queue-depth", "4",
                                "--batch-size", "8"])
+            assert False
+        except ValueError:
+            pass
+        try:
+            module.parse_args(["-m", "vmm", "--device", "rng",
+                               "--block-operation", "write"])
             assert False
         except ValueError:
             pass
@@ -256,6 +290,15 @@ def main():
     guest_cmdline = command_backend.build_cmd.call_args.args[3]
     assert "vv.perf_queue_depth=16" in guest_cmdline
     assert "vv.perf_batch_size=16" in guest_cmdline
+    assert "vv.perf_block_operation=read" in guest_cmdline
+    assert "vv.perf_block_pattern=fixed" in guest_cmdline
+    with mock.patch.object(module, "run_vmm", return_value=samples):
+        module.run_guest(block_args, mock.Mock(
+            detect_vmm=mock.Mock(return_value=command_backend),
+            fetch_kernel=mock.Mock(return_value="kernel")))
+    block_cmdline = command_backend.build_cmd.call_args.args[3]
+    assert "vv.perf_block_operation=write" in block_cmdline
+    assert "vv.perf_block_pattern=random" in block_cmdline
     latency_args = module.parse_args(
         ["-m", "vmm", "--device", "blk", "--timing-mode", "latency",
          "--sample-every", "25"])
@@ -283,6 +326,8 @@ def main():
     backend = type("Backend", (), {"name": "openvmm"})()
     with mock.patch.object(module, "get_version", return_value=None):
         report = module.make_report(args, backend, samples, "/boot/vmlinux")
+        write_report = module.make_report(
+            block_args, backend, write_samples, "/boot/vmlinux")
     assert report["schema_version"] == 3
     assert report["experiment"] == {"class": "queue",
                                     "changed_dimension": "depth"}
@@ -299,6 +344,10 @@ def main():
     assert "timing.mode" in module.compatibility_mismatches(
         report, latency_report)
     assert report["workload"]["device"] == "blk"
+    assert report["workload"]["operation"] == "blk_read"
+    assert report["workload"]["address_pattern"] == "fixed"
+    assert write_report["workload"]["operation"] == "blk_write"
+    assert write_report["workload"]["address_pattern"] == "random"
     assert report["backend"]["io_engine"] == "default"
     assert report["backend"]["type"] == "file"
     assert report["guest"]["kernel"] == "/boot/vmlinux"
@@ -316,6 +365,10 @@ def main():
     changed["vmm"].pop("machine")
     changed["workload"]["device"] = "rng"
     assert "workload.device" in module.compatibility_mismatches(report, changed)
+    changed = module.json.loads(module.json.dumps(report))
+    changed["workload"]["address_pattern"] = "random"
+    assert "workload.address_pattern" in module.compatibility_mismatches(
+        report, changed)
     qemu_args = module.parse_args(["-m", "qemu", "--device", "net"])
     qemu_backend = type("Backend", (), {"name": "qemu"})()
     with mock.patch.object(module, "get_version", return_value="QEMU 10"):
@@ -397,6 +450,10 @@ def main():
     assert "Change:       +0.00%" in print_output.call_args.args[0]
     human = module.format_human(report)
     assert "virtio block read throughput" in human
+    assert "Address pattern: fixed" in human
+    write_human = module.format_human(write_report)
+    assert "virtio block write throughput" in write_human
+    assert "Address pattern: random" in write_human
     assert "Requests:      200" in human
     assert "Operation rate: 66666.67 operations/s" in human
     assert "Round range:    50000.00 to 100000.00 operations/s" in human

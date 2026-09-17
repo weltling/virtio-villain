@@ -24,6 +24,13 @@
 #define MAX_QUEUE_DEPTH 16
 #define MAX_QUEUES 16
 #define MAX_WORKLOAD_QUEUES 2
+#define PERF_BLOCK_SECTORS (PERF_BLOCK_SIZE / 512)
+
+enum perf_block_pattern {
+    PERF_BLOCK_FIXED,
+    PERF_BLOCK_SEQUENTIAL,
+    PERF_BLOCK_RANDOM,
+};
 
 struct perf_latency {
     bool enabled;
@@ -57,7 +64,8 @@ struct perf_workload;
 struct perf_workload_ops {
     int (*prepare)(struct virtio_dev *dev, struct vring *vr,
                    struct perf_workload *workload);
-    void (*reset)(struct perf_workload *workload, unsigned slot);
+    void (*reset)(struct perf_workload *workload, unsigned slot,
+                  unsigned operation);
     int (*validate)(struct perf_workload *workload, unsigned slot,
                     const uint32_t *lengths);
     int (*cleanup)(struct perf_workload *workload, unsigned slot);
@@ -75,6 +83,10 @@ struct perf_workload {
     unsigned queue_depth;
     unsigned latency_start_request;
     unsigned latency_complete_request;
+    bool block_write;
+    enum perf_block_pattern block_pattern;
+    uint64_t block_request_count;
+    struct virtio_blk_outhdr *block_header[MAX_QUEUE_DEPTH];
     uint8_t *status[MAX_QUEUE_DEPTH];
     struct virtio_vsock_hdr *vsock_request[MAX_QUEUE_DEPTH];
     struct virtio_vsock_hdr *response[MAX_QUEUE_DEPTH];
@@ -348,7 +360,7 @@ static enum perf_request_result run_requests(struct virtio_dev *dev,
         if (active_slots > count - completed)
             active_slots = count - completed;
         for (unsigned slot = 0; slot < active_slots; slot++)
-            workload->ops->reset(workload, slot);
+            workload->ops->reset(workload, slot, completed + slot);
         for (unsigned request = 0; request < workload->request_count;
              request++) {
             struct perf_queue_request *queue_request =
@@ -450,21 +462,32 @@ static const char *request_error(enum perf_request_result result)
 static int prepare_blk(struct virtio_dev *dev, struct vring *vr,
                        struct perf_workload *workload)
 {
-    (void)dev;
+    if (!dev->device_cfg || dev->device_cfg_length < sizeof(uint64_t))
+        return -1;
+    uint64_t capacity = virtio_load64(dev->device_cfg);
+    workload->block_request_count = capacity / PERF_BLOCK_SECTORS;
+    if (workload->block_request_count == 0)
+        return -1;
     for (unsigned slot = 0; slot < workload->queue_depth; slot++) {
         struct virtio_blk_outhdr *header = vv_alloc_pages(1);
         uint8_t *data = vv_alloc_pages(1);
         uint8_t *status = vv_alloc_pages(1);
         uint16_t head = slot * 3;
 
-        header->type = VIRTIO_BLK_T_IN;
+        header->type = workload->block_write ? VIRTIO_BLK_T_OUT :
+                                               VIRTIO_BLK_T_IN;
+        if (workload->block_write)
+            memset(data, 0x42, PERF_BLOCK_SIZE);
         vring_raw_set_desc(vr, head, vv_virt_to_phys(header), sizeof(*header),
                            VRING_DESC_F_NEXT, head + 1);
         vring_raw_set_desc(vr, head + 1, vv_virt_to_phys(data),
                            PERF_BLOCK_SIZE,
-                           VRING_DESC_F_NEXT | VRING_DESC_F_WRITE, head + 2);
+                           VRING_DESC_F_NEXT |
+                           (workload->block_write ? 0 : VRING_DESC_F_WRITE),
+                           head + 2);
         vring_raw_set_desc(vr, head + 2, vv_virt_to_phys(status), 1,
                            VRING_DESC_F_WRITE, 0);
+        workload->block_header[slot] = header;
         workload->status[slot] = status;
         perf_slot_init(&workload->requests[0].slots[slot], head, head,
                        header);
@@ -474,8 +497,21 @@ static int prepare_blk(struct virtio_dev *dev, struct vring *vr,
     return workload->queue_depth * 3;
 }
 
-static void reset_blk(struct perf_workload *workload, unsigned slot)
+static void reset_blk(struct perf_workload *workload, unsigned slot,
+                      unsigned operation)
 {
+    uint64_t request = 0;
+
+    if (workload->block_pattern == PERF_BLOCK_SEQUENTIAL) {
+        request = operation % workload->block_request_count;
+    } else if (workload->block_pattern == PERF_BLOCK_RANDOM) {
+        uint64_t value = operation + 0x9e3779b97f4a7c15ULL;
+
+        value = (value ^ (value >> 30)) * 0xbf58476d1ce4e5b9ULL;
+        value = (value ^ (value >> 27)) * 0x94d049bb133111ebULL;
+        request = (value ^ (value >> 31)) % workload->block_request_count;
+    }
+    workload->block_header[slot]->sector = request * PERF_BLOCK_SECTORS;
     *workload->status[slot] = 0xff;
 }
 
@@ -503,10 +539,12 @@ static int prepare_rng(struct virtio_dev *dev, struct vring *vr,
     return workload->queue_depth;
 }
 
-static void reset_nop(struct perf_workload *workload, unsigned slot)
+static void reset_nop(struct perf_workload *workload, unsigned slot,
+                      unsigned operation)
 {
     (void)workload;
     (void)slot;
+    (void)operation;
 }
 
 static int cleanup_nop(struct perf_workload *workload, unsigned slot)
@@ -584,8 +622,10 @@ static int prepare_vsock(struct virtio_dev *dev, struct vring *vr,
     return workload->queue_depth;
 }
 
-static void reset_vsock(struct perf_workload *workload, unsigned slot)
+static void reset_vsock(struct perf_workload *workload, unsigned slot,
+                        unsigned operation)
 {
+    (void)operation;
     struct virtio_vsock_hdr *request = workload->vsock_request[slot];
 
     request->src_port += workload->queue_depth;
@@ -636,16 +676,37 @@ static const struct perf_workload_ops vsock_ops = {
     prepare_vsock, reset_vsock, validate_vsock, cleanup_vsock
 };
 
-static int select_workload(const char *device, struct perf_workload *workload)
+static int select_workload(const char *device, const char *block_operation,
+                           const char *block_pattern,
+                           struct perf_workload *workload)
 {
     if (strcmp(device, "blk") == 0) {
+        bool write;
+        enum perf_block_pattern pattern;
+
+        if (strcmp(block_operation, "read") == 0)
+            write = false;
+        else if (strcmp(block_operation, "write") == 0)
+            write = true;
+        else
+            return -1;
+        if (strcmp(block_pattern, "fixed") == 0)
+            pattern = PERF_BLOCK_FIXED;
+        else if (strcmp(block_pattern, "sequential") == 0)
+            pattern = PERF_BLOCK_SEQUENTIAL;
+        else if (strcmp(block_pattern, "random") == 0)
+            pattern = PERF_BLOCK_RANDOM;
+        else
+            return -1;
         *workload = (struct perf_workload){
             .device = device,
-            .operation = "blk_read",
+            .operation = write ? "blk_write" : "blk_read",
             .device_id = VIRTIO_PCI_DEVICE_BLK,
             .queue = 0,
             .request_size = PERF_BLOCK_SIZE,
             .ops = &blk_ops,
+            .block_write = write,
+            .block_pattern = pattern,
         };
     } else if (strcmp(device, "rng") == 0) {
         *workload = (struct perf_workload){
@@ -696,6 +757,8 @@ int main(void)
     char experiment[16];
     char changed[32];
     char timing_mode[16];
+    char block_operation[16];
+    char block_pattern[16];
 
     if (getpid() != 1) {
         fprintf(stderr, "perf guest must run as PID 1\n");
@@ -718,8 +781,13 @@ int main(void)
     read_cmdline_string("vv.perf_changed", changed, sizeof(changed), "none");
     read_cmdline_string("vv.perf_timing_mode", timing_mode,
                         sizeof(timing_mode), "throughput");
+    read_cmdline_string("vv.perf_block_operation", block_operation,
+                        sizeof(block_operation), "read");
+    read_cmdline_string("vv.perf_block_pattern", block_pattern,
+                        sizeof(block_pattern), "fixed");
 
-    if (select_workload(device, &workload) < 0) {
+    if (select_workload(device, block_operation, block_pattern,
+                        &workload) < 0) {
         printf("VVPERF error=unsupported_device\n");
         shutdown_guest(1);
     }
@@ -834,12 +902,15 @@ int main(void)
                    (unsigned long long)latency.samples[sample]);
 
         printf("VVPERF version=3 experiment=%s changed=%s "
-               "workload=%s operation=%s round=%u request_bytes=%u "
+                "workload=%s operation=%s address_pattern=%s round=%u "
+                "request_bytes=%u "
                "iterations=%u duration_ns=%llu queue_format=split "
                "queue_depth=%u batch_size=%u submissions=%llu "
                "completions=%llu notifications=%llu timing_mode=%s "
                "clock_source=%s sample_every=%u features=0x0\n",
                experiment, changed, workload.device, workload.operation,
+               workload.device_id == VIRTIO_PCI_DEVICE_BLK ?
+                   block_pattern : "none",
                round + 1, workload.request_size, iterations,
                (unsigned long long)duration_ns, workload.queue_depth,
                batch_size, (unsigned long long)stats.submissions,

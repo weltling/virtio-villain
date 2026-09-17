@@ -5,9 +5,10 @@ robustness verdicts. It boots one guest, runs a warmup, then records several
 rounds without including VM startup in the samples.
 
 Each workload submits concurrent requests through a split virtqueue. Block
-reads 4 KiB. RNG fills 4 KiB. Network transmits a 64 byte Ethernet frame.
-Vsock sends a connection request and consumes the response. The guest owns
-the virtqueues directly without a guest filesystem or kernel device driver.
+reads or writes 4 KiB. RNG fills 4 KiB. Network transmits a 64 byte Ethernet
+frame. Vsock sends a connection request and consumes the response. The guest
+owns the virtqueues directly without a guest filesystem or kernel device
+driver.
 
 ## Usage
 
@@ -32,6 +33,23 @@ MiB of memory.
 Use `--iterations`, `--warmup`, and `--rounds` to change the sample shape.
 Use `--cpus`, `--memory`, `--io-engine`, and `--direct` to change the VM and
 block backend configuration.
+
+Block requests default to reads at sector zero. Use `--block-operation` to
+select `read` or `write`. Use `--block-pattern` to select `fixed`,
+`sequential`, or `random` addresses.
+
+```bash
+./run-perf -m ./cloud-hypervisor --device blk \
+	--block-operation write --block-pattern sequential
+./run-perf -m ./qemu-system-x86_64 --device blk \
+	--block-operation read --block-pattern random
+```
+
+Every request transfers 4 KiB. Fixed requests use sector zero. Sequential
+requests advance by 4 KiB and wrap at device capacity. Random requests use a
+fixed deterministic sequence and stay within device capacity. Write buffers
+contain a fixed byte value. Write completion is measured at the used ring and
+does not imply that data reached durable storage.
 
 Use `--queue-depth` to select a power of two depth from 1 through 16. Use
 `--batch-size` to publish 1, 4, 8, or 16 descriptor heads before each device
@@ -72,10 +90,11 @@ It is not a latency sample or percentile. Use `--verbose` to print elapsed time
 and operation rate for every round. JSON output keeps all samples for automated
 comparison.
 
-Block and RNG reports include payload bytes per second. Network transmit only
-proves that the device consumed the buffer, so it does not report delivered
-payload rate. Vsock also omits payload rate. Every workload reports device
-notifications per submission.
+Block and RNG reports include payload bytes per second. Block reports also
+record the operation and address pattern. Network transmit only proves that
+the device consumed the buffer, so it does not report delivered payload rate.
+Vsock also omits payload rate. Every workload reports device notifications per
+submission.
 
 JSON schema version 3 separates experiment, host, guest, VMM, execution, queue,
 workload, backend, instrumentation, and timing settings. Each sample records
@@ -134,5 +153,5 @@ host load stable and run enough rounds to expose variance.
 
 This runner measures request throughput or sampled request latency in the
 current split queue workload over PCI. It is not a replacement for storage
-benchmarks such as fio. Packed queues, writes, indirect descriptors, and
-multiple device queues are candidates for additional work.
+benchmarks such as fio. Packed queues, indirect descriptors, and multiple
+device queues are candidates for additional work.

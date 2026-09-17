@@ -39,8 +39,9 @@ PAYLOAD_RATE_WORKLOADS = {"blk", "rng"}
 RESULT_PREFIX = "VVPERF "
 LATENCY_PREFIX = "VVPERF_LATENCY "
 RESULT_FIELDS = {
-    "version", "experiment", "changed", "workload", "operation", "round",
-    "request_bytes", "iterations", "duration_ns", "queue_format",
+    "version", "experiment", "changed", "workload", "operation",
+    "address_pattern", "round", "request_bytes", "iterations", "duration_ns",
+    "queue_format",
     "queue_depth", "batch_size", "submissions", "completions",
     "notifications", "timing_mode", "clock_source", "sample_every",
     "features",
@@ -175,6 +176,14 @@ def parse_results(output):
                         numeric["notifications"])
         if any(value <= 0 for value in queue_counts):
             raise RuntimeError("Performance queue counts must be positive")
+        if fields["workload"] == "blk":
+            if fields["operation"] not in {"blk_read", "blk_write"}:
+                raise RuntimeError("Block result has an invalid operation")
+            if fields["address_pattern"] not in {
+                    "fixed", "sequential", "random"}:
+                raise RuntimeError("Block result has an invalid address pattern")
+        elif fields["address_pattern"] != "none":
+            raise RuntimeError("Nonblock result has an address pattern")
         operations_per_second = count * 1_000_000_000 / duration
         sample = {
             "experiment_class": fields["experiment"],
@@ -182,6 +191,7 @@ def parse_results(output):
                                   else fields["changed"]),
             "workload": fields["workload"],
             "operation": fields["operation"],
+            "address_pattern": fields["address_pattern"],
             "round": round_number,
             "request_bytes": numeric["request_bytes"],
             "iterations": count,
@@ -340,6 +350,8 @@ def run_guest(args, runner):
             f"vv.perf_batch_size={args.batch_size} "
             f"vv.perf_timing_mode={args.timing_mode} "
             f"vv.perf_sample_every={args.sample_every} "
+            f"vv.perf_block_operation={args.block_operation} "
+            f"vv.perf_block_pattern={args.block_pattern} "
             f"vv.perf_experiment={args.experiment_class} "
             f"vv.perf_changed={args.changed_dimension}")
         opts = {
@@ -430,6 +442,7 @@ def make_report(args, backend, samples, kernel):
                   "negotiated_features": sample["negotiated_features"]},
         "workload": {"device": sample["workload"],
                      "operation": sample["operation"],
+                     "address_pattern": sample["address_pattern"],
                      "request_bytes": sample["request_bytes"]},
         "backend": resource,
         "instrumentation": {"enabled": False},
@@ -605,6 +618,11 @@ def parse_args(argv=None):
     parser.add_argument("--timing-mode", choices=("throughput", "latency"),
                         default="throughput")
     parser.add_argument("--sample-every", type=int, default=10, metavar="N")
+    parser.add_argument("--block-operation", choices=("read", "write"),
+                        default="read")
+    parser.add_argument("--block-pattern",
+                        choices=("fixed", "sequential", "random"),
+                        default="fixed")
     parser.add_argument("--cpus", type=int, default=1)
     parser.add_argument("--memory", default="256M")
     parser.add_argument("--disk-size", type=int, default=64, metavar="MIB")
@@ -630,6 +648,9 @@ def parse_args(argv=None):
             parser.error(f"--{name.replace('_', '-')} must be positive")
     if args.batch_size > args.queue_depth:
         parser.error("--batch-size must not exceed --queue-depth")
+    if args.device != "blk" and (args.block_operation != "read" or
+                                 args.block_pattern != "fixed"):
+        parser.error("block operation and pattern require --device blk")
     return args
 
 
@@ -645,8 +666,11 @@ def format_human(report, verbose=False):
         request_size_text = f"{request_size // 1024} KiB"
     else:
         request_size_text = f"{request_size} bytes"
+    label = DEVICE_LABEL[workload["device"]]
+    if workload["device"] == "blk" and workload["operation"] == "blk_write":
+        label = "block write"
     lines = [
-        f"virtio {DEVICE_LABEL[workload['device']]} {report['timing']['mode']}",
+        f"virtio {label} {report['timing']['mode']}",
         "",
         f"Request size:  {request_size_text}",
         f"Queue depth:   {report['queue']['depth']}",
@@ -660,6 +684,8 @@ def format_human(report, verbose=False):
         (f"Notify ratio:  {summary['notifications_per_submission']:.4f} "
          "per submission"),
     ]
+    if workload["device"] == "blk":
+        lines.insert(5, f"Address pattern: {workload['address_pattern']}")
     if "payload_bytes_per_second" in summary:
         lines.append(
             f"Payload rate: {summary['payload_bytes_per_second'] / (1024 * 1024):.2f} MiB/s")
