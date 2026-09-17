@@ -37,12 +37,24 @@ BACKEND_DEVICES = {
 }
 PAYLOAD_RATE_WORKLOADS = {"blk", "rng"}
 RESULT_PREFIX = "VVPERF "
+LATENCY_PREFIX = "VVPERF_LATENCY "
 RESULT_FIELDS = {
     "version", "experiment", "changed", "workload", "operation", "round",
     "request_bytes", "iterations", "duration_ns", "queue_format",
     "queue_depth", "batch_size", "submissions", "completions",
-    "notifications", "timing_mode", "clock_source", "features",
+    "notifications", "timing_mode", "clock_source", "sample_every",
+    "features",
 }
+
+
+def nearest_rank(values, percentile):
+    if not values:
+        raise ValueError("Percentile input must not be empty")
+    if percentile <= 0 or percentile > 100:
+        raise ValueError("Percentile must be greater than zero and at most 100")
+    ordered = sorted(values)
+    rank = math.ceil(percentile / 100 * len(ordered))
+    return ordered[rank - 1]
 
 
 class VsockListener:
@@ -105,6 +117,24 @@ def parse_results(output):
     samples = []
     rounds = set()
     common = None
+    latency_records = {}
+    for line in output.splitlines():
+        if not line.startswith(LATENCY_PREFIX):
+            continue
+        try:
+            fields = dict(item.split("=", 1) for item in
+                          line[len(LATENCY_PREFIX):].split())
+            round_number = int(fields["round"])
+            sample_number = int(fields["sample"])
+            latency_ns = int(fields["latency_ns"])
+        except (KeyError, ValueError) as error:
+            raise RuntimeError("Invalid latency sample record") from error
+        if round_number <= 0 or sample_number <= 0 or latency_ns <= 0:
+            raise RuntimeError("Latency sample values must be positive")
+        records = latency_records.setdefault(round_number, {})
+        if sample_number in records:
+            raise RuntimeError("Duplicate latency sample identifier")
+        records[sample_number] = latency_ns
     for line in output.splitlines():
         if not line.startswith(RESULT_PREFIX) or "error=" in line:
             continue
@@ -124,7 +154,7 @@ def parse_results(output):
             numeric = {name: int(fields[name]) for name in (
                 "round", "request_bytes", "iterations", "duration_ns",
                 "queue_depth", "batch_size", "submissions", "completions",
-                "notifications")}
+                "notifications", "sample_every")}
         except ValueError as error:
             raise RuntimeError("Invalid numeric performance result field") from error
         round_number = numeric["round"]
@@ -164,6 +194,7 @@ def parse_results(output):
             "notifications": numeric["notifications"],
             "timing_mode": fields["timing_mode"],
             "clock_source": fields["clock_source"],
+            "sample_every": numeric["sample_every"],
             "negotiated_features": fields["features"],
             "operations_per_second": operations_per_second,
             "mean_service_time_ns": duration / count,
@@ -174,6 +205,34 @@ def parse_results(output):
             sample["payload_bytes_per_second"] = (
                 operations_per_second * numeric["request_bytes"])
         samples.append(sample)
+    for sample in samples:
+        records = latency_records.get(sample["round"], {})
+        if sample["timing_mode"] == "latency":
+            if sample["clock_source"] != "RDTSCP":
+                raise RuntimeError("Latency result has an invalid clock source")
+            if sample["sample_every"] <= 0 or not records:
+                raise RuntimeError("Latency result lacks sample records")
+            expected = (1 + (sample["iterations"] - 1) //
+                        sample["sample_every"])
+            if set(records) != set(range(1, expected + 1)):
+                raise RuntimeError("Latency result sample identifiers are invalid")
+            values = [records[number] for number in range(1, expected + 1)]
+            sample["latency_samples_ns"] = values
+            sample["latency_sample_count"] = len(values)
+            sample["latency_p50_ns"] = nearest_rank(values, 50)
+            sample["latency_p90_ns"] = nearest_rank(values, 90)
+            sample["latency_p99_ns"] = nearest_rank(values, 99)
+            sample["latency_p999_ns"] = nearest_rank(values, 99.9)
+        elif sample["timing_mode"] == "throughput":
+            if sample["clock_source"] != "CLOCK_MONOTONIC_RAW":
+                raise RuntimeError("Throughput result has an invalid clock source")
+            if sample["sample_every"] != 0:
+                raise RuntimeError("Throughput result has a sampling interval")
+        else:
+            raise RuntimeError("Performance result has an invalid timing mode")
+    unknown_rounds = latency_records.keys() - rounds
+    if unknown_rounds:
+        raise RuntimeError("Latency sample references an unknown round")
     return samples
 
 
@@ -197,6 +256,14 @@ def summarize(samples):
     if "payload_bytes_per_second" in samples[0]:
         summary["payload_bytes_per_second"] = (
             combined_rate * samples[0]["request_bytes"])
+    if "latency_samples_ns" in samples[0]:
+        latency_values = [value for sample in samples
+                          for value in sample["latency_samples_ns"]]
+        summary["latency_sample_count"] = len(latency_values)
+        summary["latency_p50_ns"] = nearest_rank(latency_values, 50)
+        summary["latency_p90_ns"] = nearest_rank(latency_values, 90)
+        summary["latency_p99_ns"] = nearest_rank(latency_values, 99)
+        summary["latency_p999_ns"] = nearest_rank(latency_values, 99.9)
     return summary
 
 
@@ -271,6 +338,8 @@ def run_guest(args, runner):
             f"vv.perf_warmup={args.warmup} "
             f"vv.perf_queue_depth={args.queue_depth} "
             f"vv.perf_batch_size={args.batch_size} "
+            f"vv.perf_timing_mode={args.timing_mode} "
+            f"vv.perf_sample_every={args.sample_every} "
             f"vv.perf_experiment={args.experiment_class} "
             f"vv.perf_changed={args.changed_dimension}")
         opts = {
@@ -279,6 +348,8 @@ def run_guest(args, runner):
             "io_engine": args.io_engine, "memory": args.memory,
             "net_queues": 2, "packed": False,
         }
+        if backend.name == "qemu" and args.timing_mode == "latency":
+            opts["cpu_model"] = "host"
         cmd = backend.build_cmd(kernel, initramfs, disk, cmdline, opts)
         spawn = {"capture_output": True, "timeout": args.timeout}
         master_fd = None
@@ -320,6 +391,8 @@ def make_report(args, backend, samples, kernel):
         vmm["machine"] = ("virt" if platform.machine() == "aarch64"
                           else "default")
         vmm["accelerator"] = "kvm"
+        vmm["cpu_model"] = ("host" if args.timing_mode == "latency"
+                            else "default")
     if sample["workload"] == "blk":
         direct = args.direct or (
             backend.name == "openvmm" and args.io_engine == "aio")
@@ -361,7 +434,8 @@ def make_report(args, backend, samples, kernel):
         "backend": resource,
         "instrumentation": {"enabled": False},
         "timing": {"mode": sample["timing_mode"],
-                   "clock_source": sample["clock_source"]},
+                   "clock_source": sample["clock_source"],
+                   "sample_every": sample["sample_every"]},
         "samples": samples,
         "summary": summarize(samples),
     }
@@ -370,7 +444,8 @@ def make_report(args, backend, samples, kernel):
 def compatibility_mismatches(baseline, candidate):
     """Return fields that prevent a valid report comparison."""
     ignored = {"samples", "summary"}
-    fixed_vmm = {"accelerator", "backend", "machine", "process_mode"}
+    fixed_vmm = {"accelerator", "backend", "cpu_model", "machine",
+                 "process_mode"}
     mismatches = []
     experiment = baseline.get("experiment", {})
     if candidate.get("experiment") != experiment:
@@ -527,8 +602,9 @@ def parse_args(argv=None):
                         default=1)
     parser.add_argument("--batch-size", type=int, choices=(1, 4, 8, 16),
                         default=1)
-    parser.add_argument("--timing-mode", choices=("throughput",),
+    parser.add_argument("--timing-mode", choices=("throughput", "latency"),
                         default="throughput")
+    parser.add_argument("--sample-every", type=int, default=10, metavar="N")
     parser.add_argument("--cpus", type=int, default=1)
     parser.add_argument("--memory", default="256M")
     parser.add_argument("--disk-size", type=int, default=64, metavar="MIB")
@@ -548,7 +624,8 @@ def parse_args(argv=None):
         parser.error("--compare cannot be used with --vmm")
     if not args.compare and not args.vmm:
         parser.error("--vmm is required unless --compare is used")
-    for name in ("iterations", "rounds", "warmup", "cpus", "disk_size", "timeout"):
+    for name in ("iterations", "rounds", "warmup", "sample_every", "cpus",
+                 "disk_size", "timeout"):
         if getattr(args, name) < 1:
             parser.error(f"--{name.replace('_', '-')} must be positive")
     if args.batch_size > args.queue_depth:
@@ -569,7 +646,7 @@ def format_human(report, verbose=False):
     else:
         request_size_text = f"{request_size} bytes"
     lines = [
-        f"virtio {DEVICE_LABEL[workload['device']]} throughput",
+        f"virtio {DEVICE_LABEL[workload['device']]} {report['timing']['mode']}",
         "",
         f"Request size:  {request_size_text}",
         f"Queue depth:   {report['queue']['depth']}",
@@ -586,6 +663,14 @@ def format_human(report, verbose=False):
     if "payload_bytes_per_second" in summary:
         lines.append(
             f"Payload rate: {summary['payload_bytes_per_second'] / (1024 * 1024):.2f} MiB/s")
+    if "latency_p50_ns" in summary:
+        lines += [
+            f"Latency samples: {summary['latency_sample_count']}",
+            f"Latency p50:  {summary['latency_p50_ns']} ns",
+            f"Latency p90:  {summary['latency_p90_ns']} ns",
+            f"Latency p99:  {summary['latency_p99_ns']} ns",
+            f"Latency p99.9: {summary['latency_p999_ns']} ns",
+        ]
     if verbose:
         lines += [
             "",

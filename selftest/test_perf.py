@@ -30,6 +30,11 @@ def expect_runtime_error(function, text):
 
 def main():
     module = load_module()
+    values = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+    assert module.nearest_rank(values, 50) == 50
+    assert module.nearest_rank(values, 90) == 90
+    assert module.nearest_rank(values, 99) == 100
+    assert module.nearest_rank(values, 99.9) == 100
     listener_socket = mock.Mock()
     listener_thread = mock.Mock()
     connection = mock.Mock()
@@ -73,13 +78,13 @@ def main():
         "iterations=100 duration_ns=2000000 queue_format=split "
         "queue_depth=1 batch_size=1 submissions=100 completions=100 "
         "notifications=100 timing_mode=throughput "
-        "clock_source=CLOCK_MONOTONIC_RAW features=0x0\n"
+        "clock_source=CLOCK_MONOTONIC_RAW sample_every=0 features=0x0\n"
         "VVPERF version=3 experiment=queue changed=depth "
         "workload=blk operation=blk_read round=2 request_bytes=4096 "
         "iterations=100 duration_ns=1000000 queue_format=split "
         "queue_depth=1 batch_size=1 submissions=100 completions=100 "
         "notifications=100 timing_mode=throughput "
-        "clock_source=CLOCK_MONOTONIC_RAW features=0x0\n")
+        "clock_source=CLOCK_MONOTONIC_RAW sample_every=0 features=0x0\n")
     samples = module.parse_results(output)
     assert len(samples) == 2
     assert samples[0]["operations_per_second"] == 50000
@@ -91,6 +96,59 @@ def main():
     assert samples[0]["submissions"] == 100
     assert samples[0]["completions"] == 100
     assert samples[0]["notifications"] == 100
+    latency_output = (
+        "VVPERF_LATENCY round=1 sample=1 latency_ns=100\n"
+        "VVPERF_LATENCY round=1 sample=2 latency_ns=300\n"
+        "VVPERF_LATENCY round=2 sample=1 latency_ns=200\n"
+        "VVPERF_LATENCY round=2 sample=2 latency_ns=400\n" +
+        output.replace("timing_mode=throughput", "timing_mode=latency").replace(
+            "clock_source=CLOCK_MONOTONIC_RAW sample_every=0",
+            "clock_source=RDTSCP sample_every=50"))
+    latency_samples = module.parse_results(latency_output)
+    assert latency_samples[0]["latency_samples_ns"] == [100, 300]
+    assert latency_samples[1]["latency_samples_ns"] == [200, 400]
+    latency_summary = module.summarize(latency_samples)
+    assert latency_summary["latency_sample_count"] == 4
+    assert latency_summary["latency_p50_ns"] == 200
+    assert latency_summary["latency_p90_ns"] == 400
+    assert latency_summary["latency_p99_ns"] == 400
+    assert latency_summary["latency_p999_ns"] == 400
+    expect_runtime_error(
+        lambda: module.parse_results(latency_output.replace(
+            "VVPERF_LATENCY round=1 sample=1 latency_ns=100\n", "")),
+        "sample identifiers are invalid")
+    expect_runtime_error(
+        lambda: module.parse_results(
+            output.replace("timing_mode=throughput", "timing_mode=latency").
+            replace("clock_source=CLOCK_MONOTONIC_RAW sample_every=0",
+                    "clock_source=RDTSCP sample_every=50")),
+        "Latency result lacks sample records")
+    expect_runtime_error(
+        lambda: module.parse_results(
+            "VVPERF_LATENCY round=1 sample=1\n" + output),
+        "Invalid latency sample record")
+    expect_runtime_error(
+        lambda: module.parse_results(
+            "VVPERF_LATENCY round=1 sample=1 latency_ns=500\n" +
+            latency_output),
+        "Duplicate latency sample identifier")
+    expect_runtime_error(
+        lambda: module.parse_results(latency_output.replace(
+            "latency_ns=100", "latency_ns=0", 1)),
+        "Latency sample values must be positive")
+    expect_runtime_error(
+        lambda: module.parse_results(
+            "VVPERF_LATENCY round=3 sample=1 latency_ns=500\n" +
+            latency_output),
+        "unknown round")
+    expect_runtime_error(
+        lambda: module.parse_results(output.replace(
+            "sample_every=0", "sample_every=10")),
+        "Throughput result has a sampling interval")
+    expect_runtime_error(
+        lambda: module.parse_results(latency_output.replace(
+            "clock_source=RDTSCP", "clock_source=CLOCK_MONOTONIC_RAW")),
+        "Latency result has an invalid clock source")
     network_samples = module.parse_results(
         output.replace("workload=blk", "workload=net").replace(
             "request_bytes=4096", "request_bytes=64"))
@@ -198,6 +256,18 @@ def main():
     guest_cmdline = command_backend.build_cmd.call_args.args[3]
     assert "vv.perf_queue_depth=16" in guest_cmdline
     assert "vv.perf_batch_size=16" in guest_cmdline
+    latency_args = module.parse_args(
+        ["-m", "vmm", "--device", "blk", "--timing-mode", "latency",
+         "--sample-every", "25"])
+    with mock.patch.object(module, "run_vmm", return_value=latency_samples):
+        module.run_guest(latency_args, mock.Mock(
+            detect_vmm=mock.Mock(return_value=command_backend),
+            fetch_kernel=mock.Mock(return_value="kernel")))
+    latency_cmdline = command_backend.build_cmd.call_args.args[3]
+    latency_opts = command_backend.build_cmd.call_args.args[4]
+    assert "vv.perf_timing_mode=latency" in latency_cmdline
+    assert "vv.perf_sample_every=25" in latency_cmdline
+    assert latency_opts["cpu_model"] == "host"
     for device in ("blk", "rng", "net", "vsock"):
         assert module.parse_args(
             ["-m", "vmm", "--device", device]).device == device
@@ -219,7 +289,15 @@ def main():
     assert report["queue"]["format"] == "split"
     assert report["queue"]["depth"] == 1
     assert report["timing"] == {
-        "mode": "throughput", "clock_source": "CLOCK_MONOTONIC_RAW"}
+        "mode": "throughput", "clock_source": "CLOCK_MONOTONIC_RAW",
+        "sample_every": 0}
+    with mock.patch.object(module, "get_version", return_value=None):
+        latency_report = module.make_report(
+            latency_args, backend, latency_samples, "/boot/vmlinux")
+    assert latency_report["timing"] == {
+        "mode": "latency", "clock_source": "RDTSCP", "sample_every": 50}
+    assert "timing.mode" in module.compatibility_mismatches(
+        report, latency_report)
     assert report["workload"]["device"] == "blk"
     assert report["backend"]["io_engine"] == "default"
     assert report["backend"]["type"] == "file"
@@ -245,8 +323,17 @@ def main():
             qemu_args, qemu_backend, network_samples, "/boot/vmlinux")
     assert qemu_report["vmm"]["accelerator"] == "kvm"
     assert qemu_report["vmm"]["machine"] in {"default", "virt"}
+    assert qemu_report["vmm"]["cpu_model"] == "default"
     assert qemu_report["backend"] == {
         "type": "network", "endpoint": "user"}
+    with mock.patch.object(module, "get_version", return_value="QEMU 10"):
+        qemu_latency_report = module.make_report(
+            latency_args, qemu_backend, latency_samples, "/boot/vmlinux")
+    assert qemu_latency_report["vmm"]["cpu_model"] == "host"
+    changed_cpu = module.json.loads(module.json.dumps(qemu_latency_report))
+    changed_cpu["vmm"]["cpu_model"] = "default"
+    assert "vmm.cpu_model" in module.compatibility_mismatches(
+        qemu_latency_report, changed_cpu)
     candidate = module.json.loads(module.json.dumps(report))
     candidate["summary"]["operations_per_second"] = 80000
     candidate["summary"]["operations_per_second_min"] = 60000
@@ -320,6 +407,11 @@ def main():
     assert "Batch size:    1" in human
     assert "Round  Requests" not in human
     assert "VMM unknown" not in human
+    latency_human = module.format_human(latency_report)
+    assert "virtio block read latency" in latency_human
+    assert "Latency samples: 4" in latency_human
+    assert "Latency p50:  200 ns" in latency_human
+    assert "Latency p99.9: 400 ns" in latency_human
     verbose = module.format_human(report, verbose=True)
     assert "VMM:           openvmm" in verbose
     assert "Round  Requests" in verbose
@@ -338,7 +430,7 @@ def main():
         "static enum perf_request_result run_requests")
     request_end = guest_source.index("static const char *request_error")
     assert "clock_gettime" not in guest_source[request_start:request_end]
-    assert guest_source.count("clock_gettime(CLOCK_MONOTONIC_RAW") == 2
+    assert guest_source.count("clock_gettime(CLOCK_MONOTONIC_RAW") == 4
     print("performance runner tests passed")
 
 

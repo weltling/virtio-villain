@@ -35,13 +35,33 @@ block backend configuration.
 
 Use `--queue-depth` to select a power of two depth from 1 through 16. Use
 `--batch-size` to publish 1, 4, 8, or 16 descriptor heads before each device
-notification. Batch size must not exceed queue depth. Throughput is the only
-current timing mode.
+notification. Batch size must not exceed queue depth. Throughput is the default
+timing mode.
 
 ```bash
 ./run-perf -m ./cloud-hypervisor --warmup 5000 --rounds 10 -n 50000
 ./run-perf -m ./cloud-hypervisor --io-engine io_uring --direct
 ```
+
+Use latency mode to sample operation latency with RDTSCP. `--sample-every N`
+selects every Nth operation and defaults to 10.
+
+```bash
+./run-perf -m ./cloud-hypervisor --device blk \
+	--timing-mode latency --sample-every 10
+```
+
+The sample begins immediately before its descriptor batch is published. It
+ends after the used entry for the selected descriptor is observed. Selected
+operations in the same batch share one start timestamp. Vsock starts at
+connection request publication and ends when the matching response is
+observed.
+
+The guest calibrates the TSC against `CLOCK_MONOTONIC_RAW` before device setup.
+Latency mode requires RDTSCP. A missing RDTSCP capability or CPU migration
+during a sample rejects the run. Keep one virtual CPU for the most stable
+latency measurements. QEMU latency runs use its `host` CPU model so RDTSCP is
+visible to the guest. The selected CPU model is stored in the report.
 
 ## Results
 
@@ -61,8 +81,14 @@ JSON schema version 3 separates experiment, host, guest, VMM, execution, queue,
 workload, backend, instrumentation, and timing settings. Each sample records
 request bytes, submissions, completions, notifications, timing mode, and clock
 source. Throughput rounds use `CLOCK_MONOTONIC_RAW` with one read at each round
-boundary. A VMM version is omitted when the binary has no supported version
-query.
+boundary. Latency rounds store the sampling interval and every raw sample in
+nanoseconds. The runner calculates p50, p90, p99, and p99.9 with the nearest
+rank method across all measured rounds. A VMM version is omitted when the
+binary has no supported version query.
+
+Latency mode still reports complete round duration and operation rate for
+context. Its instrumentation cost means those rates are not throughput mode
+results. Throughput mode does not make percentile claims.
 
 Queue depth and batch size default to one. Vsock uses one request queue
 operation and one response queue operation for each measured transaction. It
@@ -106,7 +132,7 @@ host load stable and run enough rounds to expose variance.
 
 ## Scope
 
-This runner measures request throughput in the current split queue workload
-over PCI. It is not a replacement for storage benchmarks such as fio. Packed
-queues, writes, indirect descriptors, and multiple device queues are candidates
-for additional work.
+This runner measures request throughput or sampled request latency in the
+current split queue workload over PCI. It is not a replacement for storage
+benchmarks such as fio. Packed queues, writes, indirect descriptors, and
+multiple device queues are candidates for additional work.

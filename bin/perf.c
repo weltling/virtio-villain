@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #define _GNU_SOURCE
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,6 +24,20 @@
 #define MAX_QUEUE_DEPTH 16
 #define MAX_QUEUES 16
 #define MAX_WORKLOAD_QUEUES 2
+
+struct perf_latency {
+    bool enabled;
+    unsigned sample_every;
+    unsigned start_request;
+    unsigned complete_request;
+    uint64_t tsc_hz;
+    uint64_t start[MAX_QUEUE_DEPTH];
+    uint32_t start_aux[MAX_QUEUE_DEPTH];
+    bool selected[MAX_QUEUE_DEPTH];
+    uint64_t *samples;
+    unsigned sample_count;
+    unsigned sample_capacity;
+};
 
 enum perf_request_result {
     PERF_REQUEST_OK,
@@ -58,6 +73,8 @@ struct perf_workload {
     struct perf_queue_request requests[MAX_WORKLOAD_QUEUES];
     unsigned request_count;
     unsigned queue_depth;
+    unsigned latency_start_request;
+    unsigned latency_complete_request;
     uint8_t *status[MAX_QUEUE_DEPTH];
     struct virtio_vsock_hdr *vsock_request[MAX_QUEUE_DEPTH];
     struct virtio_vsock_hdr *response[MAX_QUEUE_DEPTH];
@@ -132,10 +149,148 @@ static uint64_t elapsed_ns(const struct timespec *start,
     return (uint64_t)(seconds * 1000000000LL + nanoseconds);
 }
 
+#if defined(__x86_64__) || defined(__i386__)
+static void perf_cpuid(uint32_t leaf, uint32_t *eax, uint32_t *ebx,
+                       uint32_t *ecx, uint32_t *edx)
+{
+    __asm__ volatile("cpuid"
+                     : "=a"(*eax), "=b"(*ebx), "=c"(*ecx), "=d"(*edx)
+                     : "a"(leaf), "c"(0));
+}
+
+static uint64_t perf_rdtscp(uint32_t *aux)
+{
+    uint32_t low;
+    uint32_t high;
+
+    __asm__ volatile("rdtscp" : "=a"(low), "=d"(high), "=c"(*aux)
+                     : : "memory");
+    __asm__ volatile("lfence" : : : "memory");
+    return ((uint64_t)high << 32) | low;
+}
+
+static int perf_latency_init(struct perf_latency *latency,
+                             unsigned sample_every, unsigned iterations,
+                             unsigned start_request,
+                             unsigned complete_request)
+{
+    uint32_t eax;
+    uint32_t ebx;
+    uint32_t ecx;
+    uint32_t edx;
+    struct timespec start_time;
+    struct timespec end_time;
+    uint32_t start_aux;
+    uint32_t end_aux;
+
+    perf_cpuid(0x80000000, &eax, &ebx, &ecx, &edx);
+    if (eax < 0x80000001)
+        return -1;
+    perf_cpuid(0x80000001, &eax, &ebx, &ecx, &edx);
+    if (!(edx & (1U << 27)))
+        return -1;
+    clock_gettime(CLOCK_MONOTONIC_RAW, &start_time);
+    uint64_t start_tsc = perf_rdtscp(&start_aux);
+    usleep(20000);
+    uint64_t end_tsc = perf_rdtscp(&end_aux);
+    clock_gettime(CLOCK_MONOTONIC_RAW, &end_time);
+    uint64_t duration_ns = elapsed_ns(&start_time, &end_time);
+    if (start_aux != end_aux || end_tsc <= start_tsc || duration_ns == 0)
+        return -1;
+
+    latency->enabled = true;
+    latency->sample_every = sample_every;
+    latency->start_request = start_request;
+    latency->complete_request = complete_request;
+    latency->tsc_hz = (uint64_t)(((__uint128_t)(end_tsc - start_tsc) *
+                                  1000000000ULL) / duration_ns);
+    latency->sample_capacity = 1 + (iterations - 1) / sample_every;
+    size_t pages = (latency->sample_capacity * sizeof(*latency->samples) +
+                    PAGE_SIZE - 1) / PAGE_SIZE;
+    latency->samples = vv_alloc_pages(pages);
+    return latency->tsc_hz ? 0 : -1;
+}
+#else
+static int perf_latency_init(struct perf_latency *latency,
+                             unsigned sample_every, unsigned iterations,
+                             unsigned start_request,
+                             unsigned complete_request)
+{
+    (void)latency;
+    (void)sample_every;
+    (void)iterations;
+    (void)start_request;
+    (void)complete_request;
+    return -1;
+}
+#endif
+
+static void perf_latency_start(struct perf_latency *latency,
+                               unsigned request, unsigned operation,
+                               unsigned first, unsigned count)
+{
+#if defined(__x86_64__) || defined(__i386__)
+    if (!latency->enabled || request != latency->start_request)
+        return;
+    bool selected = false;
+    for (unsigned i = 0; i < count; i++) {
+        unsigned slot = first + i;
+
+        latency->selected[slot] =
+            (operation + i) % latency->sample_every == 0;
+        selected |= latency->selected[slot];
+    }
+    if (!selected)
+        return;
+    uint32_t aux;
+    uint64_t tsc = perf_rdtscp(&aux);
+    for (unsigned i = 0; i < count; i++) {
+        unsigned slot = first + i;
+
+        if (latency->selected[slot]) {
+            latency->start[slot] = tsc;
+            latency->start_aux[slot] = aux;
+        }
+    }
+#else
+    (void)latency;
+    (void)request;
+    (void)operation;
+    (void)first;
+    (void)count;
+#endif
+}
+
+static int perf_latency_complete(struct perf_latency *latency,
+                                 unsigned request, unsigned slot)
+{
+#if defined(__x86_64__) || defined(__i386__)
+    if (!latency->enabled || request != latency->complete_request ||
+        !latency->selected[slot])
+        return 0;
+    uint32_t aux;
+    uint64_t end = perf_rdtscp(&aux);
+    if (aux != latency->start_aux[slot] || end <= latency->start[slot] ||
+        latency->sample_count >= latency->sample_capacity)
+        return -1;
+    uint64_t cycles = end - latency->start[slot];
+    latency->samples[latency->sample_count++] =
+        (uint64_t)(((__uint128_t)cycles * 1000000000ULL) / latency->tsc_hz);
+    latency->selected[slot] = false;
+#else
+    (void)latency;
+    (void)request;
+    (void)slot;
+#endif
+    return 0;
+}
+
 static int submit_slots(struct virtio_dev *dev,
                         struct perf_queue_request *request,
                         unsigned first, unsigned count,
-                        struct perf_run_stats *stats)
+                        struct perf_run_stats *stats,
+                        struct perf_latency *latency,
+                        unsigned request_index, unsigned operation)
 {
     uint16_t heads[MAX_QUEUE_DEPTH];
 
@@ -146,6 +301,7 @@ static int submit_slots(struct virtio_dev *dev,
             return -1;
         heads[i] = slot->head;
     }
+    perf_latency_start(latency, request_index, operation, first, count);
     vring_submit_batch(request->vr, heads, count);
     virtio_pci_kick(dev, request->vr->queue);
     perf_stats_submit(stats, count);
@@ -154,7 +310,9 @@ static int submit_slots(struct virtio_dev *dev,
 
 static int complete_next(struct perf_queue_request *request,
                          unsigned active_slots, uint16_t *used_idx,
-                         uint32_t *lengths, struct perf_run_stats *stats)
+                         uint32_t *lengths, struct perf_run_stats *stats,
+                         struct perf_latency *latency,
+                         unsigned request_index)
 {
     while (request->vr->used->idx == *used_idx)
         __sync_synchronize();
@@ -165,6 +323,8 @@ static int complete_next(struct perf_queue_request *request,
         return -1;
     (*used_idx)++;
     perf_stats_complete(stats);
+    if (perf_latency_complete(latency, request_index, slot) < 0)
+        return -1;
     if (lengths)
         lengths[slot] = used->len;
     return slot;
@@ -174,7 +334,8 @@ static enum perf_request_result run_requests(struct virtio_dev *dev,
                                              struct perf_workload *workload,
                                              unsigned count,
                                              unsigned batch_size,
-                                             struct perf_run_stats *stats)
+                                             struct perf_run_stats *stats,
+                                             struct perf_latency *latency)
 {
     uint16_t used_idx[MAX_WORKLOAD_QUEUES];
 
@@ -203,7 +364,8 @@ static enum perf_request_result run_requests(struct virtio_dev *dev,
                 if (batch_count > active_slots - first)
                     batch_count = active_slots - first;
                 if (submit_slots(dev, queue_request, first, batch_count,
-                                 stats) < 0)
+                                 stats, latency, request,
+                                 completed + first) < 0)
                     return PERF_REQUEST_SUBMIT;
             }
         }
@@ -216,7 +378,8 @@ static enum perf_request_result run_requests(struct virtio_dev *dev,
                  completion++) {
                 uint32_t lengths[MAX_QUEUE_DEPTH] = {0};
                 int slot = complete_next(queue_request, active_slots,
-                                         &used_idx[request], lengths, stats);
+                                         &used_idx[request], lengths, stats,
+                                         latency, request);
                 if (slot < 0)
                     return PERF_REQUEST_COMPLETE;
                 used_len[slot][request] = lengths[slot];
@@ -251,14 +414,15 @@ static enum perf_request_result run_requests(struct virtio_dev *dev,
                 if (batch_count > active_slots - first)
                     batch_count = active_slots - first;
                 if (submit_slots(dev, queue_request, first, batch_count,
-                                 stats) < 0)
+                                 stats, latency, cleanup_request,
+                                 completed + first) < 0)
                     return PERF_REQUEST_SUBMIT;
             }
             for (unsigned completion = 0; completion < active_slots;
                  completion++) {
                 if (complete_next(queue_request, active_slots,
                                   &used_idx[cleanup_request], NULL,
-                                  stats) < 0)
+                                  stats, latency, cleanup_request) < 0)
                     return PERF_REQUEST_COMPLETE;
             }
         }
@@ -509,6 +673,8 @@ static int select_workload(const char *device, struct perf_workload *workload)
             .queue = 1,
             .request_size = sizeof(struct virtio_vsock_hdr),
             .ops = &vsock_ops,
+            .latency_start_request = 1,
+            .latency_complete_request = 0,
         };
     } else {
         return -1;
@@ -523,11 +689,13 @@ int main(void)
     struct vring *vr;
     struct perf_workload workload;
     struct perf_run_stats stats;
+    struct perf_latency latency = {0};
     struct timespec start;
     struct timespec end;
     char device[16];
     char experiment[16];
     char changed[32];
+    char timing_mode[16];
 
     if (getpid() != 1) {
         fprintf(stderr, "perf guest must run as PID 1\n");
@@ -543,10 +711,13 @@ int main(void)
     unsigned warmup = read_cmdline_value("vv.perf_warmup", DEFAULT_WARMUP);
     unsigned queue_depth = read_cmdline_value("vv.perf_queue_depth", 1);
     unsigned batch_size = read_cmdline_value("vv.perf_batch_size", 1);
+    unsigned sample_every = read_cmdline_value("vv.perf_sample_every", 10);
     read_cmdline_string("vv.perf_device", device, sizeof(device), "blk");
     read_cmdline_string("vv.perf_experiment", experiment,
                         sizeof(experiment), "queue");
     read_cmdline_string("vv.perf_changed", changed, sizeof(changed), "none");
+    read_cmdline_string("vv.perf_timing_mode", timing_mode,
+                        sizeof(timing_mode), "throughput");
 
     if (select_workload(device, &workload) < 0) {
         printf("VVPERF error=unsupported_device\n");
@@ -563,6 +734,17 @@ int main(void)
         shutdown_guest(1);
     }
     workload.queue_depth = queue_depth;
+    if (strcmp(timing_mode, "latency") == 0) {
+        if (perf_latency_init(&latency, sample_every, iterations,
+                              workload.latency_start_request,
+                              workload.latency_complete_request) < 0) {
+            printf("VVPERF error=rdtscp_unavailable\n");
+            shutdown_guest(1);
+        }
+    } else if (strcmp(timing_mode, "throughput") != 0) {
+        printf("VVPERF error=timing_mode\n");
+        shutdown_guest(1);
+    }
 
     if (virtio_pci_find(workload.device_id, &dev) < 0 ||
         virtio_pci_init(&dev) < 0) {
@@ -624,7 +806,8 @@ int main(void)
 
     perf_stats_init(&stats);
     enum perf_request_result result = run_requests(&dev, &workload, warmup,
-                                                   batch_size, &stats);
+                                                   batch_size, &stats,
+                                                   &(struct perf_latency){0});
     if (result != PERF_REQUEST_OK) {
         printf("VVPERF error=%s phase=warmup\n", request_error(result));
         shutdown_guest(1);
@@ -632,9 +815,10 @@ int main(void)
 
     for (unsigned round = 0; round < rounds; round++) {
         perf_stats_init(&stats);
+        latency.sample_count = 0;
         clock_gettime(CLOCK_MONOTONIC_RAW, &start);
         result = run_requests(&dev, &workload, iterations, batch_size,
-                              &stats);
+                              &stats, &latency);
         clock_gettime(CLOCK_MONOTONIC_RAW, &end);
         if (result != PERF_REQUEST_OK) {
             printf("VVPERF error=%s phase=measured\n",
@@ -644,18 +828,25 @@ int main(void)
 
         uint64_t duration_ns = elapsed_ns(&start, &end);
 
+        for (unsigned sample = 0; sample < latency.sample_count; sample++)
+            printf("VVPERF_LATENCY round=%u sample=%u latency_ns=%llu\n",
+                   round + 1, sample + 1,
+                   (unsigned long long)latency.samples[sample]);
+
         printf("VVPERF version=3 experiment=%s changed=%s "
                "workload=%s operation=%s round=%u request_bytes=%u "
                "iterations=%u duration_ns=%llu queue_format=split "
                "queue_depth=%u batch_size=%u submissions=%llu "
-               "completions=%llu notifications=%llu timing_mode=throughput "
-               "clock_source=CLOCK_MONOTONIC_RAW features=0x0\n",
+               "completions=%llu notifications=%llu timing_mode=%s "
+               "clock_source=%s sample_every=%u features=0x0\n",
                experiment, changed, workload.device, workload.operation,
                round + 1, workload.request_size, iterations,
                (unsigned long long)duration_ns, workload.queue_depth,
                batch_size, (unsigned long long)stats.submissions,
                (unsigned long long)stats.completions,
-               (unsigned long long)stats.notifications);
+               (unsigned long long)stats.notifications, timing_mode,
+               latency.enabled ? "RDTSCP" : "CLOCK_MONOTONIC_RAW",
+               latency.enabled ? sample_every : 0);
     }
     shutdown_guest(0);
     return 0;

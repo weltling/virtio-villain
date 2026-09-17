@@ -474,6 +474,13 @@ def test_unit_qemu_build_cmd_omits_qmp():
     assert "-qmp" not in cmd
 
 
+def test_unit_qemu_build_cmd_sets_cpu_model():
+    be = RUN_MOD.Qemu("/usr/bin/qemu-system-x86_64")
+    cmd = be.build_cmd("/k", "/i", "/d.raw", "console=ttyS0",
+                       {"cpu_model": "host"})
+    assert cmd[cmd.index("-cpu") + 1] == "host"
+
+
 def test_unit_qemu_net_device_disables_option_rom():
     be = RUN_MOD.Qemu("/usr/bin/qemu-system-x86_64")
     cmd = be.build_cmd("/k", "/i", "/d.raw", "console=ttyS0", {})
