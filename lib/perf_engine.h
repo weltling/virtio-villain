@@ -2,6 +2,7 @@
 #ifndef VV_PERF_ENGINE_H
 #define VV_PERF_ENGINE_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 enum perf_slot_state {
@@ -32,7 +33,8 @@ int perf_slot_complete(struct perf_request_slot *slot, uint32_t id);
 int perf_slots_complete(struct perf_request_slot *slots, unsigned count,
                         uint32_t id);
 void perf_stats_init(struct perf_run_stats *stats);
-void perf_stats_submit(struct perf_run_stats *stats, unsigned count);
+void perf_stats_submit(struct perf_run_stats *stats, unsigned count,
+                       bool notified);
 void perf_stats_complete(struct perf_run_stats *stats);
 
 #endif /* VV_PERF_ENGINE_H */

@@ -88,6 +88,21 @@ device that does not offer the feature, and each result records the negotiated
 feature mask. Compare direct and indirect reports as a queue experiment with
 `descriptor_layout` as the changed dimension.
 
+Use `--notification-policy event_idx` to negotiate the event index feature.
+The guest reads the device supplied available event value after each batch and
+notifies the device only when the event threshold is crossed. The default
+`always` policy notifies the device after every published batch.
+
+```bash
+./run-perf -m ./openvmm --device blk \
+	--notification-policy event_idx --queue-depth 16 --batch-size 1
+```
+
+Event index mode requires feature bit 29. Notification counts record the kicks
+that the guest sends, so a device can suppress some or all batch notifications.
+Compare the policies as a queue experiment with `notification_policy` as the
+changed dimension.
+
 ```bash
 ./run-perf -m ./cloud-hypervisor --warmup 5000 --rounds 10 -n 50000
 ./run-perf -m ./cloud-hypervisor --io-engine io_uring --direct
@@ -133,6 +148,7 @@ workload, backend, instrumentation, and timing settings. Each sample records
 request bytes, submissions, completions, notifications, timing mode, and clock
 source. Queue settings record the device queue count and depth per queue.
 The queue settings also record the direct or indirect descriptor layout.
+They record the notification policy and negotiated feature mask as well.
 Throughput rounds use `CLOCK_MONOTONIC_RAW` with one read at each round
 boundary. Latency rounds store the sampling interval and every raw sample in
 nanoseconds. The runner calculates p50, p90, p99, and p99.9 with the nearest

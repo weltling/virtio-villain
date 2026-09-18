@@ -159,6 +159,32 @@ static void test_vring_submit_batch(void)
               "batch publishes one final available index");
 }
 
+      static void test_vring_event_idx(void)
+      {
+            struct {
+                struct vring_used hdr;
+                struct vring_used_elem ring[16];
+                uint16_t avail_event;
+            } used_buf;
+            struct vring vr = {
+                .used = &used_buf.hdr,
+                .size = 16,
+            };
+
+            memset(&used_buf, 0, sizeof(used_buf));
+            used_buf.avail_event = 7;
+            CHECK(vring_avail_event(&vr) == 7,
+                  "available event follows used ring entries");
+            CHECK(vring_need_event(7, 8, 4),
+                  "event index requests notification at the threshold");
+            CHECK(!vring_need_event(8, 8, 4),
+                  "event index suppresses notification below the threshold");
+            CHECK(vring_need_event(UINT16_MAX, 0, UINT16_MAX),
+                  "event index notification handles index wrap");
+            CHECK(!vring_need_event(0, 0, UINT16_MAX),
+                  "event index suppression handles index wrap");
+      }
+
 static void test_perf_slot_lifecycle(void)
 {
     uint8_t memory;
@@ -219,7 +245,7 @@ static void test_perf_batch_accounting(void)
 
                   if (count > 18 - first)
                         count = 18 - first;
-                  perf_stats_submit(&stats, count);
+                  perf_stats_submit(&stats, count, true);
                   for (unsigned completion = 0; completion < count; completion++)
                         perf_stats_complete(&stats);
             }
@@ -235,17 +261,17 @@ static void test_perf_multi_queue_accounting(void)
       struct perf_run_stats stats;
 
       perf_stats_init(&stats);
-      perf_stats_submit(&stats, 16);
-      perf_stats_submit(&stats, 16);
+      perf_stats_submit(&stats, 16, true);
+      perf_stats_submit(&stats, 16, false);
       for (unsigned completion = 0; completion < 32; completion++)
             perf_stats_complete(&stats);
-      perf_stats_submit(&stats, 16);
+      perf_stats_submit(&stats, 16, true);
       for (unsigned completion = 0; completion < 16; completion++)
             perf_stats_complete(&stats);
       CHECK(stats.submissions == 48 && stats.completions == 48,
               "two queues and cleanup count every request");
-      CHECK(stats.notifications == 3,
-              "two queues and cleanup count each notification");
+            CHECK(stats.notifications == 2,
+                  "two queues and cleanup count actual notifications");
 }
 
 /* --- Test registry --- */
@@ -288,6 +314,7 @@ int main(void)
     test_raw_set_avail();
       test_vring_submit_wrap();
       test_vring_submit_batch();
+      test_vring_event_idx();
             test_perf_slot_lifecycle();
             test_perf_slots_complete_by_identifier();
             test_perf_batch_accounting();

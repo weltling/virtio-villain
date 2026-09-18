@@ -40,10 +40,11 @@ RESULT_PREFIX = "VVPERF "
 LATENCY_PREFIX = "VVPERF_LATENCY "
 VIRTIO_BLK_F_MQ = 12
 VIRTIO_F_INDIRECT_DESC = 28
+VIRTIO_F_EVENT_IDX = 29
 RESULT_FIELDS = {
     "version", "experiment", "changed", "workload", "operation",
     "address_pattern", "round", "request_bytes", "iterations", "duration_ns",
-    "queue_format", "descriptor_layout",
+    "queue_format", "descriptor_layout", "notification_policy",
     "queue_depth", "batch_size", "device_queues", "submissions", "completions",
     "notifications", "timing_mode", "clock_source", "sample_every",
     "features",
@@ -174,10 +175,10 @@ def parse_results(output):
         count = numeric["iterations"]
         if duration <= 0 or count <= 0:
             raise RuntimeError("Performance duration and iterations must be positive")
-        queue_counts = (numeric["submissions"], numeric["completions"],
-                        numeric["notifications"])
-        if any(value <= 0 for value in queue_counts):
+        if numeric["submissions"] <= 0 or numeric["completions"] <= 0:
             raise RuntimeError("Performance queue counts must be positive")
+        if numeric["notifications"] < 0:
+            raise RuntimeError("Performance notification count must not be negative")
         if numeric["device_queues"] <= 0:
             raise RuntimeError("Performance device queue count must be positive")
         try:
@@ -202,6 +203,14 @@ def parse_results(output):
                 raise RuntimeError("Indirect result lacks descriptor feature")
         elif fields["descriptor_layout"] != "direct":
             raise RuntimeError("Performance result has an invalid descriptor layout")
+        if fields["notification_policy"] == "event_idx":
+            if not negotiated_features & (1 << VIRTIO_F_EVENT_IDX):
+                raise RuntimeError("Event index result lacks event index feature")
+        elif fields["notification_policy"] == "always":
+            if numeric["notifications"] == 0:
+                raise RuntimeError("Always notify result lacks notifications")
+        else:
+            raise RuntimeError("Performance result has an invalid notification policy")
         operations_per_second = count * 1_000_000_000 / duration
         sample = {
             "experiment_class": fields["experiment"],
@@ -216,6 +225,7 @@ def parse_results(output):
             "duration_ns": duration,
             "queue_format": fields["queue_format"],
             "descriptor_layout": fields["descriptor_layout"],
+            "notification_policy": fields["notification_policy"],
             "queue_depth": numeric["queue_depth"],
             "batch_size": numeric["batch_size"],
             "device_queues": numeric["device_queues"],
@@ -370,6 +380,7 @@ def run_guest(args, runner):
             f"vv.perf_batch_size={args.batch_size} "
             f"vv.perf_device_queues={args.device_queues} "
             f"vv.perf_descriptor_layout={args.descriptor_layout} "
+            f"vv.perf_notification_policy={args.notification_policy} "
             f"vv.perf_timing_mode={args.timing_mode} "
             f"vv.perf_sample_every={args.sample_every} "
             f"vv.perf_block_operation={args.block_operation} "
@@ -463,6 +474,7 @@ def make_report(args, backend, samples, kernel):
                       "warmup": args.warmup},
         "queue": {"transport": "pci", "format": sample["queue_format"],
                   "descriptor_layout": sample["descriptor_layout"],
+                  "notification_policy": sample["notification_policy"],
                   "depth": sample["queue_depth"],
                   "batch_size": sample["batch_size"],
                   "device_queues": sample["device_queues"],
@@ -646,6 +658,8 @@ def parse_args(argv=None):
                         default=1)
     parser.add_argument("--descriptor-layout", choices=("direct", "indirect"),
                         default="direct")
+    parser.add_argument("--notification-policy", choices=("always", "event_idx"),
+                        default="always")
     parser.add_argument("--timing-mode", choices=("throughput", "latency"),
                         default="throughput")
     parser.add_argument("--sample-every", type=int, default=10, metavar="N")
@@ -709,6 +723,7 @@ def format_human(report, verbose=False):
         f"Queue depth:   {report['queue']['depth']}",
         f"Device queues: {report['queue']['device_queues']}",
         f"Descriptors:   {report['queue']['descriptor_layout']}",
+        f"Notifications: {report['queue']['notification_policy']}",
         f"Batch size:    {report['queue']['batch_size']}",
         f"Requests:      {summary['total_requests']}",
         f"Operation rate: {operation_rate:.2f} operations/s",

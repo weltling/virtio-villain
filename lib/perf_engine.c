@@ -52,10 +52,12 @@ void perf_stats_init(struct perf_run_stats *stats)
     stats->notifications = 0;
 }
 
-void perf_stats_submit(struct perf_run_stats *stats, unsigned count)
+void perf_stats_submit(struct perf_run_stats *stats, unsigned count,
+                       bool notified)
 {
     stats->submissions += count;
-    stats->notifications++;
+    if (notified)
+        stats->notifications++;
 }
 
 void perf_stats_complete(struct perf_run_stats *stats)

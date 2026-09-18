@@ -77,7 +77,7 @@ def main():
         "workload=blk operation=blk_read address_pattern=fixed "
         "round=1 request_bytes=4096 "
         "iterations=100 duration_ns=2000000 queue_format=split "
-        "descriptor_layout=direct "
+        "descriptor_layout=direct notification_policy=always "
         "queue_depth=1 batch_size=1 device_queues=1 "
         "submissions=100 completions=100 "
         "notifications=100 timing_mode=throughput "
@@ -86,7 +86,7 @@ def main():
         "workload=blk operation=blk_read address_pattern=fixed "
         "round=2 request_bytes=4096 "
         "iterations=100 duration_ns=1000000 queue_format=split "
-        "descriptor_layout=direct "
+        "descriptor_layout=direct notification_policy=always "
         "queue_depth=1 batch_size=1 device_queues=1 "
         "submissions=100 completions=100 "
         "notifications=100 timing_mode=throughput "
@@ -102,6 +102,7 @@ def main():
     assert samples[0]["batch_size"] == 1
     assert samples[0]["device_queues"] == 1
     assert samples[0]["descriptor_layout"] == "direct"
+    assert samples[0]["notification_policy"] == "always"
     assert samples[0]["submissions"] == 100
     assert samples[0]["completions"] == 100
     assert samples[0]["notifications"] == 100
@@ -189,6 +190,13 @@ def main():
             "features=0x0", "features=0x10000000")
     indirect_samples = module.parse_results(indirect_output)
     assert indirect_samples[0]["descriptor_layout"] == "indirect"
+    event_idx_output = output.replace(
+        "notification_policy=always", "notification_policy=event_idx").replace(
+            "notifications=100", "notifications=0").replace(
+            "features=0x0", "features=0x20000000")
+    event_idx_samples = module.parse_results(event_idx_output)
+    assert event_idx_samples[0]["notification_policy"] == "event_idx"
+    assert event_idx_samples[0]["notifications"] == 0
     expect_runtime_error(
         lambda: module.parse_results(output.replace(" features=0x0", "", 1)),
         "missing features")
@@ -210,7 +218,7 @@ def main():
     expect_runtime_error(
         lambda: module.parse_results(output.replace("notifications=100",
                                                     "notifications=0", 1)),
-        "queue counts must be positive")
+        "Always notify result lacks notifications")
     expect_runtime_error(
         lambda: module.parse_results(output.replace(
             "operation=blk_read", "operation=blk_flush")),
@@ -245,6 +253,14 @@ def main():
         lambda: module.parse_results(output.replace(
             "descriptor_layout=direct", "descriptor_layout=indirect")),
         "Indirect result lacks descriptor feature")
+    expect_runtime_error(
+        lambda: module.parse_results(output.replace(
+            "notification_policy=always", "notification_policy=unknown")),
+        "invalid notification policy")
+    expect_runtime_error(
+        lambda: module.parse_results(output.replace(
+            "notification_policy=always", "notification_policy=event_idx")),
+        "Event index result lacks event index feature")
     summary = module.summarize(samples)
     assert summary["total_requests"] == 200
     assert summary["total_duration_ns"] == 3000000
@@ -294,6 +310,9 @@ def main():
         ["-m", "vmm", "--descriptor-layout", "indirect"]).descriptor_layout == (
             "indirect")
     assert module.parse_args(
+        ["-m", "vmm", "--notification-policy", "event_idx"]
+    ).notification_policy == "event_idx"
+    assert module.parse_args(
         ["-m", "vmm", "--timing-mode", "throughput"]).timing_mode == (
             "throughput")
     block_args = module.parse_args(
@@ -342,6 +361,7 @@ def main():
     assert "vv.perf_batch_size=16" in guest_cmdline
     assert "vv.perf_device_queues=1" in guest_cmdline
     assert "vv.perf_descriptor_layout=direct" in guest_cmdline
+    assert "vv.perf_notification_policy=always" in guest_cmdline
     assert "vv.perf_block_operation=read" in guest_cmdline
     assert "vv.perf_block_pattern=fixed" in guest_cmdline
     with mock.patch.object(module, "run_vmm", return_value=samples):
@@ -371,6 +391,14 @@ def main():
             fetch_kernel=mock.Mock(return_value="kernel")))
     indirect_cmdline = command_backend.build_cmd.call_args.args[3]
     assert "vv.perf_descriptor_layout=indirect" in indirect_cmdline
+    event_idx_args = module.parse_args(
+        ["-m", "vmm", "--notification-policy", "event_idx"])
+    with mock.patch.object(module, "run_vmm", return_value=event_idx_samples):
+        module.run_guest(event_idx_args, mock.Mock(
+            detect_vmm=mock.Mock(return_value=command_backend),
+            fetch_kernel=mock.Mock(return_value="kernel")))
+    event_idx_cmdline = command_backend.build_cmd.call_args.args[3]
+    assert "vv.perf_notification_policy=event_idx" in event_idx_cmdline
     latency_args = module.parse_args(
         ["-m", "vmm", "--device", "blk", "--timing-mode", "latency",
          "--sample-every", "25"])
@@ -404,6 +432,8 @@ def main():
             queue_args, backend, multiqueue_samples, "/boot/vmlinux")
         indirect_report = module.make_report(
             indirect_args, backend, indirect_samples, "/boot/vmlinux")
+        event_idx_report = module.make_report(
+            event_idx_args, backend, event_idx_samples, "/boot/vmlinux")
     assert report["schema_version"] == 3
     assert report["experiment"] == {"class": "queue",
                                     "changed_dimension": "depth"}
@@ -414,6 +444,7 @@ def main():
     assert queue_report["execution"]["cpus"] == 4
     assert queue_report["queue"]["negotiated_features"] == "0x1000"
     assert indirect_report["queue"]["descriptor_layout"] == "indirect"
+    assert event_idx_report["queue"]["notification_policy"] == "event_idx"
     assert report["timing"] == {
         "mode": "throughput", "clock_source": "CLOCK_MONOTONIC_RAW",
         "sample_every": 0}
@@ -436,6 +467,10 @@ def main():
     assert module.compatibility_mismatches(report, report) == []
     changed = module.json.loads(module.json.dumps(report))
     changed["queue"]["depth"] = 16
+    assert module.compatibility_mismatches(report, changed) == []
+    report["experiment"]["changed_dimension"] = "notification_policy"
+    changed = module.json.loads(module.json.dumps(report))
+    changed["queue"]["notification_policy"] = "event_idx"
     assert module.compatibility_mismatches(report, changed) == []
     changed["queue"]["depth"] = 1
     changed["queue"]["device_queues"] = 2
@@ -555,6 +590,7 @@ def main():
     assert "Queue depth:   1" in human
     assert "Device queues: 1" in human
     assert "Descriptors:   direct" in human
+    assert "Notifications: always" in human
     assert "Batch size:    1" in human
     assert "Round  Requests" not in human
     assert "VMM unknown" not in human

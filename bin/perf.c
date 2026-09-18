@@ -87,6 +87,7 @@ struct perf_workload {
     unsigned device_queues;
     unsigned latency_start_request;
     unsigned latency_complete_request;
+    bool event_idx;
     bool indirect;
     bool block_write;
     enum perf_block_pattern block_pattern;
@@ -312,7 +313,7 @@ static int submit_slots(struct virtio_dev *dev,
                         struct perf_run_stats *stats,
                         struct perf_latency *latency,
                         unsigned request_index, unsigned queue,
-                        unsigned operation)
+                        unsigned operation, bool event_idx)
 {
     uint16_t heads[MAX_QUEUE_DEPTH];
 
@@ -324,9 +325,14 @@ static int submit_slots(struct virtio_dev *dev,
         heads[i] = slot->head;
     }
     perf_latency_start(latency, request_index, operation, queue, first, count);
+    uint16_t old_idx = request->vr->avail->idx;
     vring_submit_batch(request->vr, heads, count);
-    virtio_pci_kick(dev, request->vr->queue);
-    perf_stats_submit(stats, count);
+    bool notify = !event_idx ||
+                  vring_need_event(vring_avail_event(request->vr),
+                                   request->vr->avail->idx, old_idx);
+    if (notify)
+        virtio_pci_kick(dev, request->vr->queue);
+    perf_stats_submit(stats, count, notify);
     return 0;
 }
 
@@ -387,7 +393,8 @@ static enum perf_request_result run_requests(struct virtio_dev *dev,
                     batch_count = active_slots - first;
                 if (submit_slots(dev, queue_request, first, batch_count,
                                  stats, latency, request, 0,
-                                 completed + first) < 0)
+                                 completed + first,
+                                 workload->event_idx) < 0)
                     return PERF_REQUEST_SUBMIT;
             }
         }
@@ -437,7 +444,8 @@ static enum perf_request_result run_requests(struct virtio_dev *dev,
                     batch_count = active_slots - first;
                 if (submit_slots(dev, queue_request, first, batch_count,
                                  stats, latency, cleanup_request, 0,
-                                 completed + first) < 0)
+                                 completed + first,
+                                 workload->event_idx) < 0)
                     return PERF_REQUEST_SUBMIT;
             }
             for (unsigned completion = 0; completion < active_slots;
@@ -491,7 +499,8 @@ static enum perf_request_result run_block_requests(
                     batch_count = active_slots - first;
                 if (submit_slots(dev, request, first, batch_count, stats,
                                  latency, 0, queue,
-                                 completed + offset + first) < 0)
+                                 completed + offset + first,
+                                 workload->event_idx) < 0)
                     return PERF_REQUEST_SUBMIT;
             }
         }
@@ -901,6 +910,7 @@ int main(void)
     char changed[32];
     char timing_mode[16];
     char descriptor_layout[16];
+    char notification_policy[16];
     char block_operation[16];
     char block_pattern[16];
 
@@ -928,6 +938,8 @@ int main(void)
                         sizeof(timing_mode), "throughput");
     read_cmdline_string("vv.perf_descriptor_layout", descriptor_layout,
                         sizeof(descriptor_layout), "direct");
+    read_cmdline_string("vv.perf_notification_policy", notification_policy,
+                        sizeof(notification_policy), "always");
     read_cmdline_string("vv.perf_block_operation", block_operation,
                         sizeof(block_operation), "read");
     read_cmdline_string("vv.perf_block_pattern", block_pattern,
@@ -963,6 +975,12 @@ int main(void)
         printf("VVPERF error=descriptor_layout\n");
         shutdown_guest(1);
     }
+    if (strcmp(notification_policy, "event_idx") == 0)
+        workload.event_idx = true;
+    else if (strcmp(notification_policy, "always") != 0) {
+        printf("VVPERF error=notification_policy\n");
+        shutdown_guest(1);
+    }
     if (strcmp(timing_mode, "latency") == 0) {
         if (perf_latency_init(&latency, sample_every, iterations,
                               workload.latency_start_request,
@@ -993,6 +1011,13 @@ int main(void)
             shutdown_guest(1);
         }
         wanted_features |= (unsigned __int128)1 << VIRTIO_F_INDIRECT_DESC;
+    }
+    if (workload.event_idx) {
+        if (!virtio_pci_feature_offered(&dev, VIRTIO_F_EVENT_IDX)) {
+            printf("VVPERF error=event_idx_unsupported\n");
+            shutdown_guest(1);
+        }
+        wanted_features |= (unsigned __int128)1 << VIRTIO_F_EVENT_IDX;
     }
     if (virtio_pci_init_features(&dev, wanted_features) < 0) {
         printf("VVPERF error=device_init\n");
@@ -1100,7 +1125,7 @@ int main(void)
                "workload=%s operation=%s address_pattern=%s round=%u "
                "request_bytes=%u "
                "iterations=%u duration_ns=%llu queue_format=split "
-               "descriptor_layout=%s "
+               "descriptor_layout=%s notification_policy=%s "
                "queue_depth=%u batch_size=%u device_queues=%u "
                "submissions=%llu "
                "completions=%llu notifications=%llu timing_mode=%s "
@@ -1110,6 +1135,7 @@ int main(void)
                    block_pattern : "none",
                round + 1, workload.request_size, iterations,
                (unsigned long long)duration_ns, descriptor_layout,
+               notification_policy,
                workload.queue_depth,
                batch_size, device_queues,
                (unsigned long long)stats.submissions,

@@ -62,6 +62,9 @@ void vring_attach(struct virtio_dev *dev, struct vring *vr, uint16_t queue);
 void vring_submit(struct vring *vr, uint16_t head);
 void vring_submit_batch(struct vring *vr, const uint16_t *heads,
                         unsigned count);
+uint16_t vring_avail_event(const struct vring *vr);
+bool vring_need_event(uint16_t event_idx, uint16_t new_idx,
+                      uint16_t old_idx);
 
 /* Poll the used ring for a completion. Returns 0 on success, -1 on timeout. */
 int vring_poll_used(struct vring *vr, uint32_t *id, uint32_t *len,

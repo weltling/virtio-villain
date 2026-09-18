@@ -58,6 +58,22 @@ void vring_submit_batch(struct vring *vr, const uint16_t *heads,
     __sync_synchronize();
 }
 
+uint16_t vring_avail_event(const struct vring *vr)
+{
+    const uint16_t *avail_event =
+        (const uint16_t *)&vr->used->ring[vr->size];
+
+    __sync_synchronize();
+    return *avail_event;
+}
+
+bool vring_need_event(uint16_t event_idx, uint16_t new_idx,
+                      uint16_t old_idx)
+{
+    return (uint16_t)(new_idx - event_idx - 1) <
+           (uint16_t)(new_idx - old_idx);
+}
+
 int vring_poll_used(struct vring *vr, uint32_t *id, uint32_t *len,
                     int timeout_ms)
 {
