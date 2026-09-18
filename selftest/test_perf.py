@@ -77,6 +77,7 @@ def main():
         "workload=blk operation=blk_read address_pattern=fixed "
         "round=1 request_bytes=4096 "
         "iterations=100 duration_ns=2000000 queue_format=split "
+        "descriptor_layout=direct "
         "queue_depth=1 batch_size=1 device_queues=1 "
         "submissions=100 completions=100 "
         "notifications=100 timing_mode=throughput "
@@ -85,6 +86,7 @@ def main():
         "workload=blk operation=blk_read address_pattern=fixed "
         "round=2 request_bytes=4096 "
         "iterations=100 duration_ns=1000000 queue_format=split "
+        "descriptor_layout=direct "
         "queue_depth=1 batch_size=1 device_queues=1 "
         "submissions=100 completions=100 "
         "notifications=100 timing_mode=throughput "
@@ -99,6 +101,7 @@ def main():
     assert samples[0]["address_pattern"] == "fixed"
     assert samples[0]["batch_size"] == 1
     assert samples[0]["device_queues"] == 1
+    assert samples[0]["descriptor_layout"] == "direct"
     assert samples[0]["submissions"] == 100
     assert samples[0]["completions"] == 100
     assert samples[0]["notifications"] == 100
@@ -181,6 +184,11 @@ def main():
     multiqueue_samples = module.parse_results(multiqueue_output)
     assert multiqueue_samples[0]["device_queues"] == 4
     assert multiqueue_samples[0]["negotiated_features"] == "0x1000"
+    indirect_output = output.replace(
+        "descriptor_layout=direct", "descriptor_layout=indirect").replace(
+            "features=0x0", "features=0x10000000")
+    indirect_samples = module.parse_results(indirect_output)
+    assert indirect_samples[0]["descriptor_layout"] == "indirect"
     expect_runtime_error(
         lambda: module.parse_results(output.replace(" features=0x0", "", 1)),
         "missing features")
@@ -229,6 +237,14 @@ def main():
             "workload=blk operation=blk_read address_pattern=fixed",
             "workload=rng operation=rng_fill address_pattern=none")),
         "Nonblock result has multiple device queues")
+    expect_runtime_error(
+        lambda: module.parse_results(output.replace(
+            "descriptor_layout=direct", "descriptor_layout=unknown")),
+        "invalid descriptor layout")
+    expect_runtime_error(
+        lambda: module.parse_results(output.replace(
+            "descriptor_layout=direct", "descriptor_layout=indirect")),
+        "Indirect result lacks descriptor feature")
     summary = module.summarize(samples)
     assert summary["total_requests"] == 200
     assert summary["total_duration_ns"] == 3000000
@@ -274,6 +290,9 @@ def main():
     assert module.parse_args(
         ["-m", "vmm", "--device", "blk",
          "--device-queues", "4"]).device_queues == 4
+    assert module.parse_args(
+        ["-m", "vmm", "--descriptor-layout", "indirect"]).descriptor_layout == (
+            "indirect")
     assert module.parse_args(
         ["-m", "vmm", "--timing-mode", "throughput"]).timing_mode == (
             "throughput")
@@ -322,6 +341,7 @@ def main():
     assert "vv.perf_queue_depth=16" in guest_cmdline
     assert "vv.perf_batch_size=16" in guest_cmdline
     assert "vv.perf_device_queues=1" in guest_cmdline
+    assert "vv.perf_descriptor_layout=direct" in guest_cmdline
     assert "vv.perf_block_operation=read" in guest_cmdline
     assert "vv.perf_block_pattern=fixed" in guest_cmdline
     with mock.patch.object(module, "run_vmm", return_value=samples):
@@ -342,6 +362,15 @@ def main():
     assert "vv.perf_device_queues=4" in queue_cmdline
     assert queue_opts["blk_queues"] == 4
     assert queue_opts["cpus"] == 4
+    indirect_args = module.parse_args(
+        ["-m", "vmm", "--device", "blk",
+         "--descriptor-layout", "indirect"])
+    with mock.patch.object(module, "run_vmm", return_value=indirect_samples):
+        module.run_guest(indirect_args, mock.Mock(
+            detect_vmm=mock.Mock(return_value=command_backend),
+            fetch_kernel=mock.Mock(return_value="kernel")))
+    indirect_cmdline = command_backend.build_cmd.call_args.args[3]
+    assert "vv.perf_descriptor_layout=indirect" in indirect_cmdline
     latency_args = module.parse_args(
         ["-m", "vmm", "--device", "blk", "--timing-mode", "latency",
          "--sample-every", "25"])
@@ -373,6 +402,8 @@ def main():
             block_args, backend, write_samples, "/boot/vmlinux")
         queue_report = module.make_report(
             queue_args, backend, multiqueue_samples, "/boot/vmlinux")
+        indirect_report = module.make_report(
+            indirect_args, backend, indirect_samples, "/boot/vmlinux")
     assert report["schema_version"] == 3
     assert report["experiment"] == {"class": "queue",
                                     "changed_dimension": "depth"}
@@ -382,6 +413,7 @@ def main():
     assert queue_report["queue"]["device_queues"] == 4
     assert queue_report["execution"]["cpus"] == 4
     assert queue_report["queue"]["negotiated_features"] == "0x1000"
+    assert indirect_report["queue"]["descriptor_layout"] == "indirect"
     assert report["timing"] == {
         "mode": "throughput", "clock_source": "CLOCK_MONOTONIC_RAW",
         "sample_every": 0}
@@ -409,6 +441,13 @@ def main():
     changed["queue"]["device_queues"] = 2
     assert "queue.device_queues" in module.compatibility_mismatches(
         report, changed)
+    changed = module.json.loads(module.json.dumps(report))
+    changed["queue"]["descriptor_layout"] = "indirect"
+    assert "queue.descriptor_layout" in module.compatibility_mismatches(
+        report, changed)
+    report["experiment"]["changed_dimension"] = "descriptor_layout"
+    changed["experiment"]["changed_dimension"] = "descriptor_layout"
+    assert module.compatibility_mismatches(report, changed) == []
     changed["timing"]["clock_source"] = "another_clock"
     assert "timing.clock_source" in module.compatibility_mismatches(
         report, changed)
@@ -515,6 +554,7 @@ def main():
     assert "Payload rate: 260.42 MiB/s" in human
     assert "Queue depth:   1" in human
     assert "Device queues: 1" in human
+    assert "Descriptors:   direct" in human
     assert "Batch size:    1" in human
     assert "Round  Requests" not in human
     assert "VMM unknown" not in human

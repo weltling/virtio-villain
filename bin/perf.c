@@ -87,6 +87,7 @@ struct perf_workload {
     unsigned device_queues;
     unsigned latency_start_request;
     unsigned latency_complete_request;
+    bool indirect;
     bool block_write;
     enum perf_block_pattern block_pattern;
     uint64_t block_request_count;
@@ -536,6 +537,31 @@ static const char *request_error(enum perf_request_result result)
     }
 }
 
+static uint16_t prepare_chain(struct vring *vr, unsigned slot,
+                              const struct vring_desc *descriptors,
+                              unsigned count, bool indirect)
+{
+    uint16_t head = indirect ? slot : slot * count;
+
+    if (indirect) {
+        struct vring_desc *table = vv_alloc_pages(1);
+
+        memcpy(table, descriptors, count * sizeof(*table));
+        vring_raw_set_desc(vr, head, vv_virt_to_phys(table),
+                           count * sizeof(*table), VRING_DESC_F_INDIRECT, 0);
+        return head;
+    }
+    for (unsigned index = 0; index < count; index++) {
+        uint16_t next = descriptors[index].flags & VRING_DESC_F_NEXT ?
+                        head + descriptors[index].next : 0;
+
+        vring_raw_set_desc(vr, head + index, descriptors[index].addr,
+                           descriptors[index].len, descriptors[index].flags,
+                           next);
+    }
+    return head;
+}
+
 static int prepare_blk(struct virtio_dev *dev, struct vring *vr,
                        struct perf_workload *workload)
 {
@@ -554,30 +580,40 @@ static int prepare_blk(struct virtio_dev *dev, struct vring *vr,
             struct virtio_blk_outhdr *header = vv_alloc_pages(1);
             uint8_t *data = vv_alloc_pages(1);
             uint8_t *status = vv_alloc_pages(1);
-            uint16_t head = slot * 3;
+            struct vring_desc descriptors[3] = {
+                {
+                    .addr = vv_virt_to_phys(header),
+                    .len = sizeof(*header),
+                    .flags = VRING_DESC_F_NEXT,
+                    .next = 1,
+                },
+                {
+                    .addr = vv_virt_to_phys(data),
+                    .len = PERF_BLOCK_SIZE,
+                    .flags = VRING_DESC_F_NEXT |
+                             (workload->block_write ? 0 : VRING_DESC_F_WRITE),
+                    .next = 2,
+                },
+                {
+                    .addr = vv_virt_to_phys(status),
+                    .len = 1,
+                    .flags = VRING_DESC_F_WRITE,
+                },
+            };
 
             header->type = workload->block_write ? VIRTIO_BLK_T_OUT :
                                                    VIRTIO_BLK_T_IN;
             if (workload->block_write)
                 memset(data, 0x42, PERF_BLOCK_SIZE);
-            vring_raw_set_desc(request->vr, head, vv_virt_to_phys(header),
-                               sizeof(*header), VRING_DESC_F_NEXT, head + 1);
-            vring_raw_set_desc(request->vr, head + 1,
-                               vv_virt_to_phys(data), PERF_BLOCK_SIZE,
-                               VRING_DESC_F_NEXT |
-                               (workload->block_write ? 0 :
-                                                        VRING_DESC_F_WRITE),
-                               head + 2);
-            vring_raw_set_desc(request->vr, head + 2,
-                               vv_virt_to_phys(status), 1,
-                               VRING_DESC_F_WRITE, 0);
+            uint16_t head = prepare_chain(request->vr, slot, descriptors, 3,
+                                          workload->indirect);
             workload->block_header[queue][slot] = header;
             workload->status[queue][slot] = status;
             perf_slot_init(&request->slots[slot], head, head, header);
         }
     }
     workload->request_count = 1;
-    return workload->queue_depth * 3;
+    return workload->queue_depth * (workload->indirect ? 1 : 3);
 }
 
 static void reset_blk(struct perf_workload *workload, unsigned queue,
@@ -612,10 +648,15 @@ static int prepare_rng(struct virtio_dev *dev, struct vring *vr,
     (void)dev;
     for (unsigned slot = 0; slot < workload->queue_depth; slot++) {
         uint8_t *data = vv_alloc_pages(1);
+        struct vring_desc descriptor = {
+            .addr = vv_virt_to_phys(data),
+            .len = PERF_BLOCK_SIZE,
+            .flags = VRING_DESC_F_WRITE,
+        };
 
-        vring_raw_set_desc(vr, slot, vv_virt_to_phys(data), PERF_BLOCK_SIZE,
-                           VRING_DESC_F_WRITE, 0);
-        perf_slot_init(&workload->requests[0].slots[slot], slot, slot, data);
+        uint16_t head = prepare_chain(vr, slot, &descriptor, 1,
+                                      workload->indirect);
+        perf_slot_init(&workload->requests[0].slots[slot], head, head, data);
     }
     workload->requests[0].vr = vr;
     workload->request_count = 1;
@@ -654,22 +695,32 @@ static int prepare_net(struct virtio_dev *dev, struct vring *vr,
     for (unsigned slot = 0; slot < workload->queue_depth; slot++) {
         struct virtio_net_hdr *header = vv_alloc_pages(1);
         uint8_t *frame = vv_alloc_pages(1);
-        uint16_t head = slot * 2;
+        struct vring_desc descriptors[2] = {
+            {
+                .addr = vv_virt_to_phys(header),
+                .len = sizeof(*header),
+                .flags = VRING_DESC_F_NEXT,
+                .next = 1,
+            },
+            {
+                .addr = vv_virt_to_phys(frame),
+                .len = 64,
+            },
+        };
 
         memset(frame, 0xff, 6);
         memset(frame + 6, 0x02, 6);
         frame[12] = 0x08;
         frame[13] = 0x00;
         memset(frame + 14, 0x42, 50);
-        vring_raw_set_desc(vr, head, vv_virt_to_phys(header), sizeof(*header),
-                           VRING_DESC_F_NEXT, head + 1);
-        vring_raw_set_desc(vr, head + 1, vv_virt_to_phys(frame), 64, 0, 0);
+        uint16_t head = prepare_chain(vr, slot, descriptors, 2,
+                          workload->indirect);
         perf_slot_init(&workload->requests[0].slots[slot], head, head,
                        header);
     }
     workload->requests[0].vr = vr;
     workload->request_count = 1;
-    return workload->queue_depth * 2;
+    return workload->queue_depth * (workload->indirect ? 1 : 2);
 }
 
 static int validate_net(struct perf_workload *workload,
@@ -697,9 +748,13 @@ static int prepare_vsock(struct virtio_dev *dev, struct vring *vr,
         header->type = VIRTIO_VSOCK_TYPE_STREAM;
         header->op = VIRTIO_VSOCK_OP_REQUEST;
         header->buf_alloc = 262144;
-        vring_raw_set_desc(vr, slot, vv_virt_to_phys(header),
-                           sizeof(*header), 0, 0);
-        perf_slot_init(&workload->requests[1].slots[slot], slot, slot,
+        struct vring_desc descriptor = {
+            .addr = vv_virt_to_phys(header),
+            .len = sizeof(*header),
+        };
+        uint16_t head = prepare_chain(vr, slot, &descriptor, 1,
+                                      workload->indirect);
+        perf_slot_init(&workload->requests[1].slots[slot], head, head,
                        header);
         workload->vsock_request[slot] = header;
     }
@@ -845,6 +900,7 @@ int main(void)
     char experiment[16];
     char changed[32];
     char timing_mode[16];
+    char descriptor_layout[16];
     char block_operation[16];
     char block_pattern[16];
 
@@ -870,6 +926,8 @@ int main(void)
     read_cmdline_string("vv.perf_changed", changed, sizeof(changed), "none");
     read_cmdline_string("vv.perf_timing_mode", timing_mode,
                         sizeof(timing_mode), "throughput");
+    read_cmdline_string("vv.perf_descriptor_layout", descriptor_layout,
+                        sizeof(descriptor_layout), "direct");
     read_cmdline_string("vv.perf_block_operation", block_operation,
                         sizeof(block_operation), "read");
     read_cmdline_string("vv.perf_block_pattern", block_pattern,
@@ -899,6 +957,12 @@ int main(void)
     workload.queue_depth = queue_depth;
     workload.device_queues = device_queues;
     workload.vrings = queues;
+    if (strcmp(descriptor_layout, "indirect") == 0)
+        workload.indirect = true;
+    else if (strcmp(descriptor_layout, "direct") != 0) {
+        printf("VVPERF error=descriptor_layout\n");
+        shutdown_guest(1);
+    }
     if (strcmp(timing_mode, "latency") == 0) {
         if (perf_latency_init(&latency, sample_every, iterations,
                               workload.latency_start_request,
@@ -922,6 +986,13 @@ int main(void)
             shutdown_guest(1);
         }
         wanted_features = (unsigned __int128)1 << VIRTIO_BLK_F_MQ;
+    }
+    if (workload.indirect) {
+        if (!virtio_pci_feature_offered(&dev, VIRTIO_F_INDIRECT_DESC)) {
+            printf("VVPERF error=indirect_unsupported\n");
+            shutdown_guest(1);
+        }
+        wanted_features |= (unsigned __int128)1 << VIRTIO_F_INDIRECT_DESC;
     }
     if (virtio_pci_init_features(&dev, wanted_features) < 0) {
         printf("VVPERF error=device_init\n");
@@ -951,9 +1022,9 @@ int main(void)
     vr = &queues[workload.queue];
 
     unsigned descriptors_per_slot = 1;
-    if (workload.device_id == VIRTIO_PCI_DEVICE_BLK)
+    if (!workload.indirect && workload.device_id == VIRTIO_PCI_DEVICE_BLK)
         descriptors_per_slot = 3;
-    else if (workload.device_id == VIRTIO_PCI_DEVICE_NET)
+    else if (!workload.indirect && workload.device_id == VIRTIO_PCI_DEVICE_NET)
         descriptors_per_slot = 2;
     if (vr->size / descriptors_per_slot < workload.queue_depth ||
         (workload.device_id == VIRTIO_PCI_DEVICE_VSOCK &&
@@ -972,11 +1043,14 @@ int main(void)
     if (workload.device_id == VIRTIO_PCI_DEVICE_VSOCK) {
         for (unsigned slot = 0; slot < workload.queue_depth; slot++) {
             workload.response[slot] = vv_alloc_pages(1);
-            vring_raw_set_desc(&queues[0], slot,
-                               vv_virt_to_phys(workload.response[slot]),
-                               sizeof(*workload.response[slot]),
-                               VRING_DESC_F_WRITE, 0);
-            perf_slot_init(&workload.requests[0].slots[slot], slot, slot,
+            struct vring_desc descriptor = {
+                .addr = vv_virt_to_phys(workload.response[slot]),
+                .len = sizeof(*workload.response[slot]),
+                .flags = VRING_DESC_F_WRITE,
+            };
+            uint16_t head = prepare_chain(&queues[0], slot, &descriptor, 1,
+                                          workload.indirect);
+            perf_slot_init(&workload.requests[0].slots[slot], head, head,
                            workload.response[slot]);
         }
         workload.requests[0].vr = &queues[0];
@@ -1026,6 +1100,7 @@ int main(void)
                "workload=%s operation=%s address_pattern=%s round=%u "
                "request_bytes=%u "
                "iterations=%u duration_ns=%llu queue_format=split "
+               "descriptor_layout=%s "
                "queue_depth=%u batch_size=%u device_queues=%u "
                "submissions=%llu "
                "completions=%llu notifications=%llu timing_mode=%s "
@@ -1034,7 +1109,8 @@ int main(void)
                workload.device_id == VIRTIO_PCI_DEVICE_BLK ?
                    block_pattern : "none",
                round + 1, workload.request_size, iterations,
-               (unsigned long long)duration_ns, workload.queue_depth,
+               (unsigned long long)duration_ns, descriptor_layout,
+               workload.queue_depth,
                batch_size, device_queues,
                (unsigned long long)stats.submissions,
                (unsigned long long)stats.completions,

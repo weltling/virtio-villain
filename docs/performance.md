@@ -74,6 +74,20 @@ activation and a suitable host endpoint, so this option is block only.
 QEMU and Cloud Hypervisor expose block MQ. The current OpenVMM block device
 does not offer MQ and the run reports `device_queues_unsupported`.
 
+Use `--descriptor-layout indirect` to place each request chain in an indirect
+descriptor table. The split ring then contains one outer descriptor for each
+request. Direct descriptors remain the default.
+
+```bash
+./run-perf -m ./openvmm --device blk \
+	--descriptor-layout indirect --queue-depth 16
+```
+
+Indirect mode requires the indirect descriptor feature. The guest rejects a
+device that does not offer the feature, and each result records the negotiated
+feature mask. Compare direct and indirect reports as a queue experiment with
+`descriptor_layout` as the changed dimension.
+
 ```bash
 ./run-perf -m ./cloud-hypervisor --warmup 5000 --rounds 10 -n 50000
 ./run-perf -m ./cloud-hypervisor --io-engine io_uring --direct
@@ -118,6 +132,7 @@ JSON schema version 3 separates experiment, host, guest, VMM, execution, queue,
 workload, backend, instrumentation, and timing settings. Each sample records
 request bytes, submissions, completions, notifications, timing mode, and clock
 source. Queue settings record the device queue count and depth per queue.
+The queue settings also record the direct or indirect descriptor layout.
 Throughput rounds use `CLOCK_MONOTONIC_RAW` with one read at each round
 boundary. Latency rounds store the sampling interval and every raw sample in
 nanoseconds. The runner calculates p50, p90, p99, and p99.9 with the nearest
@@ -172,5 +187,5 @@ host load stable and run enough rounds to expose variance.
 
 This runner measures request throughput or sampled request latency in the
 current split queue workload over PCI. It is not a replacement for storage
-benchmarks such as fio. Packed queues, indirect descriptors, and network
-multiqueue are candidates for additional work.
+benchmarks such as fio. Packed queues and network multiqueue are candidates
+for additional work.
