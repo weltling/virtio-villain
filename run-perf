@@ -38,11 +38,12 @@ BACKEND_DEVICES = {
 PAYLOAD_RATE_WORKLOADS = {"blk", "rng"}
 RESULT_PREFIX = "VVPERF "
 LATENCY_PREFIX = "VVPERF_LATENCY "
+VIRTIO_BLK_F_MQ = 12
 RESULT_FIELDS = {
     "version", "experiment", "changed", "workload", "operation",
     "address_pattern", "round", "request_bytes", "iterations", "duration_ns",
     "queue_format",
-    "queue_depth", "batch_size", "submissions", "completions",
+    "queue_depth", "batch_size", "device_queues", "submissions", "completions",
     "notifications", "timing_mode", "clock_source", "sample_every",
     "features",
 }
@@ -155,7 +156,7 @@ def parse_results(output):
             numeric = {name: int(fields[name]) for name in (
                 "round", "request_bytes", "iterations", "duration_ns",
                 "queue_depth", "batch_size", "submissions", "completions",
-                "notifications", "sample_every")}
+                "notifications", "sample_every", "device_queues")}
         except ValueError as error:
             raise RuntimeError("Invalid numeric performance result field") from error
         round_number = numeric["round"]
@@ -176,14 +177,25 @@ def parse_results(output):
                         numeric["notifications"])
         if any(value <= 0 for value in queue_counts):
             raise RuntimeError("Performance queue counts must be positive")
+        if numeric["device_queues"] <= 0:
+            raise RuntimeError("Performance device queue count must be positive")
+        try:
+            negotiated_features = int(fields["features"], 0)
+        except ValueError as error:
+            raise RuntimeError("Invalid negotiated feature field") from error
         if fields["workload"] == "blk":
             if fields["operation"] not in {"blk_read", "blk_write"}:
                 raise RuntimeError("Block result has an invalid operation")
             if fields["address_pattern"] not in {
                     "fixed", "sequential", "random"}:
                 raise RuntimeError("Block result has an invalid address pattern")
+            if (numeric["device_queues"] > 1 and
+                    not negotiated_features & (1 << VIRTIO_BLK_F_MQ)):
+                raise RuntimeError("Block multiqueue result lacks MQ")
         elif fields["address_pattern"] != "none":
             raise RuntimeError("Nonblock result has an address pattern")
+        elif numeric["device_queues"] != 1:
+            raise RuntimeError("Nonblock result has multiple device queues")
         operations_per_second = count * 1_000_000_000 / duration
         sample = {
             "experiment_class": fields["experiment"],
@@ -199,6 +211,7 @@ def parse_results(output):
             "queue_format": fields["queue_format"],
             "queue_depth": numeric["queue_depth"],
             "batch_size": numeric["batch_size"],
+            "device_queues": numeric["device_queues"],
             "submissions": numeric["submissions"],
             "completions": numeric["completions"],
             "notifications": numeric["notifications"],
@@ -348,6 +361,7 @@ def run_guest(args, runner):
             f"vv.perf_warmup={args.warmup} "
             f"vv.perf_queue_depth={args.queue_depth} "
             f"vv.perf_batch_size={args.batch_size} "
+            f"vv.perf_device_queues={args.device_queues} "
             f"vv.perf_timing_mode={args.timing_mode} "
             f"vv.perf_sample_every={args.sample_every} "
             f"vv.perf_block_operation={args.block_operation} "
@@ -355,7 +369,9 @@ def run_guest(args, runner):
             f"vv.perf_experiment={args.experiment_class} "
             f"vv.perf_changed={args.changed_dimension}")
         opts = {
-            "blk_queues": 1, "cpus": args.cpus, "direct": args.direct,
+            "blk_queues": args.device_queues,
+            "cpus": max(args.cpus, args.device_queues),
+            "direct": args.direct,
             "exit_on_guest_end": True, "fuzz_device": args.device,
             "io_engine": args.io_engine, "memory": args.memory,
             "net_queues": 2, "packed": False,
@@ -433,12 +449,14 @@ def make_report(args, backend, samples, kernel):
                  "processor": get_processor_model()},
         "guest": {"kernel": os.path.abspath(kernel)},
         "vmm": vmm,
-        "execution": {"cpus": args.cpus, "memory": args.memory,
+        "execution": {"cpus": max(args.cpus, args.device_queues),
+                      "memory": args.memory,
                       "iterations": args.iterations, "rounds": args.rounds,
                       "warmup": args.warmup},
         "queue": {"transport": "pci", "format": sample["queue_format"],
                   "depth": sample["queue_depth"],
                   "batch_size": sample["batch_size"],
+                  "device_queues": sample["device_queues"],
                   "negotiated_features": sample["negotiated_features"]},
         "workload": {"device": sample["workload"],
                      "operation": sample["operation"],
@@ -615,6 +633,8 @@ def parse_args(argv=None):
                         default=1)
     parser.add_argument("--batch-size", type=int, choices=(1, 4, 8, 16),
                         default=1)
+    parser.add_argument("--device-queues", type=int, choices=(1, 2, 4, 8, 16),
+                        default=1)
     parser.add_argument("--timing-mode", choices=("throughput", "latency"),
                         default="throughput")
     parser.add_argument("--sample-every", type=int, default=10, metavar="N")
@@ -651,6 +671,8 @@ def parse_args(argv=None):
     if args.device != "blk" and (args.block_operation != "read" or
                                  args.block_pattern != "fixed"):
         parser.error("block operation and pattern require --device blk")
+    if args.device != "blk" and args.device_queues != 1:
+        parser.error("multiple device queues require --device blk")
     return args
 
 
@@ -674,6 +696,7 @@ def format_human(report, verbose=False):
         "",
         f"Request size:  {request_size_text}",
         f"Queue depth:   {report['queue']['depth']}",
+        f"Device queues: {report['queue']['device_queues']}",
         f"Batch size:    {report['queue']['batch_size']}",
         f"Requests:      {summary['total_requests']}",
         f"Operation rate: {operation_rate:.2f} operations/s",

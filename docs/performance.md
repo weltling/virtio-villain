@@ -56,6 +56,24 @@ Use `--queue-depth` to select a power of two depth from 1 through 16. Use
 notification. Batch size must not exceed queue depth. Throughput is the default
 timing mode.
 
+Use `--device-queues` to distribute block requests across 1, 2, 4, 8, or 16
+request queues. Queue depth applies to each device queue. The guest publishes
+one wave across all active queues before it waits for completions. A partial
+final wave fills queues in queue index order.
+
+```bash
+./run-perf -m ./cloud-hypervisor --device blk \
+	--device-queues 4 --queue-depth 16 --batch-size 4
+```
+
+Multiple device queues require the block MQ feature. The runner configures the
+VMM with the requested block queue count and raises the virtual CPU count to
+the same value when needed. The guest rejects a device that does not offer MQ
+or exposes fewer queues than requested. Network multiqueue needs control queue
+activation and a suitable host endpoint, so this option is block only.
+QEMU and Cloud Hypervisor expose block MQ. The current OpenVMM block device
+does not offer MQ and the run reports `device_queues_unsupported`.
+
 ```bash
 ./run-perf -m ./cloud-hypervisor --warmup 5000 --rounds 10 -n 50000
 ./run-perf -m ./cloud-hypervisor --io-engine io_uring --direct
@@ -99,7 +117,8 @@ submission.
 JSON schema version 3 separates experiment, host, guest, VMM, execution, queue,
 workload, backend, instrumentation, and timing settings. Each sample records
 request bytes, submissions, completions, notifications, timing mode, and clock
-source. Throughput rounds use `CLOCK_MONOTONIC_RAW` with one read at each round
+source. Queue settings record the device queue count and depth per queue.
+Throughput rounds use `CLOCK_MONOTONIC_RAW` with one read at each round
 boundary. Latency rounds store the sampling interval and every raw sample in
 nanoseconds. The runner calculates p50, p90, p99, and p99.9 with the nearest
 rank method across all measured rounds. A VMM version is omitted when the
@@ -153,5 +172,5 @@ host load stable and run enough rounds to expose variance.
 
 This runner measures request throughput or sampled request latency in the
 current split queue workload over PCI. It is not a replacement for storage
-benchmarks such as fio. Packed queues, indirect descriptors, and multiple
-device queues are candidates for additional work.
+benchmarks such as fio. Packed queues, indirect descriptors, and network
+multiqueue are candidates for additional work.
