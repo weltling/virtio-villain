@@ -15,6 +15,7 @@
 #include "lib/virtio_pci.h"
 #include "lib/virtio_spec.h"
 #include "lib/vring.h"
+#include "lib/vring_packed.h"
 
 #define PERF_BLOCK_SIZE 4096
 #define DEFAULT_ITERATIONS 10000
@@ -25,6 +26,7 @@
 #define MAX_QUEUES 16
 #define MAX_WORKLOAD_QUEUES 2
 #define MAX_DEVICE_QUEUES 16
+#define MAX_CHAIN_DESCRIPTORS 3
 #define PERF_BLOCK_SECTORS (PERF_BLOCK_SIZE / 512)
 
 enum perf_block_pattern {
@@ -57,7 +59,14 @@ enum perf_request_result {
 
 struct perf_queue_request {
     struct vring *vr;
+    struct vring_packed *packed_vr;
     struct perf_request_slot slots[MAX_QUEUE_DEPTH];
+    struct perf_descriptor_chain {
+        struct vring_desc descriptors[MAX_CHAIN_DESCRIPTORS];
+        struct vring_packed_desc *indirect;
+        unsigned count;
+        bool use_indirect;
+    } chains[MAX_QUEUE_DEPTH];
 };
 
 struct perf_workload;
@@ -89,6 +98,7 @@ struct perf_workload {
     unsigned latency_complete_request;
     bool event_idx;
     bool indirect;
+    bool packed;
     bool block_write;
     enum perf_block_pattern block_pattern;
     uint64_t block_request_count;
@@ -325,6 +335,49 @@ static int submit_slots(struct virtio_dev *dev,
         heads[i] = slot->head;
     }
     perf_latency_start(latency, request_index, operation, queue, first, count);
+    if (request->packed_vr) {
+        for (unsigned i = 0; i < count; i++) {
+            unsigned slot_index = first + i;
+            struct perf_descriptor_chain *chain =
+                &request->chains[slot_index];
+            struct vring_packed_desc descriptors[MAX_CHAIN_DESCRIPTORS];
+            unsigned packed_count = chain->count;
+
+            for (unsigned entry = 0; entry < chain->count; entry++) {
+                descriptors[entry] = (struct vring_packed_desc){
+                    .addr = chain->descriptors[entry].addr,
+                    .len = chain->descriptors[entry].len,
+                    .id = request->slots[slot_index].id,
+                    .flags = chain->descriptors[entry].flags,
+                };
+            }
+            if (chain->indirect == NULL && chain->use_indirect) {
+                chain->indirect = vv_alloc_pages(1);
+            }
+            if (chain->indirect) {
+                for (unsigned entry = 0; entry < chain->count; entry++) {
+                    chain->indirect[entry] = descriptors[entry];
+                    chain->indirect[entry].id =
+                        request->slots[slot_index].id;
+                }
+                descriptors[0] = (struct vring_packed_desc){
+                    .addr = vv_virt_to_phys(chain->indirect),
+                    .len = chain->count * sizeof(*chain->indirect),
+                    .id = request->slots[slot_index].id,
+                    .flags = VRING_PACKED_DESC_F_INDIRECT,
+                };
+                packed_count = 1;
+            }
+            if (vring_packed_submit_chain(
+                    request->packed_vr, descriptors, packed_count,
+                    request->slots[slot_index].id,
+                    &(uint16_t){0}, &(uint8_t){0}) < 0)
+                return -1;
+        }
+        virtio_pci_kick(dev, request->packed_vr->queue);
+        perf_stats_submit(stats, count, true);
+        return 0;
+    }
     uint16_t old_idx = request->vr->avail->idx;
     vring_submit_batch(request->vr, heads, count);
     bool notify = !event_idx ||
@@ -342,6 +395,30 @@ static int complete_next(struct perf_queue_request *request,
                          struct perf_latency *latency,
                          unsigned request_index, unsigned queue)
 {
+    if (request->packed_vr) {
+        for (;;) {
+            uint16_t id;
+            uint32_t len;
+
+            if (vring_packed_next_used(request->packed_vr, &id, &len) < 0) {
+                __sync_synchronize();
+                continue;
+            }
+            int slot = perf_slots_complete(request->slots, active_slots, id);
+            if (slot < 0)
+                return -1;
+            unsigned descriptor_count =
+                request->chains[slot].use_indirect ? 1 :
+                request->chains[slot].count;
+            vring_packed_advance_used(request->packed_vr, descriptor_count);
+            perf_stats_complete(stats);
+            if (perf_latency_complete(latency, request_index, queue, slot) < 0)
+                return -1;
+            if (lengths)
+                lengths[slot] = len;
+            return slot;
+        }
+    }
     while (request->vr->used->idx == *used_idx)
         __sync_synchronize();
     struct vring_used_elem *used =
@@ -548,10 +625,15 @@ static const char *request_error(enum perf_request_result result)
 
 static uint16_t prepare_chain(struct vring *vr, unsigned slot,
                               const struct vring_desc *descriptors,
-                              unsigned count, bool indirect)
+                              unsigned count, bool indirect,
+                              struct perf_queue_request *request)
 {
     uint16_t head = indirect ? slot : slot * count;
 
+    memcpy(request->chains[slot].descriptors, descriptors,
+           count * sizeof(*descriptors));
+    request->chains[slot].count = count;
+        request->chains[slot].use_indirect = indirect;
     if (indirect) {
         struct vring_desc *table = vv_alloc_pages(1);
 
@@ -615,7 +697,7 @@ static int prepare_blk(struct virtio_dev *dev, struct vring *vr,
             if (workload->block_write)
                 memset(data, 0x42, PERF_BLOCK_SIZE);
             uint16_t head = prepare_chain(request->vr, slot, descriptors, 3,
-                                          workload->indirect);
+                                          workload->indirect, request);
             workload->block_header[queue][slot] = header;
             workload->status[queue][slot] = status;
             perf_slot_init(&request->slots[slot], head, head, header);
@@ -664,7 +746,8 @@ static int prepare_rng(struct virtio_dev *dev, struct vring *vr,
         };
 
         uint16_t head = prepare_chain(vr, slot, &descriptor, 1,
-                                      workload->indirect);
+                                      workload->indirect,
+                                      &workload->requests[0]);
         perf_slot_init(&workload->requests[0].slots[slot], head, head, data);
     }
     workload->requests[0].vr = vr;
@@ -723,7 +806,8 @@ static int prepare_net(struct virtio_dev *dev, struct vring *vr,
         frame[13] = 0x00;
         memset(frame + 14, 0x42, 50);
         uint16_t head = prepare_chain(vr, slot, descriptors, 2,
-                          workload->indirect);
+                                      workload->indirect,
+                                      &workload->requests[0]);
         perf_slot_init(&workload->requests[0].slots[slot], head, head,
                        header);
     }
@@ -762,7 +846,8 @@ static int prepare_vsock(struct virtio_dev *dev, struct vring *vr,
             .len = sizeof(*header),
         };
         uint16_t head = prepare_chain(vr, slot, &descriptor, 1,
-                                      workload->indirect);
+                                      workload->indirect,
+                                      &workload->requests[1]);
         perf_slot_init(&workload->requests[1].slots[slot], head, head,
                        header);
         workload->vsock_request[slot] = header;
@@ -899,6 +984,7 @@ int main(void)
 {
     struct virtio_dev dev;
     struct vring queues[MAX_QUEUES];
+    struct vring_packed packed_queues[MAX_QUEUES];
     struct vring *vr;
     struct perf_workload workload;
     struct perf_run_stats stats;
@@ -909,6 +995,7 @@ int main(void)
     char experiment[16];
     char changed[32];
     char timing_mode[16];
+    char queue_format[16];
     char descriptor_layout[16];
     char notification_policy[16];
     char block_operation[16];
@@ -936,6 +1023,8 @@ int main(void)
     read_cmdline_string("vv.perf_changed", changed, sizeof(changed), "none");
     read_cmdline_string("vv.perf_timing_mode", timing_mode,
                         sizeof(timing_mode), "throughput");
+    read_cmdline_string("vv.perf_queue_format", queue_format,
+                        sizeof(queue_format), "split");
     read_cmdline_string("vv.perf_descriptor_layout", descriptor_layout,
                         sizeof(descriptor_layout), "direct");
     read_cmdline_string("vv.perf_notification_policy", notification_policy,
@@ -981,6 +1070,16 @@ int main(void)
         printf("VVPERF error=notification_policy\n");
         shutdown_guest(1);
     }
+    if (strcmp(queue_format, "packed") == 0)
+        workload.packed = true;
+    else if (strcmp(queue_format, "split") != 0) {
+        printf("VVPERF error=queue_format\n");
+        shutdown_guest(1);
+    }
+    if (workload.packed && workload.event_idx) {
+        printf("VVPERF error=packed_event_idx_unsupported\n");
+        shutdown_guest(1);
+    }
     if (strcmp(timing_mode, "latency") == 0) {
         if (perf_latency_init(&latency, sample_every, iterations,
                               workload.latency_start_request,
@@ -1019,6 +1118,13 @@ int main(void)
         }
         wanted_features |= (unsigned __int128)1 << VIRTIO_F_EVENT_IDX;
     }
+    if (workload.packed) {
+        if (!virtio_pci_feature_offered(&dev, VIRTIO_F_RING_PACKED)) {
+            printf("VVPERF error=packed_unsupported\n");
+            shutdown_guest(1);
+        }
+        wanted_features |= (unsigned __int128)1 << VIRTIO_F_RING_PACKED;
+    }
     if (virtio_pci_init_features(&dev, wanted_features) < 0) {
         printf("VVPERF error=device_init\n");
         shutdown_guest(1);
@@ -1042,7 +1148,13 @@ int main(void)
             shutdown_guest(1);
         }
         vring_alloc(&queues[queue], queue_size);
-        vring_attach(&dev, &queues[queue], queue);
+        queues[queue].queue = queue;
+        if (workload.packed) {
+            vring_packed_alloc(&packed_queues[queue], queue_size);
+            vring_packed_attach(&dev, &packed_queues[queue], queue);
+        } else {
+            vring_attach(&dev, &queues[queue], queue);
+        }
     }
     vr = &queues[workload.queue];
 
@@ -1074,11 +1186,24 @@ int main(void)
                 .flags = VRING_DESC_F_WRITE,
             };
             uint16_t head = prepare_chain(&queues[0], slot, &descriptor, 1,
-                                          workload.indirect);
+                                          workload.indirect,
+                                          &workload.requests[0]);
             perf_slot_init(&workload.requests[0].slots[slot], head, head,
                            workload.response[slot]);
         }
         workload.requests[0].vr = &queues[0];
+    }
+    if (workload.packed) {
+        unsigned packed_request_count =
+            workload.device_id == VIRTIO_PCI_DEVICE_BLK ?
+            workload.device_queues : workload.request_count;
+
+        for (unsigned request = 0; request < packed_request_count;
+             request++) {
+            unsigned queue = workload.requests[request].vr->queue;
+
+            workload.requests[request].packed_vr = &packed_queues[queue];
+        }
     }
 
     dev.common->device_status |= VIRTIO_STATUS_DRIVER_OK;
@@ -1124,7 +1249,7 @@ int main(void)
         printf("VVPERF version=3 experiment=%s changed=%s "
                "workload=%s operation=%s address_pattern=%s round=%u "
                "request_bytes=%u "
-               "iterations=%u duration_ns=%llu queue_format=split "
+               "iterations=%u duration_ns=%llu queue_format=%s "
                "descriptor_layout=%s notification_policy=%s "
                "queue_depth=%u batch_size=%u device_queues=%u "
                "submissions=%llu "
@@ -1134,7 +1259,8 @@ int main(void)
                workload.device_id == VIRTIO_PCI_DEVICE_BLK ?
                    block_pattern : "none",
                round + 1, workload.request_size, iterations,
-               (unsigned long long)duration_ns, descriptor_layout,
+               (unsigned long long)duration_ns, queue_format,
+               descriptor_layout,
                notification_policy,
                workload.queue_depth,
                batch_size, device_queues,

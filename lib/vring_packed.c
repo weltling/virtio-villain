@@ -9,7 +9,9 @@ int vring_packed_alloc(struct vring_packed *vr, uint16_t size)
 {
     vr->size = size;
     vr->next_avail = 0;
+    vr->next_used = 0;
     vr->wrap_counter = 1;
+    vr->used_wrap_counter = 1;
 
     /* Descriptor ring: size * 16 bytes, page-aligned */
     size_t desc_pages = (size * sizeof(struct vring_packed_desc) +
@@ -96,4 +98,71 @@ int virtio_pci_init_packed(struct virtio_dev *dev)
         usleep(1000);
     }
     return -1;
+}
+
+int vring_packed_submit_chain(struct vring_packed *vr,
+                              const struct vring_packed_desc *descriptors,
+                              unsigned count, uint16_t id,
+                              uint16_t *head, uint8_t *head_wrap)
+{
+    if (count == 0 || count > vr->size)
+        return -1;
+
+    uint16_t indexes[count];
+    uint8_t wraps[count];
+
+    *head = vr->next_avail;
+    *head_wrap = vr->wrap_counter;
+    for (unsigned entry = 0; entry < count; entry++) {
+        indexes[entry] = vr->next_avail;
+        wraps[entry] = vr->wrap_counter;
+        struct vring_packed_desc *destination = &vr->desc[vr->next_avail];
+        uint16_t unavailable = vr->wrap_counter ? 0 :
+                               VRING_PACKED_DESC_F_AVAIL |
+                               VRING_PACKED_DESC_F_USED;
+
+        destination->addr = descriptors[entry].addr;
+        destination->len = descriptors[entry].len;
+        destination->id = id;
+        destination->flags = descriptors[entry].flags | unavailable;
+        vring_packed_advance(vr);
+    }
+    __sync_synchronize();
+    for (unsigned entry = count; entry > 1; entry--) {
+        unsigned index = entry - 1;
+        uint16_t phase = wraps[index] ? VRING_PACKED_DESC_F_AVAIL :
+                         VRING_PACKED_DESC_F_USED;
+
+        vr->desc[indexes[index]].flags = descriptors[index].flags | phase;
+    }
+    __sync_synchronize();
+    uint16_t phase = wraps[0] ? VRING_PACKED_DESC_F_AVAIL :
+                     VRING_PACKED_DESC_F_USED;
+    vr->desc[indexes[0]].flags = descriptors[0].flags | phase;
+    __sync_synchronize();
+    return 0;
+}
+
+int vring_packed_next_used(struct vring_packed *vr, uint16_t *id,
+                           uint32_t *len)
+{
+    if (!vring_packed_desc_is_used(vr, vr->next_used,
+                                   vr->used_wrap_counter))
+        return -1;
+    if (id)
+        *id = vr->desc[vr->next_used].id;
+    if (len)
+        *len = vr->desc[vr->next_used].len;
+    return 0;
+}
+
+void vring_packed_advance_used(struct vring_packed *vr, unsigned count)
+{
+    while (count--) {
+        vr->next_used++;
+        if (vr->next_used >= vr->size) {
+            vr->next_used = 0;
+            vr->used_wrap_counter ^= 1;
+        }
+    }
 }

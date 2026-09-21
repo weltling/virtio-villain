@@ -88,6 +88,21 @@ device that does not offer the feature, and each result records the negotiated
 feature mask. Compare direct and indirect reports as a queue experiment with
 `descriptor_layout` as the changed dimension.
 
+Use `--queue-format packed` to submit the same workload through a packed
+virtqueue. Split queues remain the default. Queue depth, batch size, descriptor
+layout, workload, and timing controls have the same meaning in both formats.
+
+```bash
+./run-perf -m ./openvmm --device blk \
+	--queue-format packed --queue-depth 16 --batch-size 4
+```
+
+Packed mode requires packed ring feature bit 34. The guest rejects a device
+that does not offer the feature. QEMU block, network, and RNG complete in
+packed mode. OpenVMM block also completes. The current Cloud Hypervisor block
+device and QEMU vsock device do not offer packed queues. Compare split and
+packed reports as a queue experiment with `format` as the changed dimension.
+
 Use `--notification-policy event_idx` to negotiate the event index feature.
 The guest reads the device supplied available event value after each batch and
 notifies the device only when the event threshold is crossed. The default
@@ -101,7 +116,8 @@ notifies the device only when the event threshold is crossed. The default
 Event index mode requires feature bit 29. Notification counts record the kicks
 that the guest sends, so a device can suppress some or all batch notifications.
 Compare the policies as a queue experiment with `notification_policy` as the
-changed dimension.
+changed dimension. Event index notification policy currently requires a split
+queue.
 
 ```bash
 ./run-perf -m ./cloud-hypervisor --warmup 5000 --rounds 10 -n 50000
@@ -147,8 +163,9 @@ JSON schema version 3 separates experiment, host, guest, VMM, execution, queue,
 workload, backend, instrumentation, and timing settings. Each sample records
 request bytes, submissions, completions, notifications, timing mode, and clock
 source. Queue settings record the device queue count and depth per queue.
-The queue settings also record the direct or indirect descriptor layout.
-They record the notification policy and negotiated feature mask as well.
+The queue settings also record the split or packed format and the direct or
+indirect descriptor layout. They record the notification policy and negotiated
+feature mask as well.
 Throughput rounds use `CLOCK_MONOTONIC_RAW` with one read at each round
 boundary. Latency rounds store the sampling interval and every raw sample in
 nanoseconds. The runner calculates p50, p90, p99, and p99.9 with the nearest
@@ -202,6 +219,5 @@ host load stable and run enough rounds to expose variance.
 ## Scope
 
 This runner measures request throughput or sampled request latency in the
-current split queue workload over PCI. It is not a replacement for storage
-benchmarks such as fio. Packed queues and network multiqueue are candidates
-for additional work.
+current virtqueue workload over PCI. It is not a replacement for storage
+benchmarks such as fio. Network multiqueue is a candidate for additional work.

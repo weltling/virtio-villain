@@ -92,7 +92,8 @@ PERF_SRCS = bin/perf.c \
             lib/pci.c \
             lib/perf_engine.c \
             lib/virtio_pci.c \
-            lib/vring.c
+            lib/vring.c \
+            lib/vring_packed.c
 
 PERF_OBJS = $(patsubst %.c,$(OBJDIR)/perf/%.o,$(PERF_SRCS))
 PERF_DEPS = $(PERF_OBJS:.o=.d)
@@ -140,8 +141,13 @@ selftest: selftest/test_lib
 	@echo "selftest/perf:"
 	@python3 selftest/test_perf.py
 
-selftest/test_lib: selftest/test_lib.c lib/perf_engine.c lib/perf_engine.h lib/vring.c lib/vring.h tests/test.h
-	$(CC) -O2 -Wall -Wextra -I. -o $@ selftest/test_lib.c lib/perf_engine.c lib/vring.c
+selftest/test_lib: selftest/test_lib.c \
+		   lib/perf_engine.c lib/perf_engine.h \
+		   lib/vring.c lib/vring.h \
+		   lib/vring_packed.c lib/vring_packed.h \
+		   tests/test.h
+	$(CC) -O2 -Wall -Wextra -I. -o $@ selftest/test_lib.c \
+	  lib/perf_engine.c lib/vring.c lib/vring_packed.c
 
 PY_SRCS = run run-fuzz run-perf $(shell find selftest tests -name '*.py' 2>/dev/null)
 

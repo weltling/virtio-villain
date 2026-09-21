@@ -41,6 +41,7 @@ LATENCY_PREFIX = "VVPERF_LATENCY "
 VIRTIO_BLK_F_MQ = 12
 VIRTIO_F_INDIRECT_DESC = 28
 VIRTIO_F_EVENT_IDX = 29
+VIRTIO_F_RING_PACKED = 34
 RESULT_FIELDS = {
     "version", "experiment", "changed", "workload", "operation",
     "address_pattern", "round", "request_bytes", "iterations", "duration_ns",
@@ -203,6 +204,11 @@ def parse_results(output):
                 raise RuntimeError("Indirect result lacks descriptor feature")
         elif fields["descriptor_layout"] != "direct":
             raise RuntimeError("Performance result has an invalid descriptor layout")
+        if fields["queue_format"] == "packed":
+            if not negotiated_features & (1 << VIRTIO_F_RING_PACKED):
+                raise RuntimeError("Packed result lacks packed ring feature")
+        elif fields["queue_format"] != "split":
+            raise RuntimeError("Performance result has an invalid queue format")
         if fields["notification_policy"] == "event_idx":
             if not negotiated_features & (1 << VIRTIO_F_EVENT_IDX):
                 raise RuntimeError("Event index result lacks event index feature")
@@ -380,6 +386,7 @@ def run_guest(args, runner):
             f"vv.perf_batch_size={args.batch_size} "
             f"vv.perf_device_queues={args.device_queues} "
             f"vv.perf_descriptor_layout={args.descriptor_layout} "
+            f"vv.perf_queue_format={args.queue_format} "
             f"vv.perf_notification_policy={args.notification_policy} "
             f"vv.perf_timing_mode={args.timing_mode} "
             f"vv.perf_sample_every={args.sample_every} "
@@ -393,7 +400,7 @@ def run_guest(args, runner):
             "direct": args.direct,
             "exit_on_guest_end": True, "fuzz_device": args.device,
             "io_engine": args.io_engine, "memory": args.memory,
-            "net_queues": 2, "packed": False,
+            "net_queues": 2, "packed": args.queue_format == "packed",
         }
         if backend.name == "qemu" and args.timing_mode == "latency":
             opts["cpu_model"] = "host"
@@ -658,6 +665,8 @@ def parse_args(argv=None):
                         default=1)
     parser.add_argument("--descriptor-layout", choices=("direct", "indirect"),
                         default="direct")
+    parser.add_argument("--queue-format", choices=("split", "packed"),
+                        default="split")
     parser.add_argument("--notification-policy", choices=("always", "event_idx"),
                         default="always")
     parser.add_argument("--timing-mode", choices=("throughput", "latency"),
@@ -698,6 +707,8 @@ def parse_args(argv=None):
         parser.error("block operation and pattern require --device blk")
     if args.device != "blk" and args.device_queues != 1:
         parser.error("multiple device queues require --device blk")
+    if args.queue_format == "packed" and args.notification_policy == "event_idx":
+        parser.error("event index notification policy requires a split queue")
     return args
 
 
@@ -721,6 +732,7 @@ def format_human(report, verbose=False):
         "",
         f"Request size:  {request_size_text}",
         f"Queue depth:   {report['queue']['depth']}",
+        f"Queue format:  {report['queue']['format']}",
         f"Device queues: {report['queue']['device_queues']}",
         f"Descriptors:   {report['queue']['descriptor_layout']}",
         f"Notifications: {report['queue']['notification_policy']}",

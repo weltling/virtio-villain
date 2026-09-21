@@ -190,6 +190,11 @@ def main():
             "features=0x0", "features=0x10000000")
     indirect_samples = module.parse_results(indirect_output)
     assert indirect_samples[0]["descriptor_layout"] == "indirect"
+    packed_output = output.replace(
+        "queue_format=split", "queue_format=packed").replace(
+            "features=0x0", "features=0x400000000")
+    packed_samples = module.parse_results(packed_output)
+    assert packed_samples[0]["queue_format"] == "packed"
     event_idx_output = output.replace(
         "notification_policy=always", "notification_policy=event_idx").replace(
             "notifications=100", "notifications=0").replace(
@@ -255,6 +260,14 @@ def main():
         "Indirect result lacks descriptor feature")
     expect_runtime_error(
         lambda: module.parse_results(output.replace(
+            "queue_format=split", "queue_format=unknown")),
+        "invalid queue format")
+    expect_runtime_error(
+        lambda: module.parse_results(output.replace(
+            "queue_format=split", "queue_format=packed")),
+        "Packed result lacks packed ring feature")
+    expect_runtime_error(
+        lambda: module.parse_results(output.replace(
             "notification_policy=always", "notification_policy=unknown")),
         "invalid notification policy")
     expect_runtime_error(
@@ -310,6 +323,8 @@ def main():
         ["-m", "vmm", "--descriptor-layout", "indirect"]).descriptor_layout == (
             "indirect")
     assert module.parse_args(
+        ["-m", "vmm", "--queue-format", "packed"]).queue_format == "packed"
+    assert module.parse_args(
         ["-m", "vmm", "--notification-policy", "event_idx"]
     ).notification_policy == "event_idx"
     assert module.parse_args(
@@ -345,6 +360,12 @@ def main():
             assert False
         except ValueError:
             pass
+        try:
+            module.parse_args(["-m", "vmm", "--queue-format", "packed",
+                               "--notification-policy", "event_idx"])
+            assert False
+        except ValueError:
+            pass
     cmdline_args = module.parse_args(
         ["-m", "vmm", "--device", "blk", "--queue-depth", "16",
          "--batch-size", "16"])
@@ -361,6 +382,7 @@ def main():
     assert "vv.perf_batch_size=16" in guest_cmdline
     assert "vv.perf_device_queues=1" in guest_cmdline
     assert "vv.perf_descriptor_layout=direct" in guest_cmdline
+    assert "vv.perf_queue_format=split" in guest_cmdline
     assert "vv.perf_notification_policy=always" in guest_cmdline
     assert "vv.perf_block_operation=read" in guest_cmdline
     assert "vv.perf_block_pattern=fixed" in guest_cmdline
@@ -391,6 +413,16 @@ def main():
             fetch_kernel=mock.Mock(return_value="kernel")))
     indirect_cmdline = command_backend.build_cmd.call_args.args[3]
     assert "vv.perf_descriptor_layout=indirect" in indirect_cmdline
+    packed_args = module.parse_args(
+        ["-m", "vmm", "--queue-format", "packed"])
+    with mock.patch.object(module, "run_vmm", return_value=packed_samples):
+        module.run_guest(packed_args, mock.Mock(
+            detect_vmm=mock.Mock(return_value=command_backend),
+            fetch_kernel=mock.Mock(return_value="kernel")))
+    packed_cmdline = command_backend.build_cmd.call_args.args[3]
+    packed_opts = command_backend.build_cmd.call_args.args[4]
+    assert "vv.perf_queue_format=packed" in packed_cmdline
+    assert packed_opts["packed"] is True
     event_idx_args = module.parse_args(
         ["-m", "vmm", "--notification-policy", "event_idx"])
     with mock.patch.object(module, "run_vmm", return_value=event_idx_samples):
@@ -432,6 +464,8 @@ def main():
             queue_args, backend, multiqueue_samples, "/boot/vmlinux")
         indirect_report = module.make_report(
             indirect_args, backend, indirect_samples, "/boot/vmlinux")
+        packed_report = module.make_report(
+            packed_args, backend, packed_samples, "/boot/vmlinux")
         event_idx_report = module.make_report(
             event_idx_args, backend, event_idx_samples, "/boot/vmlinux")
     assert report["schema_version"] == 3
@@ -444,6 +478,7 @@ def main():
     assert queue_report["execution"]["cpus"] == 4
     assert queue_report["queue"]["negotiated_features"] == "0x1000"
     assert indirect_report["queue"]["descriptor_layout"] == "indirect"
+    assert packed_report["queue"]["format"] == "packed"
     assert event_idx_report["queue"]["notification_policy"] == "event_idx"
     assert report["timing"] == {
         "mode": "throughput", "clock_source": "CLOCK_MONOTONIC_RAW",
@@ -467,6 +502,10 @@ def main():
     assert module.compatibility_mismatches(report, report) == []
     changed = module.json.loads(module.json.dumps(report))
     changed["queue"]["depth"] = 16
+    assert module.compatibility_mismatches(report, changed) == []
+    report["experiment"]["changed_dimension"] = "format"
+    changed = module.json.loads(module.json.dumps(report))
+    changed["queue"]["format"] = "packed"
     assert module.compatibility_mismatches(report, changed) == []
     report["experiment"]["changed_dimension"] = "notification_policy"
     changed = module.json.loads(module.json.dumps(report))
@@ -588,6 +627,7 @@ def main():
     assert "Notify ratio:  1.0000 per submission" in human
     assert "Payload rate: 260.42 MiB/s" in human
     assert "Queue depth:   1" in human
+    assert "Queue format:  split" in human
     assert "Device queues: 1" in human
     assert "Descriptors:   direct" in human
     assert "Notifications: always" in human

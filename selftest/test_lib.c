@@ -13,6 +13,7 @@
 
 #include "../lib/perf_engine.h"
 #include "../lib/vring.h"
+#include "../lib/vring_packed.h"
 #include "../tests/test.h"
 
 static int tests_run;
@@ -205,6 +206,66 @@ static void test_perf_slot_lifecycle(void)
     CHECK(perf_slot_prepare(&slot) == 0, "completed slot can be prepared");
 }
 
+static void test_vring_packed_submit_chain(void)
+{
+      struct vring_packed_desc ring[4] = {0};
+      struct vring_packed vr = {
+          .desc = ring,
+          .size = 4,
+          .next_avail = 3,
+          .wrap_counter = 1,
+      };
+      const struct vring_packed_desc chain[3] = {
+          {.addr = 1, .len = 10, .flags = VRING_PACKED_DESC_F_NEXT},
+          {.addr = 2, .len = 20, .flags = VRING_PACKED_DESC_F_NEXT |
+                                     VRING_PACKED_DESC_F_WRITE},
+          {.addr = 3, .len = 30, .flags = VRING_PACKED_DESC_F_WRITE},
+      };
+      uint16_t head;
+      uint8_t wrap;
+
+      CHECK(vring_packed_submit_chain(&vr, chain, 3, 7, &head, &wrap) == 0,
+            "packed chain submission succeeds");
+      CHECK(head == 3 && wrap == 1,
+            "packed chain retains its head phase");
+      CHECK(vr.next_avail == 2 && vr.wrap_counter == 0,
+            "packed chain advances across ring wrap");
+      CHECK(ring[3].id == 7 && ring[0].id == 7 && ring[1].id == 7,
+            "packed chain uses one request identifier");
+      CHECK((ring[3].flags & VRING_PACKED_DESC_F_AVAIL) != 0 &&
+            (ring[3].flags & VRING_PACKED_DESC_F_USED) == 0,
+            "packed head is available in its initial phase");
+      CHECK((ring[0].flags & VRING_PACKED_DESC_F_AVAIL) == 0 &&
+            (ring[0].flags & VRING_PACKED_DESC_F_USED) != 0,
+            "packed tail uses the wrapped phase");
+      CHECK(vring_packed_submit_chain(&vr, chain, 0, 7, &head, &wrap) < 0,
+            "empty packed chain is rejected");
+            vr.next_used = 3;
+            vr.used_wrap_counter = 1;
+            ring[3].flags = VRING_PACKED_DESC_F_AVAIL |
+                        VRING_PACKED_DESC_F_USED;
+            ring[3].id = 9;
+            ring[3].len = 99;
+            uint16_t id;
+            uint32_t len;
+            CHECK(vring_packed_next_used(&vr, &id, &len) == 0 &&
+                  id == 9 && len == 99,
+                  "packed used cursor reads completion identity");
+            vring_packed_advance_used(&vr, 3);
+            CHECK(vr.next_used == 2 && vr.used_wrap_counter == 0,
+                  "packed used cursor advances across ring wrap");
+
+                  memset(ring, 0, sizeof(ring));
+                  vr.next_avail = 0;
+                  vr.wrap_counter = 1;
+                  for (unsigned request = 0; request < 12; request++)
+                      CHECK(vring_packed_submit_chain(&vr, chain, 1, request,
+                                               &head, &wrap) == 0,
+                            "packed submission %u completes", request + 1);
+                  CHECK(vr.next_avail == 0 && vr.wrap_counter == 0,
+                        "packed submission survives three complete ring rotations");
+}
+
 static void test_perf_slots_complete_by_identifier(void)
 {
     struct perf_request_slot slots[2];
@@ -315,6 +376,7 @@ int main(void)
       test_vring_submit_wrap();
       test_vring_submit_batch();
       test_vring_event_idx();
+      test_vring_packed_submit_chain();
             test_perf_slot_lifecycle();
             test_perf_slots_complete_by_identifier();
             test_perf_batch_accounting();

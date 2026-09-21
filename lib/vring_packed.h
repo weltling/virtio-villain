@@ -47,8 +47,10 @@ struct vring_packed {
     uint64_t device_event_phys;
     uint16_t size;
     uint16_t next_avail;
+    uint16_t next_used;
     uint16_t queue;
     uint8_t  wrap_counter;
+    uint8_t  used_wrap_counter;
 };
 
 /* Allocate packed vring structures (page aligned). */
@@ -66,6 +68,14 @@ void vring_packed_attach(struct virtio_dev *dev, struct vring_packed *vr,
  * Returns 0 on success, -1 if device does not offer packed queues.
  */
 int virtio_pci_init_packed(struct virtio_dev *dev);
+
+int vring_packed_submit_chain(struct vring_packed *vr,
+                              const struct vring_packed_desc *descriptors,
+                              unsigned count, uint16_t id,
+                              uint16_t *head, uint8_t *head_wrap);
+int vring_packed_next_used(struct vring_packed *vr, uint16_t *id,
+                           uint32_t *len);
+void vring_packed_advance_used(struct vring_packed *vr, unsigned count);
 
 /*
  * Set a packed descriptor with proper AVAIL/USED flag handling.
