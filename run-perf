@@ -471,6 +471,7 @@ def run_guest(args, runner):
             f"vv.perf_changed={args.changed_dimension}")
         opts = {
             "blk_queues": args.device_queues,
+            "blk_iommu": False,
             "cpus": max(args.cpus, args.device_queues),
             "direct": args.direct,
             "exit_on_guest_end": True, "fuzz_device": args.device,

@@ -454,7 +454,9 @@ class CloudHypervisor(VmmBackend):
         """
         engine = opts.get("io_engine", "default")
         arg = (f"path={disk_path},image_type={disk_fmt}"
-               f",num_queues={blk_queues},iommu=on")
+               f",num_queues={blk_queues}")
+        if opts.get("blk_iommu", True):
+            arg += ",iommu=on"
         if engine == "aio":
             arg += ",_disable_io_uring=on"
         elif engine == "sync":

@@ -634,6 +634,14 @@ def test_unit_ch_io_engine_default_has_no_toggles():
     assert "_disable_aio" not in disk
 
 
+def test_unit_ch_block_iommu_can_be_disabled():
+    be = RUN_MOD.CloudHypervisor("/usr/bin/cloud-hypervisor")
+    disk = _ch_disk(be.build_cmd(
+        "/k", "/i", "/d.raw", "c",
+        {"blk_queues": 1, "net_queues": 1, "blk_iommu": False}))
+    assert "iommu=on" not in disk
+
+
 def test_unit_ch_io_engine_aio_disables_io_uring():
     be = RUN_MOD.CloudHypervisor("/usr/bin/cloud-hypervisor")
     disk = _ch_disk(be.build_cmd(
