@@ -95,6 +95,15 @@ def main():
     assert destination == ("127.0.0.1", 41000)
     assert frame == bytes.fromhex(
         "ffffffffffff02020202020288b5") + bytes([0x42]) * 50
+    sender = module.NetworkSender(41001, 41000, payload_only=True)
+    sender.socket = mock.Mock()
+    sender.running = True
+    sender.socket.sendto.side_effect = lambda frame, destination: setattr(
+        sender, "running", False)
+    sender._send()
+    frame, destination = sender.socket.sendto.call_args.args
+    assert destination == ("127.0.0.1", 41000)
+    assert frame == bytes([0x42]) * 22
     output = (
         "VVPERF version=3 experiment=queue changed=depth "
         "workload=blk operation=blk_read address_pattern=fixed "
@@ -449,8 +458,29 @@ def main():
     net_rx_cmdline = command_backend.build_cmd.call_args.args[3]
     net_rx_opts = command_backend.build_cmd.call_args.args[4]
     assert "vv.perf_net_operation=receive" in net_rx_cmdline
+    assert "vv.perf_net_header_size=10" in net_rx_cmdline
     assert net_rx_opts["net_rx_source_port"] == 41001
     assert net_rx_opts["net_rx_port"] == 41000
+    sender.return_value.start.assert_called_once_with()
+    sender.return_value.stop.assert_called_once_with()
+    openvmm_backend = mock.Mock(name="openvmm_backend")
+    openvmm_backend.name = "openvmm"
+    openvmm_backend.console_device = "ttyS0"
+    openvmm_backend.build_cmd.return_value = ["openvmm"]
+    with mock.patch.object(module, "run_vmm",
+                           return_value=network_receive_samples), \
+            mock.patch.object(module, "unused_udp_port",
+                              side_effect=[41001, 41000]), \
+            mock.patch.object(module, "NetworkSender") as sender:
+        module.run_guest(net_rx_args, mock.Mock(
+            detect_vmm=mock.Mock(return_value=openvmm_backend),
+            fetch_kernel=mock.Mock(return_value="kernel")))
+    net_rx_cmdline = openvmm_backend.build_cmd.call_args.args[3]
+    net_rx_opts = openvmm_backend.build_cmd.call_args.args[4]
+    assert "vv.perf_net_header_size=12" in net_rx_cmdline
+    assert net_rx_opts["net_rx_port"] == 41000
+    assert "net_rx_source_port" not in net_rx_opts
+    sender.assert_called_once_with(41001, 41000, payload_only=True)
     sender.return_value.start.assert_called_once_with()
     sender.return_value.stop.assert_called_once_with()
     ch_backend = mock.Mock(name="ch_backend")
@@ -722,6 +752,10 @@ def main():
         "type": "network", "endpoint": "socket"}
     assert "virtio network receive throughput" in net_rx_human
     assert "Payload rate:" in net_rx_human
+    openvmm_net_rx_report = module.make_report(
+        net_rx_args, backend, network_receive_samples, "/boot/vmlinux")
+    assert openvmm_net_rx_report["backend"] == {
+        "type": "network", "endpoint": "consomme"}
     report["queue"]["depth"] = 16
     assert "Queue depth:   16" in module.format_human(report)
     assert "vsock" not in module.BACKEND_DEVICES["openvmm"]

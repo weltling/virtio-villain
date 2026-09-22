@@ -110,9 +110,10 @@ class VsockListener:
 
 
 class NetworkSender:
-    def __init__(self, source_port, destination_port):
+    def __init__(self, source_port, destination_port, payload_only=False):
         self.source_port = source_port
         self.destination_port = destination_port
+        self.payload_only = payload_only
         self.socket = None
         self.thread = None
         self.running = False
@@ -125,7 +126,11 @@ class NetworkSender:
         self.thread.start()
 
     def _send(self):
-        frame = bytes.fromhex("ffffffffffff02020202020288b5") + bytes([0x42]) * 50
+        if self.payload_only:
+            frame = bytes([0x42]) * 22
+        else:
+            frame = (bytes.fromhex("ffffffffffff02020202020288b5") +
+                     bytes([0x42]) * 50)
         destination = ("127.0.0.1", self.destination_port)
         while self.running:
             try:
@@ -442,6 +447,7 @@ def run_guest(args, runner):
             f"vv.perf_block_operation={args.block_operation} "
             f"vv.perf_block_pattern={args.block_pattern} "
             f"vv.perf_net_operation={args.net_operation} "
+            f"vv.perf_net_header_size={12 if backend.name == 'openvmm' else 10} "
             f"vv.perf_experiment={args.experiment_class} "
             f"vv.perf_changed={args.changed_dimension}")
         opts = {
@@ -454,7 +460,7 @@ def run_guest(args, runner):
         }
         network_sender = None
         if args.device == "net" and args.net_operation == "receive":
-            if backend.name != "qemu":
+            if backend.name not in {"openvmm", "qemu"}:
                 raise RuntimeError(
                     f"{backend.name} does not provide network receive injection")
             source_port = unused_udp_port()
@@ -462,8 +468,11 @@ def run_guest(args, runner):
             while destination_port == source_port:
                 destination_port = unused_udp_port()
             opts["net_rx_port"] = destination_port
-            opts["net_rx_source_port"] = source_port
-            network_sender = NetworkSender(source_port, destination_port)
+            if backend.name == "qemu":
+                opts["net_rx_source_port"] = source_port
+            network_sender = NetworkSender(
+                source_port, destination_port,
+                payload_only=backend.name == "openvmm")
         if backend.name == "qemu" and args.timing_mode == "latency":
             opts["cpu_model"] = "host"
         cmd = backend.build_cmd(kernel, initramfs, disk, cmdline, opts)
@@ -524,6 +533,7 @@ def make_report(args, backend, samples, kernel):
         endpoints = {"qemu": "user", "ch": "tap", "openvmm": "consomme"}
         resource = {"type": "network",
                     "endpoint": ("socket" if sample["operation"] == "net_rx"
+                                 and backend.name == "qemu"
                                  else endpoints[backend.name])}
     elif sample["workload"] == "rng":
         source = ("default" if backend.name == "openvmm" else "/dev/urandom")

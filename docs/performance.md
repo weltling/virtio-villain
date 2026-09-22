@@ -32,13 +32,15 @@ writable receive buffers and measure frames delivered into guest memory.
 ```bash
 ./run-perf -m ./qemu-system-x86_64 --device net \
 	--net-operation receive --queue-depth 16 --batch-size 16
+./run-perf -m ./openvmm --device net \
+	--net-operation receive --queue-depth 16 --batch-size 16
 ```
 
-The runner sends fixed 64 byte Ethernet frames through a QEMU UDP socket
-backend. The guest validates the complete frame before counting an operation.
-Receive reports include delivered payload bytes per second. Network receive
-currently requires QEMU. Cloud Hypervisor TAP setup and OpenVMM Consomme do
-not expose a runner controlled injection endpoint in this workflow.
+For QEMU, the runner sends fixed 64 byte Ethernet frames through a UDP socket
+backend. For OpenVMM, it sends a fixed payload through Consomme UDP forwarding.
+The guest validates the complete frame before counting an operation. Receive
+reports include delivered payload bytes per second. Cloud Hypervisor receive
+still requires a runner controlled TAP setup.
 
 The default run uses 1000 warmup requests followed by five measured rounds
 of 10000 requests. The guest uses one virtual CPU, one block queue, and 256

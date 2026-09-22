@@ -99,6 +99,8 @@ struct perf_workload {
     bool event_idx;
     bool indirect;
     bool packed;
+    bool net_receive;
+    unsigned net_header_size;
     bool block_write;
     enum perf_block_pattern block_pattern;
     uint64_t block_request_count;
@@ -106,7 +108,7 @@ struct perf_workload {
     uint8_t *status[MAX_DEVICE_QUEUES][MAX_QUEUE_DEPTH];
     struct virtio_vsock_hdr *vsock_request[MAX_QUEUE_DEPTH];
     struct virtio_vsock_hdr *response[MAX_QUEUE_DEPTH];
-    struct virtio_net_hdr *net_header[MAX_QUEUE_DEPTH];
+    struct virtio_net_hdr_mrg *net_header[MAX_QUEUE_DEPTH];
     uint8_t *net_frame[MAX_QUEUE_DEPTH];
 };
 
@@ -842,12 +844,12 @@ static int prepare_net_rx(struct virtio_dev *dev, struct vring *vr,
 {
     (void)dev;
     for (unsigned slot = 0; slot < workload->queue_depth; slot++) {
-        struct virtio_net_hdr *header = vv_alloc_pages(1);
+        struct virtio_net_hdr_mrg *header = vv_alloc_pages(1);
         uint8_t *frame = vv_alloc_pages(1);
         struct vring_desc descriptors[2] = {
             {
                 .addr = vv_virt_to_phys(header),
-                .len = sizeof(*header),
+                .len = workload->net_header_size,
                 .flags = VRING_DESC_F_WRITE | VRING_DESC_F_NEXT,
                 .next = 1,
             },
@@ -876,7 +878,7 @@ static void reset_net_rx(struct perf_workload *workload, unsigned queue,
 {
     (void)queue;
     (void)operation;
-    memset(workload->net_header[slot], 0, sizeof(*workload->net_header[slot]));
+    memset(workload->net_header[slot], 0, workload->net_header_size);
     memset(workload->net_frame[slot], 0, workload->request_size);
 }
 
@@ -885,13 +887,23 @@ static int validate_net_rx(struct perf_workload *workload,
                            const uint32_t *lengths)
 {
     uint8_t expected[64];
+    uint8_t *frame = workload->net_frame[slot];
 
     (void)queue;
     fill_net_frame(expected);
-    return lengths[0] == sizeof(*workload->net_header[slot]) +
-                         workload->request_size &&
-           memcmp(workload->net_frame[slot], expected,
-                  workload->request_size) == 0 ? 0 : -1;
+    if (lengths[0] != workload->net_header_size + workload->request_size)
+        return -1;
+    if (memcmp(frame, expected, workload->request_size) == 0)
+        return 0;
+    if (frame[12] != 0x08 || frame[13] != 0x00 || frame[14] != 0x45 ||
+        frame[16] != 0x00 || frame[17] != 50 || frame[23] != 17 ||
+        frame[30] != 10 || frame[31] != 0 || frame[32] != 0 ||
+        frame[33] != 2 || frame[38] != 0 || frame[39] != 30)
+        return -1;
+    for (unsigned index = 42; index < workload->request_size; index++)
+        if (frame[index] != 0x42)
+            return -1;
+    return 0;
 }
 
 static int prepare_vsock(struct virtio_dev *dev, struct vring *vr,
@@ -1042,6 +1054,7 @@ static int select_workload(const char *device, const char *block_operation,
             .queue = receive ? 0 : 1,
             .request_size = 64,
             .ops = receive ? &net_rx_ops : &net_ops,
+            .net_receive = receive,
         };
     } else if (strcmp(device, "vsock") == 0) {
         *workload = (struct perf_workload){
@@ -1098,6 +1111,8 @@ int main(void)
     unsigned batch_size = read_cmdline_value("vv.perf_batch_size", 1);
     unsigned device_queues = read_cmdline_value("vv.perf_device_queues", 1);
     unsigned sample_every = read_cmdline_value("vv.perf_sample_every", 10);
+    unsigned net_header_size = read_cmdline_value("vv.perf_net_header_size",
+                                                   sizeof(struct virtio_net_hdr));
     read_cmdline_string("vv.perf_device", device, sizeof(device), "blk");
     read_cmdline_string("vv.perf_experiment", experiment,
                         sizeof(experiment), "queue");
@@ -1140,7 +1155,13 @@ int main(void)
     }
     workload.queue_depth = queue_depth;
     workload.device_queues = device_queues;
+    workload.net_header_size = net_header_size;
     workload.vrings = queues;
+    if (workload.net_receive && net_header_size != sizeof(struct virtio_net_hdr) &&
+        net_header_size != sizeof(struct virtio_net_hdr_mrg)) {
+        printf("VVPERF error=net_header_size\n");
+        shutdown_guest(1);
+    }
     if (strcmp(descriptor_layout, "indirect") == 0)
         workload.indirect = true;
     else if (strcmp(descriptor_layout, "direct") != 0) {

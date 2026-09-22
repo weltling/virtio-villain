@@ -821,7 +821,12 @@ class OpenVmm(VmmBackend):
         if want("blk"):
             cmd += ["--virtio-blk", self._blk_arg(disk_path, "disk", opts)]
         if want("net"):
-            cmd += ["--virtio-net", "pcie_port=net:consomme"]
+            net_rx_port = opts.get("net_rx_port")
+            endpoint = "pcie_port=net:consomme"
+            if net_rx_port:
+                endpoint += (f":hostfwd=udp:127.0.0.1:{net_rx_port}"
+                             f"-:{net_rx_port}")
+            cmd += ["--virtio-net", endpoint]
         if want("console"):
             # Present but idle, sunk to /dev/null so the console tests can
             # claim it while the runner keeps COM1.

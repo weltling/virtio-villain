@@ -714,6 +714,14 @@ def test_unit_openvmm_build_cmd_net_consomme():
     assert _openvmm_opt(cmd, "--virtio-net") == "pcie_port=net:consomme"
 
 
+def test_unit_openvmm_net_receive_uses_consomme_forwarding():
+    be = RUN_MOD.OpenVmm("/opt/openvmm/openvmm")
+    cmd = be.build_cmd("/k", "/i", "/d.raw", "c",
+                       {"net_rx_port": 41000})
+    assert _openvmm_opt(cmd, "--virtio-net") == (
+        "pcie_port=net:consomme:hostfwd=udp:127.0.0.1:41000-:41000")
+
+
 def test_unit_openvmm_fuzz_device_attaches_only_that_device():
     """A focused fuzz device attaches only that device and its port."""
     be = RUN_MOD.OpenVmm("/opt/openvmm/openvmm")
