@@ -110,17 +110,24 @@ class VsockListener:
 
 
 class NetworkSender:
-    def __init__(self, source_port, destination_port, payload_only=False):
+    def __init__(self, source_port, destination_port, payload_only=False,
+                 source_address="127.0.0.1",
+                 destination_address="127.0.0.1", broadcast=False):
         self.source_port = source_port
         self.destination_port = destination_port
         self.payload_only = payload_only
+        self.source_address = source_address
+        self.destination_address = destination_address
+        self.broadcast = broadcast
         self.socket = None
         self.thread = None
         self.running = False
 
     def start(self):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.socket.bind(("127.0.0.1", self.source_port))
+        if self.broadcast:
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        self.socket.bind((self.source_address, self.source_port))
         self.running = True
         self.thread = threading.Thread(target=self._send, daemon=True)
         self.thread.start()
@@ -131,7 +138,7 @@ class NetworkSender:
         else:
             frame = (bytes.fromhex("ffffffffffff02020202020288b5") +
                      bytes([0x42]) * 50)
-        destination = ("127.0.0.1", self.destination_port)
+        destination = (self.destination_address, self.destination_port)
         while self.running:
             try:
                 self.socket.sendto(frame, destination)
@@ -154,6 +161,17 @@ def unused_udp_port():
     port = udp_socket.getsockname()[1]
     udp_socket.close()
     return port
+
+
+def has_effective_capability(capabilities, capability):
+    if capabilities is None:
+        return False
+    for clause in capabilities.split():
+        match = re.fullmatch(r"([^=+]+)[=+]([a-z]+)", clause)
+        if match and capability in match.group(1).split(","):
+            if "e" in match.group(2) and "p" in match.group(2):
+                return True
+    return False
 
 
 def load_runner():
@@ -447,7 +465,8 @@ def run_guest(args, runner):
             f"vv.perf_block_operation={args.block_operation} "
             f"vv.perf_block_pattern={args.block_pattern} "
             f"vv.perf_net_operation={args.net_operation} "
-            f"vv.perf_net_header_size={12 if backend.name == 'openvmm' else 10} "
+            f"vv.perf_net_header_size="
+            f"{12 if backend.name in {'ch', 'openvmm'} else 10} "
             f"vv.perf_experiment={args.experiment_class} "
             f"vv.perf_changed={args.changed_dimension}")
         opts = {
@@ -460,7 +479,14 @@ def run_guest(args, runner):
         }
         network_sender = None
         if args.device == "net" and args.net_operation == "receive":
-            if backend.name not in {"openvmm", "qemu"}:
+            if backend.name == "ch":
+                capabilities = runner._getcap(args.vmm)
+                if not has_effective_capability(capabilities,
+                                                "cap_net_admin"):
+                    raise RuntimeError(
+                        "Cloud Hypervisor network receive requires "
+                        "cap_net_admin+ep on the VMM binary")
+            if backend.name not in {"ch", "openvmm", "qemu"}:
                 raise RuntimeError(
                     f"{backend.name} does not provide network receive injection")
             source_port = unused_udp_port()
@@ -470,9 +496,19 @@ def run_guest(args, runner):
             opts["net_rx_port"] = destination_port
             if backend.name == "qemu":
                 opts["net_rx_source_port"] = source_port
-            network_sender = NetworkSender(
-                source_port, destination_port,
-                payload_only=backend.name == "openvmm")
+            if backend.name == "ch":
+                subnet = os.getpid() % 254 + 1
+                opts["net_rx_tap"] = f"vvperf{os.getpid():x}"
+                opts["net_rx_ip"] = f"198.18.{subnet}.1"
+                network_sender = NetworkSender(
+                    source_port, destination_port, payload_only=True,
+                    source_address="0.0.0.0",
+                    destination_address=f"198.18.{subnet}.255",
+                    broadcast=True)
+            else:
+                network_sender = NetworkSender(
+                    source_port, destination_port,
+                    payload_only=backend.name == "openvmm")
         if backend.name == "qemu" and args.timing_mode == "latency":
             opts["cpu_model"] = "host"
         cmd = backend.build_cmd(kernel, initramfs, disk, cmdline, opts)

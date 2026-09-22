@@ -85,6 +85,20 @@ def main():
     network_thread.start.assert_called_once_with()
     network_thread.join.assert_called_once_with(timeout=1)
     network_socket.close.assert_called_once_with()
+    broadcast_socket = mock.Mock()
+    broadcast_thread = mock.Mock()
+    with mock.patch.object(module.socket, "socket",
+                           return_value=broadcast_socket), \
+            mock.patch.object(module.threading, "Thread",
+                              return_value=broadcast_thread):
+        sender = module.NetworkSender(
+            41001, 41000, source_address="0.0.0.0",
+            destination_address="198.18.7.255", broadcast=True)
+        sender.start()
+        sender.stop()
+    broadcast_socket.setsockopt.assert_called_once_with(
+        module.socket.SOL_SOCKET, module.socket.SO_BROADCAST, 1)
+    broadcast_socket.bind.assert_called_once_with(("0.0.0.0", 41001))
     sender = module.NetworkSender(41001, 41000)
     sender.socket = mock.Mock()
     sender.running = True
@@ -103,6 +117,17 @@ def main():
     sender._send()
     frame, destination = sender.socket.sendto.call_args.args
     assert destination == ("127.0.0.1", 41000)
+    assert frame == bytes([0x42]) * 22
+    sender = module.NetworkSender(
+        41001, 41000, payload_only=True, source_address="0.0.0.0",
+        destination_address="198.18.7.255", broadcast=True)
+    sender.socket = mock.Mock()
+    sender.running = True
+    sender.socket.sendto.side_effect = lambda frame, destination: setattr(
+        sender, "running", False)
+    sender._send()
+    frame, destination = sender.socket.sendto.call_args.args
+    assert destination == ("198.18.7.255", 41000)
     assert frame == bytes([0x42]) * 22
     output = (
         "VVPERF version=3 experiment=queue changed=depth "
@@ -486,11 +511,41 @@ def main():
     ch_backend = mock.Mock(name="ch_backend")
     ch_backend.name = "ch"
     ch_backend.console_device = "ttyS0"
+    ch_backend.build_cmd.return_value = ["cloud-hypervisor"]
     expect_runtime_error(
         lambda: module.run_guest(net_rx_args, mock.Mock(
             detect_vmm=mock.Mock(return_value=ch_backend),
-            fetch_kernel=mock.Mock(return_value="kernel"))),
-        "ch does not provide network receive injection")
+            fetch_kernel=mock.Mock(return_value="kernel"),
+            _getcap=mock.Mock(return_value=""))),
+        "requires cap_net_admin+ep")
+    with mock.patch.object(module, "run_vmm",
+                           return_value=network_receive_samples), \
+            mock.patch.object(module, "unused_udp_port",
+                              side_effect=[41001, 41000]), \
+            mock.patch.object(module.os, "getpid", return_value=6), \
+            mock.patch.object(module, "NetworkSender") as sender:
+        module.run_guest(net_rx_args, mock.Mock(
+            detect_vmm=mock.Mock(return_value=ch_backend),
+            fetch_kernel=mock.Mock(return_value="kernel"),
+            _getcap=mock.Mock(return_value="cap_net_admin=ep")))
+    net_rx_cmdline = ch_backend.build_cmd.call_args.args[3]
+    net_rx_opts = ch_backend.build_cmd.call_args.args[4]
+    assert "vv.perf_net_header_size=12" in net_rx_cmdline
+    assert net_rx_opts["net_rx_tap"] == "vvperf6"
+    assert net_rx_opts["net_rx_ip"] == "198.18.7.1"
+    sender.assert_called_once_with(
+        41001, 41000, payload_only=True, source_address="0.0.0.0",
+        destination_address="198.18.7.255", broadcast=True)
+    sender.return_value.start.assert_called_once_with()
+    sender.return_value.stop.assert_called_once_with()
+    assert module.has_effective_capability("cap_net_admin=ep",
+                                           "cap_net_admin")
+    assert module.has_effective_capability(
+        "cap_net_admin,cap_sys_ptrace=ep", "cap_net_admin")
+    assert not module.has_effective_capability("cap_net_admin=p",
+                                               "cap_net_admin")
+    assert not module.has_effective_capability("cap_net_admin=e",
+                                               "cap_net_admin")
     queue_args = module.parse_args(
         ["-m", "vmm", "--device", "blk", "--device-queues", "4"])
     with mock.patch.object(module, "run_vmm", return_value=samples):
@@ -756,6 +811,10 @@ def main():
         net_rx_args, backend, network_receive_samples, "/boot/vmlinux")
     assert openvmm_net_rx_report["backend"] == {
         "type": "network", "endpoint": "consomme"}
+    ch_net_rx_report = module.make_report(
+        net_rx_args, ch_backend, network_receive_samples, "/boot/vmlinux")
+    assert ch_net_rx_report["backend"] == {
+        "type": "network", "endpoint": "tap"}
     report["queue"]["depth"] = 16
     assert "Queue depth:   16" in module.format_human(report)
     assert "vsock" not in module.BACKEND_DEVICES["openvmm"]

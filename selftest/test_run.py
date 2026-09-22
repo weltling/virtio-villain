@@ -445,6 +445,16 @@ def test_unit_ch_build_cmd_omits_api_socket():
     assert "--api-socket" not in cmd
 
 
+def test_unit_ch_net_receive_uses_named_tap():
+    be = RUN_MOD.CloudHypervisor("/usr/bin/cloud-hypervisor")
+    cmd = be.build_cmd(
+        "/k", "/i", "/d.raw", "console=ttyS0",
+        {"fuzz_device": "net", "net_queues": 2,
+         "net_rx_tap": "vvperf123", "net_rx_ip": "198.18.7.1"})
+    assert cmd[cmd.index("--net") + 1] == (
+        "tap=vvperf123,ip=198.18.7.1,mask=255.255.255.0,num_queues=2")
+
+
 def test_unit_ch_fuzz_device_attaches_only_that_device():
     be = RUN_MOD.CloudHypervisor("/usr/bin/cloud-hypervisor")
     cmd = be.build_cmd("/k", "/i", "/d.raw", "console=ttyS0",

@@ -517,7 +517,12 @@ class CloudHypervisor(VmmBackend):
             cmd += ["--disk", self._ch_disk_arg(
                 disk_path, disk_fmt, blk_queues, opts)]
         if want("net"):
-            cmd += ["--net", f"tap=,num_queues={net_queues}"
+            net_rx_tap = opts.get("net_rx_tap", "")
+            net_rx_ip = opts.get("net_rx_ip")
+            endpoint = f"tap={net_rx_tap}"
+            if net_rx_ip:
+                endpoint += f",ip={net_rx_ip},mask=255.255.255.0"
+            cmd += ["--net", f"{endpoint},num_queues={net_queues}"
                     f"{',iommu=on' if opts.get('net_iommu') else ''}"]
         if want("vsock"):
             cmd += ["--vsock", f"cid={cid},socket={vsock_sock}"]

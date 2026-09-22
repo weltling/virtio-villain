@@ -897,8 +897,7 @@ static int validate_net_rx(struct perf_workload *workload,
         return 0;
     if (frame[12] != 0x08 || frame[13] != 0x00 || frame[14] != 0x45 ||
         frame[16] != 0x00 || frame[17] != 50 || frame[23] != 17 ||
-        frame[30] != 10 || frame[31] != 0 || frame[32] != 0 ||
-        frame[33] != 2 || frame[38] != 0 || frame[39] != 30)
+        frame[38] != 0 || frame[39] != 30)
         return -1;
     for (unsigned index = 42; index < workload->request_size; index++)
         if (frame[index] != 0x42)
