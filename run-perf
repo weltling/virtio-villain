@@ -770,9 +770,10 @@ def parse_args(argv=None):
     parser.add_argument("-n", "--iterations", type=int, default=10000)
     parser.add_argument("--rounds", type=int, default=5)
     parser.add_argument("--warmup", type=int, default=1000)
-    parser.add_argument("--queue-depth", type=int, choices=(1, 2, 4, 8, 16),
+    parser.add_argument("--queue-depth", type=int,
+                        choices=(1, 2, 4, 8, 16, 32),
                         default=1)
-    parser.add_argument("--batch-size", type=int, choices=(1, 4, 8, 16),
+    parser.add_argument("--batch-size", type=int, choices=(1, 4, 8, 16, 32),
                         default=1)
     parser.add_argument("--device-queues", type=int, choices=(1, 2, 4, 8, 16),
                         default=1)

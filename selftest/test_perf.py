@@ -384,8 +384,13 @@ def main():
     assert module.parse_args(
         ["-m", "vmm", "--queue-depth", "16"]).queue_depth == 16
     assert module.parse_args(
+        ["-m", "vmm", "--queue-depth", "32"]).queue_depth == 32
+    assert module.parse_args(
         ["-m", "vmm", "--queue-depth", "16",
          "--batch-size", "16"]).batch_size == 16
+    assert module.parse_args(
+        ["-m", "vmm", "--queue-depth", "32",
+         "--batch-size", "32"]).batch_size == 32
     assert module.parse_args(
         ["-m", "vmm", "--device", "blk",
          "--device-queues", "4"]).device_queues == 4

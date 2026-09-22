@@ -70,8 +70,8 @@ fixed deterministic sequence and stay within device capacity. Write buffers
 contain a fixed byte value. Write completion is measured at the used ring and
 does not imply that data reached durable storage.
 
-Use `--queue-depth` to select a power of two depth from 1 through 16. Use
-`--batch-size` to publish 1, 4, 8, or 16 descriptor heads before each device
+Use `--queue-depth` to select a power of two depth from 1 through 32. Use
+`--batch-size` to publish 1, 4, 8, 16, or 32 descriptor heads before each device
 notification. Batch size must not exceed queue depth. Throughput is the default
 timing mode.
 
