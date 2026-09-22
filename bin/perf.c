@@ -106,6 +106,8 @@ struct perf_workload {
     uint8_t *status[MAX_DEVICE_QUEUES][MAX_QUEUE_DEPTH];
     struct virtio_vsock_hdr *vsock_request[MAX_QUEUE_DEPTH];
     struct virtio_vsock_hdr *response[MAX_QUEUE_DEPTH];
+    struct virtio_net_hdr *net_header[MAX_QUEUE_DEPTH];
+    uint8_t *net_frame[MAX_QUEUE_DEPTH];
 };
 
 static void shutdown_guest(int status)
@@ -826,6 +828,72 @@ static int validate_net(struct perf_workload *workload,
     return lengths[0] == 0 ? 0 : -1;
 }
 
+static void fill_net_frame(uint8_t *frame)
+{
+    memset(frame, 0xff, 6);
+    memset(frame + 6, 0x02, 6);
+    frame[12] = 0x88;
+    frame[13] = 0xb5;
+    memset(frame + 14, 0x42, 50);
+}
+
+static int prepare_net_rx(struct virtio_dev *dev, struct vring *vr,
+                          struct perf_workload *workload)
+{
+    (void)dev;
+    for (unsigned slot = 0; slot < workload->queue_depth; slot++) {
+        struct virtio_net_hdr *header = vv_alloc_pages(1);
+        uint8_t *frame = vv_alloc_pages(1);
+        struct vring_desc descriptors[2] = {
+            {
+                .addr = vv_virt_to_phys(header),
+                .len = sizeof(*header),
+                .flags = VRING_DESC_F_WRITE | VRING_DESC_F_NEXT,
+                .next = 1,
+            },
+            {
+                .addr = vv_virt_to_phys(frame),
+                .len = 64,
+                .flags = VRING_DESC_F_WRITE,
+            },
+        };
+
+        uint16_t head = prepare_chain(vr, slot, descriptors, 2,
+                                      workload->indirect,
+                                      &workload->requests[0]);
+        perf_slot_init(&workload->requests[0].slots[slot], head, head,
+                       header);
+        workload->net_header[slot] = header;
+        workload->net_frame[slot] = frame;
+    }
+    workload->requests[0].vr = vr;
+    workload->request_count = 1;
+    return workload->queue_depth * (workload->indirect ? 1 : 2);
+}
+
+static void reset_net_rx(struct perf_workload *workload, unsigned queue,
+                         unsigned slot, unsigned operation)
+{
+    (void)queue;
+    (void)operation;
+    memset(workload->net_header[slot], 0, sizeof(*workload->net_header[slot]));
+    memset(workload->net_frame[slot], 0, workload->request_size);
+}
+
+static int validate_net_rx(struct perf_workload *workload,
+                           unsigned queue, unsigned slot,
+                           const uint32_t *lengths)
+{
+    uint8_t expected[64];
+
+    (void)queue;
+    fill_net_frame(expected);
+    return lengths[0] == sizeof(*workload->net_header[slot]) +
+                         workload->request_size &&
+           memcmp(workload->net_frame[slot], expected,
+                  workload->request_size) == 0 ? 0 : -1;
+}
+
 static int prepare_vsock(struct virtio_dev *dev, struct vring *vr,
                          struct perf_workload *workload)
 {
@@ -909,12 +977,16 @@ static const struct perf_workload_ops rng_ops = {
 static const struct perf_workload_ops net_ops = {
     prepare_net, reset_nop, validate_net, cleanup_nop
 };
+static const struct perf_workload_ops net_rx_ops = {
+    prepare_net_rx, reset_net_rx, validate_net_rx, cleanup_nop
+};
 static const struct perf_workload_ops vsock_ops = {
     prepare_vsock, reset_vsock, validate_vsock, cleanup_vsock
 };
 
 static int select_workload(const char *device, const char *block_operation,
                            const char *block_pattern,
+                           const char *net_operation,
                            struct perf_workload *workload)
 {
     if (strcmp(device, "blk") == 0) {
@@ -955,13 +1027,21 @@ static int select_workload(const char *device, const char *block_operation,
             .ops = &rng_ops,
         };
     } else if (strcmp(device, "net") == 0) {
+        bool receive;
+
+        if (strcmp(net_operation, "transmit") == 0)
+            receive = false;
+        else if (strcmp(net_operation, "receive") == 0)
+            receive = true;
+        else
+            return -1;
         *workload = (struct perf_workload){
             .device = device,
-            .operation = "net_tx",
+            .operation = receive ? "net_rx" : "net_tx",
             .device_id = VIRTIO_PCI_DEVICE_NET,
-            .queue = 1,
+            .queue = receive ? 0 : 1,
             .request_size = 64,
-            .ops = &net_ops,
+            .ops = receive ? &net_rx_ops : &net_ops,
         };
     } else if (strcmp(device, "vsock") == 0) {
         *workload = (struct perf_workload){
@@ -1000,6 +1080,7 @@ int main(void)
     char notification_policy[16];
     char block_operation[16];
     char block_pattern[16];
+    char net_operation[16];
 
     if (getpid() != 1) {
         fprintf(stderr, "perf guest must run as PID 1\n");
@@ -1033,8 +1114,10 @@ int main(void)
                         sizeof(block_operation), "read");
     read_cmdline_string("vv.perf_block_pattern", block_pattern,
                         sizeof(block_pattern), "fixed");
+    read_cmdline_string("vv.perf_net_operation", net_operation,
+                        sizeof(net_operation), "transmit");
 
-    if (select_workload(device, block_operation, block_pattern,
+    if (select_workload(device, block_operation, block_pattern, net_operation,
                         &workload) < 0) {
         printf("VVPERF error=unsupported_device\n");
         shutdown_guest(1);

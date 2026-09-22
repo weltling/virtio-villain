@@ -72,6 +72,29 @@ def main():
         expect_runtime_error(module.VsockListener(5678).start,
                              "Cannot listen on host vsock port 5678")
     failed_socket.close.assert_called_once_with()
+    network_socket = mock.Mock()
+    network_thread = mock.Mock()
+    with mock.patch.object(module.socket, "socket",
+                           return_value=network_socket), \
+            mock.patch.object(module.threading, "Thread",
+                              return_value=network_thread):
+        sender = module.NetworkSender(41001, 41000)
+        sender.start()
+        sender.stop()
+    network_socket.bind.assert_called_once_with(("127.0.0.1", 41001))
+    network_thread.start.assert_called_once_with()
+    network_thread.join.assert_called_once_with(timeout=1)
+    network_socket.close.assert_called_once_with()
+    sender = module.NetworkSender(41001, 41000)
+    sender.socket = mock.Mock()
+    sender.running = True
+    sender.socket.sendto.side_effect = lambda frame, destination: setattr(
+        sender, "running", False)
+    sender._send()
+    frame, destination = sender.socket.sendto.call_args.args
+    assert destination == ("127.0.0.1", 41000)
+    assert frame == bytes.fromhex(
+        "ffffffffffff02020202020288b5") + bytes([0x42]) * 50
     output = (
         "VVPERF version=3 experiment=queue changed=depth "
         "workload=blk operation=blk_read address_pattern=fixed "
@@ -171,6 +194,14 @@ def main():
             "operation=net_tx address_pattern=none"))
     assert "payload_bytes_per_second" not in network_samples[0]
     assert "payload_bytes_per_second" not in module.summarize(network_samples)
+    network_receive_samples = module.parse_results(
+        output.replace("workload=blk", "workload=net").replace(
+            "request_bytes=4096", "request_bytes=64").replace(
+            "operation=blk_read address_pattern=fixed",
+            "operation=net_rx address_pattern=none"))
+    assert network_receive_samples[0]["payload_bytes_per_second"] == 3200000
+    assert module.summarize(network_receive_samples)[
+        "payload_bytes_per_second"] == 4266666.666666667
     batched_output = output.replace("batch_size=1", "batch_size=4").replace(
         "notifications=100", "notifications=25")
     batched_samples = module.parse_results(batched_output)
@@ -228,6 +259,11 @@ def main():
         lambda: module.parse_results(output.replace(
             "operation=blk_read", "operation=blk_flush")),
         "invalid operation")
+    expect_runtime_error(
+        lambda: module.parse_results(output.replace(
+            "workload=blk operation=blk_read address_pattern=fixed",
+            "workload=net operation=net_drop address_pattern=none")),
+        "Network result has an invalid operation")
     expect_runtime_error(
         lambda: module.parse_results(output.replace(
             "address_pattern=fixed", "address_pattern=unknown")),
@@ -335,6 +371,9 @@ def main():
          "--block-pattern", "random"])
     assert block_args.block_operation == "write"
     assert block_args.block_pattern == "random"
+    net_rx_args = module.parse_args(
+        ["-m", "vmm", "--device", "net", "--net-operation", "receive"])
+    assert net_rx_args.net_operation == "receive"
     with mock.patch.object(module.argparse.ArgumentParser, "error",
                            side_effect=ValueError):
         try:
@@ -357,6 +396,12 @@ def main():
         try:
             module.parse_args(["-m", "vmm", "--device", "rng",
                                "--device-queues", "2"])
+            assert False
+        except ValueError:
+            pass
+        try:
+            module.parse_args(["-m", "vmm", "--device", "rng",
+                               "--net-operation", "receive"])
             assert False
         except ValueError:
             pass
@@ -393,6 +438,29 @@ def main():
     block_cmdline = command_backend.build_cmd.call_args.args[3]
     assert "vv.perf_block_operation=write" in block_cmdline
     assert "vv.perf_block_pattern=random" in block_cmdline
+    with mock.patch.object(module, "run_vmm",
+                           return_value=network_receive_samples), \
+            mock.patch.object(module, "unused_udp_port",
+                              side_effect=[41001, 41000]), \
+            mock.patch.object(module, "NetworkSender") as sender:
+        module.run_guest(net_rx_args, mock.Mock(
+            detect_vmm=mock.Mock(return_value=command_backend),
+            fetch_kernel=mock.Mock(return_value="kernel")))
+    net_rx_cmdline = command_backend.build_cmd.call_args.args[3]
+    net_rx_opts = command_backend.build_cmd.call_args.args[4]
+    assert "vv.perf_net_operation=receive" in net_rx_cmdline
+    assert net_rx_opts["net_rx_source_port"] == 41001
+    assert net_rx_opts["net_rx_port"] == 41000
+    sender.return_value.start.assert_called_once_with()
+    sender.return_value.stop.assert_called_once_with()
+    ch_backend = mock.Mock(name="ch_backend")
+    ch_backend.name = "ch"
+    ch_backend.console_device = "ttyS0"
+    expect_runtime_error(
+        lambda: module.run_guest(net_rx_args, mock.Mock(
+            detect_vmm=mock.Mock(return_value=ch_backend),
+            fetch_kernel=mock.Mock(return_value="kernel"))),
+        "ch does not provide network receive injection")
     queue_args = module.parse_args(
         ["-m", "vmm", "--device", "blk", "--device-queues", "4"])
     with mock.patch.object(module, "run_vmm", return_value=samples):
@@ -647,6 +715,13 @@ def main():
     report["workload"]["device"] = "net"
     report["samples"][0]["request_bytes"] = 64
     assert "Request size:  64 bytes" in module.format_human(report)
+    net_rx_report = module.make_report(
+        net_rx_args, qemu_backend, network_receive_samples, "/boot/vmlinux")
+    net_rx_human = module.format_human(net_rx_report)
+    assert net_rx_report["backend"] == {
+        "type": "network", "endpoint": "socket"}
+    assert "virtio network receive throughput" in net_rx_human
+    assert "Payload rate:" in net_rx_human
     report["queue"]["depth"] = 16
     assert "Queue depth:   16" in module.format_human(report)
     assert "vsock" not in module.BACKEND_DEVICES["openvmm"]

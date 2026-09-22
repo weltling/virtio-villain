@@ -489,6 +489,15 @@ def test_unit_qemu_net_device_disables_option_rom():
     assert net_dev.endswith(",romfile=")
 
 
+def test_unit_qemu_net_receive_uses_socket_endpoint():
+    be = RUN_MOD.Qemu("/usr/bin/qemu-system-x86_64")
+    cmd = be.build_cmd("/k", "/i", "/d.raw", "console=ttyS0",
+                       {"net_rx_port": 41000,
+                        "net_rx_source_port": 41001})
+    assert cmd[cmd.index("-netdev") + 1] == (
+        "socket,id=net0,udp=127.0.0.1:41001,localaddr=127.0.0.1:41000")
+
+
 def test_unit_qemu_fuzz_device_attaches_only_that_device():
     """With opts.fuzz_device set the QEMU command carries just that
     device so the fuzz guest boots faster."""

@@ -6,9 +6,9 @@ rounds without including VM startup in the samples.
 
 Each workload submits concurrent requests through a split virtqueue. Block
 reads or writes 4 KiB. RNG fills 4 KiB. Network transmits a 64 byte Ethernet
-frame. Vsock sends a connection request and consumes the response. The guest
-owns the virtqueues directly without a guest filesystem or kernel device
-driver.
+frame or receives a runner supplied 64 byte Ethernet frame. Vsock sends a
+connection request and consumes the response. The guest owns the virtqueues
+directly without a guest filesystem or kernel device driver.
 
 ## Usage
 
@@ -25,6 +25,20 @@ are `blk`, `rng`, `net`, and `vsock`. OpenVMM does not provide a vsock device.
 ./run-perf -m ./qemu-system-x86_64 --device net
 ./run-perf -m ./cloud-hypervisor --device vsock
 ```
+
+Network requests default to transmit. Use `--net-operation receive` to post
+writable receive buffers and measure frames delivered into guest memory.
+
+```bash
+./run-perf -m ./qemu-system-x86_64 --device net \
+	--net-operation receive --queue-depth 16 --batch-size 16
+```
+
+The runner sends fixed 64 byte Ethernet frames through a QEMU UDP socket
+backend. The guest validates the complete frame before counting an operation.
+Receive reports include delivered payload bytes per second. Network receive
+currently requires QEMU. Cloud Hypervisor TAP setup and OpenVMM Consomme do
+not expose a runner controlled injection endpoint in this workflow.
 
 The default run uses 1000 warmup requests followed by five measured rounds
 of 10000 requests. The guest uses one virtual CPU, one block queue, and 256
@@ -153,11 +167,11 @@ It is not a latency sample or percentile. Use `--verbose` to print elapsed time
 and operation rate for every round. JSON output keeps all samples for automated
 comparison.
 
-Block and RNG reports include payload bytes per second. Block reports also
-record the operation and address pattern. Network transmit only proves that
-the device consumed the buffer, so it does not report delivered payload rate.
-Vsock also omits payload rate. Every workload reports device notifications per
-submission.
+Block, RNG, and network receive reports include payload bytes per second.
+Block reports also record the operation and address pattern. Network transmit
+only proves that the device consumed the buffer, so it does not report
+delivered payload rate. Vsock also omits payload rate. Every workload reports
+device notifications per submission.
 
 JSON schema version 3 separates experiment, host, guest, VMM, execution, queue,
 workload, backend, instrumentation, and timing settings. Each sample records
@@ -220,4 +234,6 @@ host load stable and run enough rounds to expose variance.
 
 This runner measures request throughput or sampled request latency in the
 current virtqueue workload over PCI. It is not a replacement for storage
-benchmarks such as fio. Network multiqueue is a candidate for additional work.
+benchmarks such as fio. Network receive uses a runner supplied packet source
+and measures delivery into guest memory. Network multiqueue is a candidate for
+additional work.

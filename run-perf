@@ -35,7 +35,7 @@ BACKEND_DEVICES = {
     "qemu": {"blk", "net", "rng", "vsock"},
     "openvmm": {"blk", "net", "rng"},
 }
-PAYLOAD_RATE_WORKLOADS = {"blk", "rng"}
+PAYLOAD_RATE_OPERATIONS = {"blk_read", "blk_write", "net_rx", "rng_fill"}
 RESULT_PREFIX = "VVPERF "
 LATENCY_PREFIX = "VVPERF_LATENCY "
 VIRTIO_BLK_F_MQ = 12
@@ -107,6 +107,48 @@ class VsockListener:
             self.thread.join(timeout=1)
         for connection in self.connections:
             connection.close()
+
+
+class NetworkSender:
+    def __init__(self, source_port, destination_port):
+        self.source_port = source_port
+        self.destination_port = destination_port
+        self.socket = None
+        self.thread = None
+        self.running = False
+
+    def start(self):
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.bind(("127.0.0.1", self.source_port))
+        self.running = True
+        self.thread = threading.Thread(target=self._send, daemon=True)
+        self.thread.start()
+
+    def _send(self):
+        frame = bytes.fromhex("ffffffffffff02020202020288b5") + bytes([0x42]) * 50
+        destination = ("127.0.0.1", self.destination_port)
+        while self.running:
+            try:
+                self.socket.sendto(frame, destination)
+            except OSError:
+                if self.running:
+                    continue
+                return
+
+    def stop(self):
+        self.running = False
+        if self.socket is not None:
+            self.socket.close()
+        if self.thread is not None:
+            self.thread.join(timeout=1)
+
+
+def unused_udp_port():
+    udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    udp_socket.bind(("127.0.0.1", 0))
+    port = udp_socket.getsockname()[1]
+    udp_socket.close()
+    return port
 
 
 def load_runner():
@@ -195,6 +237,13 @@ def parse_results(output):
             if (numeric["device_queues"] > 1 and
                     not negotiated_features & (1 << VIRTIO_BLK_F_MQ)):
                 raise RuntimeError("Block multiqueue result lacks MQ")
+        elif fields["workload"] == "net":
+            if fields["operation"] not in {"net_tx", "net_rx"}:
+                raise RuntimeError("Network result has an invalid operation")
+            if fields["address_pattern"] != "none":
+                raise RuntimeError("Nonblock result has an address pattern")
+            if numeric["device_queues"] != 1:
+                raise RuntimeError("Nonblock result has multiple device queues")
         elif fields["address_pattern"] != "none":
             raise RuntimeError("Nonblock result has an address pattern")
         elif numeric["device_queues"] != 1:
@@ -247,7 +296,7 @@ def parse_results(output):
             "notifications_per_submission": (
                 numeric["notifications"] / numeric["submissions"]),
         }
-        if fields["workload"] in PAYLOAD_RATE_WORKLOADS:
+        if fields["operation"] in PAYLOAD_RATE_OPERATIONS:
             sample["payload_bytes_per_second"] = (
                 operations_per_second * numeric["request_bytes"])
         samples.append(sample)
@@ -392,6 +441,7 @@ def run_guest(args, runner):
             f"vv.perf_sample_every={args.sample_every} "
             f"vv.perf_block_operation={args.block_operation} "
             f"vv.perf_block_pattern={args.block_pattern} "
+            f"vv.perf_net_operation={args.net_operation} "
             f"vv.perf_experiment={args.experiment_class} "
             f"vv.perf_changed={args.changed_dimension}")
         opts = {
@@ -402,6 +452,18 @@ def run_guest(args, runner):
             "io_engine": args.io_engine, "memory": args.memory,
             "net_queues": 2, "packed": args.queue_format == "packed",
         }
+        network_sender = None
+        if args.device == "net" and args.net_operation == "receive":
+            if backend.name != "qemu":
+                raise RuntimeError(
+                    f"{backend.name} does not provide network receive injection")
+            source_port = unused_udp_port()
+            destination_port = unused_udp_port()
+            while destination_port == source_port:
+                destination_port = unused_udp_port()
+            opts["net_rx_port"] = destination_port
+            opts["net_rx_source_port"] = source_port
+            network_sender = NetworkSender(source_port, destination_port)
         if backend.name == "qemu" and args.timing_mode == "latency":
             opts["cpu_model"] = "host"
         cmd = backend.build_cmd(kernel, initramfs, disk, cmdline, opts)
@@ -424,8 +486,12 @@ def run_guest(args, runner):
             vsock_listener = VsockListener(5678, path=vsock_path)
             vsock_listener.start()
         try:
+            if network_sender is not None:
+                network_sender.start()
             samples = run_vmm(cmd, spawn, args.rounds)
         finally:
+            if network_sender is not None:
+                network_sender.stop()
             if vsock_listener is not None:
                 vsock_listener.stop()
             if master_fd is not None:
@@ -457,7 +523,8 @@ def make_report(args, backend, samples, kernel):
     elif sample["workload"] == "net":
         endpoints = {"qemu": "user", "ch": "tap", "openvmm": "consomme"}
         resource = {"type": "network",
-                    "endpoint": endpoints[backend.name]}
+                    "endpoint": ("socket" if sample["operation"] == "net_rx"
+                                 else endpoints[backend.name])}
     elif sample["workload"] == "rng":
         source = ("default" if backend.name == "openvmm" else "/dev/urandom")
         resource = {"type": "rng", "source": source}
@@ -677,6 +744,8 @@ def parse_args(argv=None):
     parser.add_argument("--block-pattern",
                         choices=("fixed", "sequential", "random"),
                         default="fixed")
+    parser.add_argument("--net-operation", choices=("transmit", "receive"),
+                        default="transmit")
     parser.add_argument("--cpus", type=int, default=1)
     parser.add_argument("--memory", default="256M")
     parser.add_argument("--disk-size", type=int, default=64, metavar="MIB")
@@ -705,6 +774,8 @@ def parse_args(argv=None):
     if args.device != "blk" and (args.block_operation != "read" or
                                  args.block_pattern != "fixed"):
         parser.error("block operation and pattern require --device blk")
+    if args.device != "net" and args.net_operation != "transmit":
+        parser.error("network operation requires --device net")
     if args.device != "blk" and args.device_queues != 1:
         parser.error("multiple device queues require --device blk")
     if args.queue_format == "packed" and args.notification_policy == "event_idx":
@@ -727,6 +798,8 @@ def format_human(report, verbose=False):
     label = DEVICE_LABEL[workload["device"]]
     if workload["device"] == "blk" and workload["operation"] == "blk_write":
         label = "block write"
+    elif workload["operation"] == "net_rx":
+        label = "network receive"
     lines = [
         f"virtio {label} {report['timing']['mode']}",
         "",

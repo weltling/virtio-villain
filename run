@@ -582,7 +582,13 @@ class Qemu(VmmBackend):
         # user netdev which only supports a single queue.
         net_dev = (f"virtio-net-pci-non-transitional,netdev=net0"
                    f",packed={packed_flag},romfile=")
-        netdev = "user,id=net0"
+        net_rx_port = opts.get("net_rx_port")
+        net_rx_source_port = opts.get("net_rx_source_port")
+        if net_rx_port:
+            netdev = (f"socket,id=net0,udp=127.0.0.1:{net_rx_source_port},"
+                      f"localaddr=127.0.0.1:{net_rx_port}")
+        else:
+            netdev = "user,id=net0"
         cpu_model = opts.get("cpu_model")
         machine_args = ["-M", "virt", "-cpu", "host"] if arch == "aarch64" else []
         if arch != "aarch64" and cpu_model:
