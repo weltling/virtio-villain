@@ -17,7 +17,7 @@
 #include "lib/vring.h"
 #include "lib/vring_packed.h"
 
-#define PERF_BLOCK_SIZE 4096
+#define DEFAULT_BLOCK_SIZE 4096
 #define DEFAULT_ITERATIONS 10000
 #define DEFAULT_ROUNDS 5
 #define DEFAULT_WARMUP 1000
@@ -27,7 +27,6 @@
 #define MAX_WORKLOAD_QUEUES 2
 #define MAX_DEVICE_QUEUES 16
 #define MAX_CHAIN_DESCRIPTORS 3
-#define PERF_BLOCK_SECTORS (PERF_BLOCK_SIZE / 512)
 
 enum perf_block_pattern {
     PERF_BLOCK_FIXED,
@@ -664,7 +663,9 @@ static int prepare_blk(struct virtio_dev *dev, struct vring *vr,
     if (!dev->device_cfg || dev->device_cfg_length < sizeof(uint64_t))
         return -1;
     uint64_t capacity = virtio_load64(dev->device_cfg);
-    workload->block_request_count = capacity / PERF_BLOCK_SECTORS;
+    unsigned request_sectors = workload->request_size / 512;
+
+    workload->block_request_count = capacity / request_sectors;
     if (workload->block_request_count == 0)
         return -1;
     for (unsigned queue = 0; queue < workload->device_queues; queue++) {
@@ -684,7 +685,7 @@ static int prepare_blk(struct virtio_dev *dev, struct vring *vr,
                 },
                 {
                     .addr = vv_virt_to_phys(data),
-                    .len = PERF_BLOCK_SIZE,
+                    .len = workload->request_size,
                     .flags = VRING_DESC_F_NEXT |
                              (workload->block_write ? 0 : VRING_DESC_F_WRITE),
                     .next = 2,
@@ -699,7 +700,7 @@ static int prepare_blk(struct virtio_dev *dev, struct vring *vr,
             header->type = workload->block_write ? VIRTIO_BLK_T_OUT :
                                                    VIRTIO_BLK_T_IN;
             if (workload->block_write)
-                memset(data, 0x42, PERF_BLOCK_SIZE);
+                memset(data, 0x42, workload->request_size);
             uint16_t head = prepare_chain(request->vr, slot, descriptors, 3,
                                           workload->indirect, request);
             workload->block_header[queue][slot] = header;
@@ -725,7 +726,8 @@ static void reset_blk(struct perf_workload *workload, unsigned queue,
         value = (value ^ (value >> 27)) * 0x94d049bb133111ebULL;
         request = (value ^ (value >> 31)) % workload->block_request_count;
     }
-    workload->block_header[queue][slot]->sector = request * PERF_BLOCK_SECTORS;
+    workload->block_header[queue][slot]->sector =
+        request * (workload->request_size / 512);
     *workload->status[queue][slot] = 0xff;
 }
 
@@ -745,7 +747,7 @@ static int prepare_rng(struct virtio_dev *dev, struct vring *vr,
         uint8_t *data = vv_alloc_pages(1);
         struct vring_desc descriptor = {
             .addr = vv_virt_to_phys(data),
-            .len = PERF_BLOCK_SIZE,
+            .len = DEFAULT_BLOCK_SIZE,
             .flags = VRING_DESC_F_WRITE,
         };
 
@@ -996,7 +998,7 @@ static const struct perf_workload_ops vsock_ops = {
 };
 
 static int select_workload(const char *device, const char *block_operation,
-                           const char *block_pattern,
+                           const char *block_pattern, unsigned block_request_size,
                            const char *net_operation,
                            struct perf_workload *workload)
 {
@@ -1023,7 +1025,7 @@ static int select_workload(const char *device, const char *block_operation,
             .operation = write ? "blk_write" : "blk_read",
             .device_id = VIRTIO_PCI_DEVICE_BLK,
             .queue = 0,
-            .request_size = PERF_BLOCK_SIZE,
+            .request_size = block_request_size,
             .ops = &blk_ops,
             .block_write = write,
             .block_pattern = pattern,
@@ -1034,7 +1036,7 @@ static int select_workload(const char *device, const char *block_operation,
             .operation = "rng_fill",
             .device_id = VIRTIO_PCI_DEVICE_RNG,
             .queue = 0,
-            .request_size = PERF_BLOCK_SIZE,
+            .request_size = DEFAULT_BLOCK_SIZE,
             .ops = &rng_ops,
         };
     } else if (strcmp(device, "net") == 0) {
@@ -1110,6 +1112,8 @@ int main(void)
     unsigned batch_size = read_cmdline_value("vv.perf_batch_size", 1);
     unsigned device_queues = read_cmdline_value("vv.perf_device_queues", 1);
     unsigned sample_every = read_cmdline_value("vv.perf_sample_every", 10);
+    unsigned block_request_size = read_cmdline_value(
+        "vv.perf_block_request_size", DEFAULT_BLOCK_SIZE);
     unsigned net_header_size = read_cmdline_value("vv.perf_net_header_size",
                                                    sizeof(struct virtio_net_hdr));
     read_cmdline_string("vv.perf_device", device, sizeof(device), "blk");
@@ -1131,9 +1135,15 @@ int main(void)
     read_cmdline_string("vv.perf_net_operation", net_operation,
                         sizeof(net_operation), "transmit");
 
-    if (select_workload(device, block_operation, block_pattern, net_operation,
-                        &workload) < 0) {
+    if (select_workload(device, block_operation, block_pattern,
+                        block_request_size, net_operation, &workload) < 0) {
         printf("VVPERF error=unsupported_device\n");
+        shutdown_guest(1);
+    }
+    if (workload.device_id == VIRTIO_PCI_DEVICE_BLK &&
+        (block_request_size < 512 || block_request_size > PAGE_SIZE ||
+         block_request_size % 512 != 0)) {
+        printf("VVPERF error=block_request_size\n");
         shutdown_guest(1);
     }
     if (queue_depth > MAX_QUEUE_DEPTH ||

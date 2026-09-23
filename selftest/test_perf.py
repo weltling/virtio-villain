@@ -407,9 +407,10 @@ def main():
             "throughput")
     block_args = module.parse_args(
         ["-m", "vmm", "--device", "blk", "--block-operation", "write",
-         "--block-pattern", "random"])
+         "--block-pattern", "random", "--block-request-size", "1024"])
     assert block_args.block_operation == "write"
     assert block_args.block_pattern == "random"
+    assert block_args.block_request_size == 1024
     net_rx_args = module.parse_args(
         ["-m", "vmm", "--device", "net", "--net-operation", "receive"])
     assert net_rx_args.net_operation == "receive"
@@ -429,6 +430,12 @@ def main():
         try:
             module.parse_args(["-m", "vmm", "--device", "rng",
                                "--block-operation", "write"])
+            assert False
+        except ValueError:
+            pass
+        try:
+            module.parse_args(["-m", "vmm", "--device", "rng",
+                               "--block-request-size", "1024"])
             assert False
         except ValueError:
             pass
@@ -470,6 +477,7 @@ def main():
     assert "vv.perf_notification_policy=always" in guest_cmdline
     assert "vv.perf_block_operation=read" in guest_cmdline
     assert "vv.perf_block_pattern=fixed" in guest_cmdline
+    assert "vv.perf_block_request_size=4096" in guest_cmdline
     with mock.patch.object(module, "run_vmm", return_value=samples):
         module.run_guest(block_args, mock.Mock(
             detect_vmm=mock.Mock(return_value=command_backend),
@@ -477,6 +485,7 @@ def main():
     block_cmdline = command_backend.build_cmd.call_args.args[3]
     assert "vv.perf_block_operation=write" in block_cmdline
     assert "vv.perf_block_pattern=random" in block_cmdline
+    assert "vv.perf_block_request_size=1024" in block_cmdline
     with mock.patch.object(module, "run_vmm",
                            return_value=network_receive_samples), \
             mock.patch.object(module, "unused_udp_port",

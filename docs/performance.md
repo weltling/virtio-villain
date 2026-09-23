@@ -55,20 +55,25 @@ block backend configuration.
 
 Block requests default to reads at sector zero. Use `--block-operation` to
 select `read` or `write`. Use `--block-pattern` to select `fixed`,
-`sequential`, or `random` addresses.
+`sequential`, or `random` addresses. Use `--block-request-size` to select
+512, 1024, 2048, or 4096 bytes.
 
 ```bash
 ./run-perf -m ./cloud-hypervisor --device blk \
-	--block-operation write --block-pattern sequential
+	--block-operation write --block-pattern sequential \
+	--block-request-size 1024
 ./run-perf -m ./qemu-system-x86_64 --device blk \
 	--block-operation read --block-pattern random
 ```
 
-Every request transfers 4 KiB. Fixed requests use sector zero. Sequential
-requests advance by 4 KiB and wrap at device capacity. Random requests use a
-fixed deterministic sequence and stay within device capacity. Write buffers
-contain a fixed byte value. Write completion is measured at the used ring and
-does not imply that data reached durable storage.
+Requests transfer 4 KiB by default. Fixed requests use sector zero. Sequential
+requests advance by the selected request size and wrap at device capacity.
+Random requests use a fixed deterministic sequence and stay within device
+capacity. Write buffers contain a fixed byte value. Write completion is
+measured at the used ring and does not imply that data reached durable storage.
+
+The current request sizes fit in one guest page. Larger requests require a
+descriptor segment layout that can represent separate guest physical pages.
 
 Use `--queue-depth` to select a power of two depth from 1 through 32. Use
 `--batch-size` to publish 1, 4, 8, 16, or 32 descriptor heads before each device

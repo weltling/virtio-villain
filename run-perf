@@ -464,6 +464,7 @@ def run_guest(args, runner):
             f"vv.perf_sample_every={args.sample_every} "
             f"vv.perf_block_operation={args.block_operation} "
             f"vv.perf_block_pattern={args.block_pattern} "
+            f"vv.perf_block_request_size={args.block_request_size} "
             f"vv.perf_net_operation={args.net_operation} "
             f"vv.perf_net_header_size="
             f"{12 if backend.name in {'ch', 'openvmm'} else 10} "
@@ -792,6 +793,9 @@ def parse_args(argv=None):
     parser.add_argument("--block-pattern",
                         choices=("fixed", "sequential", "random"),
                         default="fixed")
+    parser.add_argument("--block-request-size", type=int,
+                        choices=(512, 1024, 2048, 4096), default=4096,
+                        metavar="BYTES")
     parser.add_argument("--net-operation", choices=("transmit", "receive"),
                         default="transmit")
     parser.add_argument("--cpus", type=int, default=1)
@@ -820,8 +824,9 @@ def parse_args(argv=None):
     if args.batch_size > args.queue_depth:
         parser.error("--batch-size must not exceed --queue-depth")
     if args.device != "blk" and (args.block_operation != "read" or
-                                 args.block_pattern != "fixed"):
-        parser.error("block operation and pattern require --device blk")
+                                 args.block_pattern != "fixed" or
+                                 args.block_request_size != 4096):
+        parser.error("block options require --device blk")
     if args.device != "net" and args.net_operation != "transmit":
         parser.error("network operation requires --device net")
     if args.device != "blk" and args.device_queues != 1:
