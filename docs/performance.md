@@ -171,10 +171,12 @@ visible to the guest. The selected CPU model is stored in the report.
 ## Results
 
 The default output reports completed operations per second across all measured
-rounds. It also shows the fastest and slowest round rates so run stability is
-visible. Mean service time is derived from the duration of the complete round.
-It is not a latency sample or percentile. Use `--verbose` to print elapsed time
-and operation rate for every round. JSON output keeps all samples for automated
+rounds. It also reports the median round rate and median absolute deviation in
+operations per second and as a percentage of the median. These values describe
+rounds within one guest boot. The fastest and slowest round rates remain visible.
+Mean service time is derived from the duration of the complete round. It is not
+a latency sample or percentile. Use `--verbose` to print elapsed time and
+operation rate for every round. JSON output keeps all samples for automated
 comparison.
 
 Block, RNG, and network receive reports include payload bytes per second.

@@ -348,6 +348,9 @@ def main():
     assert summary["total_requests"] == 200
     assert summary["total_duration_ns"] == 3000000
     assert round(summary["operations_per_second"], 2) == 66666.67
+    assert summary["operations_per_second_median"] == 75000
+    assert summary["operations_per_second_mad"] == 25000
+    assert round(summary["operations_per_second_mad_percent"], 2) == 33.33
     assert summary["mean_service_time_ns"] == 15000
     assert round(summary["payload_bytes_per_second"], 2) == 273066666.67
     assert summary["notifications_per_submission"] == 1
@@ -789,6 +792,8 @@ def main():
     assert "Address pattern: random" in write_human
     assert "Requests:      200" in human
     assert "Operation rate: 66666.67 operations/s" in human
+    assert "Median rate:    75000.00 operations/s" in human
+    assert "Dispersion:     25000.00 operations/s MAD, 33.33%" in human
     assert "Round range:    50000.00 to 100000.00 operations/s" in human
     assert "Mean service:  15.00 us per operation" in human
     assert "Notify ratio:  1.0000 per submission" in human

@@ -12,6 +12,7 @@ import platform
 import pty
 import re
 import socket
+import statistics
 import subprocess
 import sys
 import tempfile
@@ -356,6 +357,9 @@ def parse_results(output):
 
 def summarize(samples):
     operation_rates = [sample["operations_per_second"] for sample in samples]
+    median_rate = statistics.median(operation_rates)
+    median_absolute_deviation = statistics.median(
+        abs(rate - median_rate) for rate in operation_rates)
     total_requests = sum(sample["iterations"] for sample in samples)
     total_duration_ns = sum(sample["duration_ns"] for sample in samples)
     total_submissions = sum(sample["submissions"] for sample in samples)
@@ -365,6 +369,10 @@ def summarize(samples):
         "total_requests": total_requests,
         "total_duration_ns": total_duration_ns,
         "operations_per_second": combined_rate,
+        "operations_per_second_median": median_rate,
+        "operations_per_second_mad": median_absolute_deviation,
+        "operations_per_second_mad_percent": (
+            median_absolute_deviation / median_rate * 100),
         "operations_per_second_min": min(operation_rates),
         "operations_per_second_max": max(operation_rates),
         "mean_service_time_ns": total_duration_ns / total_requests,
@@ -865,6 +873,11 @@ def format_human(report, verbose=False):
         f"Batch size:    {report['queue']['batch_size']}",
         f"Requests:      {summary['total_requests']}",
         f"Operation rate: {operation_rate:.2f} operations/s",
+        (f"Median rate:    {summary['operations_per_second_median']:.2f} "
+         "operations/s"),
+        (f"Dispersion:     {summary['operations_per_second_mad']:.2f} "
+         "operations/s MAD, "
+         f"{summary['operations_per_second_mad_percent']:.2f}%"),
         (f"Round range:    {min(round_rates):.2f} to "
          f"{max(round_rates):.2f} operations/s"),
         (f"Mean service:  {summary['mean_service_time_ns'] / 1000:.2f} "
