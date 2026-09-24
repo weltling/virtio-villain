@@ -202,6 +202,7 @@ boundary. Latency rounds store the sampling interval and every raw sample in
 nanoseconds. The runner calculates p50, p90, p99, and p99.9 with the nearest
 rank method across all measured rounds. A VMM version is omitted when the
 binary has no supported version query.
+The VMM section records the SHA256 of the executable bytes.
 
 Use `--strace-profile PATH` to wrap only the VMM process with `strace -f -c`.
 The raw syscall count and time summary is written to `PATH`. The absolute

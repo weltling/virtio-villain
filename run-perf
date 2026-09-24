@@ -3,6 +3,7 @@
 """Run virtio performance measurements in one guest boot."""
 
 import argparse
+import hashlib
 import importlib.machinery
 import importlib.util
 import json
@@ -11,6 +12,7 @@ import os
 import platform
 import pty
 import re
+import shutil
 import socket
 import statistics
 import subprocess
@@ -429,6 +431,18 @@ def get_version(path):
     return text.splitlines()[0] if text else None
 
 
+def get_binary_sha256(path):
+    resolved = shutil.which(path) or path
+    digest = hashlib.sha256()
+    try:
+        with open(resolved, "rb") as binary:
+            for chunk in iter(lambda: binary.read(1024 * 1024), b""):
+                digest.update(chunk)
+    except OSError:
+        return None
+    return digest.hexdigest()
+
+
 def get_processor_model():
     try:
         with open("/proc/cpuinfo", encoding="utf-8") as cpuinfo:
@@ -583,6 +597,7 @@ def make_report(args, backend, samples, kernel):
     sample = samples[0]
     vmm = {"backend": backend.name, "path": os.path.abspath(args.vmm),
            "version": get_version(args.vmm),
+           "sha256": get_binary_sha256(args.vmm),
            "process_mode": ("single" if backend.name == "openvmm"
                             else "default")}
     if backend.name == "qemu":

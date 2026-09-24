@@ -381,6 +381,12 @@ def main():
                            return_value=sanitizer_version):
         assert module.get_version("cloud-hypervisor") == (
             "cloud-hypervisor v53.0")
+    with tempfile.NamedTemporaryFile() as binary:
+        binary.write(b"abc")
+        binary.flush()
+        assert module.get_binary_sha256(binary.name) == (
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+    assert module.get_binary_sha256("missing-vmm-binary") is None
     cpuinfo = mock.mock_open(read_data="model name : Example CPU 1000\n")
     with mock.patch("builtins.open", cpuinfo):
         assert module.get_processor_model() == "Example CPU 1000"
@@ -724,6 +730,7 @@ def main():
     assert vhdx_report["backend"]["format"] == "vhdx"
     assert report["guest"]["kernel"] == "/boot/vmlinux"
     assert report["vmm"]["process_mode"] == "single"
+    assert report["vmm"]["sha256"] is None
     assert report["instrumentation"] == {
         "enabled": False, "strace_profile": None}
     with mock.patch.object(module, "get_version", return_value=None):
