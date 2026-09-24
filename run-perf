@@ -19,6 +19,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import uuid
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -581,7 +582,11 @@ def run_guest(args, runner):
         try:
             if network_sender is not None:
                 network_sender.start()
-            samples = run_vmm(cmd, spawn, args.rounds)
+            args.measurement_start_unix_ns = time.time_ns()
+            try:
+                samples = run_vmm(cmd, spawn, args.rounds)
+            finally:
+                args.measurement_stop_unix_ns = time.time_ns()
         finally:
             if network_sender is not None:
                 network_sender.stop()
@@ -641,7 +646,11 @@ def make_report(args, backend, samples, kernel):
                       "cpus": max(args.cpus, args.device_queues),
                       "memory": args.memory,
                       "iterations": args.iterations, "rounds": args.rounds,
-                      "warmup": args.warmup},
+                      "warmup": args.warmup,
+                      "measurement_start_unix_ns": getattr(
+                          args, "measurement_start_unix_ns", None),
+                      "measurement_stop_unix_ns": getattr(
+                          args, "measurement_stop_unix_ns", None)},
         "queue": {"transport": "pci", "format": sample["queue_format"],
                   "descriptor_layout": sample["descriptor_layout"],
                   "notification_policy": sample["notification_policy"],
@@ -670,6 +679,8 @@ def make_report(args, backend, samples, kernel):
 def compatibility_mismatches(baseline, candidate):
     """Return fields that prevent a valid report comparison."""
     ignored = {"samples", "summary", "execution.boot_id",
+               "execution.measurement_start_unix_ns",
+               "execution.measurement_stop_unix_ns",
                "instrumentation.strace_profile"}
     fixed_vmm = {"accelerator", "backend", "cpu_model", "machine",
                  "process_mode"}

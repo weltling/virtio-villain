@@ -525,6 +525,15 @@ def main():
     disk_path = command_backend.build_cmd.call_args.args[2]
     assert disk_path.endswith(".vhdx")
     create_disk.assert_called_once_with(disk_path, "vhdx", 64)
+    marker_args = module.parse_args(["-m", "vmm"])
+    with mock.patch.object(module, "run_vmm", return_value=samples), \
+            mock.patch.object(module.time, "time_ns",
+                              side_effect=[100, 200]):
+        module.run_guest(marker_args, mock.Mock(
+            detect_vmm=mock.Mock(return_value=command_backend),
+            fetch_kernel=mock.Mock(return_value="kernel")))
+    assert marker_args.measurement_start_unix_ns == 100
+    assert marker_args.measurement_stop_unix_ns == 200
     profile_args = module.parse_args(
         ["-m", "vmm", "--strace-profile", "syscalls.txt"])
     with mock.patch.object(module, "run_vmm", return_value=samples) as run_vmm:
@@ -680,6 +689,8 @@ def main():
             pass
     args = module.parse_args(["-m", "openvmm", "--device", "blk",
                               "--changed-dimension", "depth"])
+    args.measurement_start_unix_ns = 100
+    args.measurement_stop_unix_ns = 200
     backend = type("Backend", (), {"name": "openvmm"})()
     with mock.patch.object(module, "get_version", return_value=None):
         report = module.make_report(args, backend, samples, "/boot/vmlinux")
@@ -702,10 +713,16 @@ def main():
     assert queue_report["queue"]["device_queues"] == 4
     assert queue_report["execution"]["cpus"] == 4
     assert uuid.UUID(report["execution"]["boot_id"]).version == 4
+    assert report["execution"]["measurement_start_unix_ns"] == 100
+    assert report["execution"]["measurement_stop_unix_ns"] == 200
     assert report["execution"]["boot_id"] != queue_report["execution"]["boot_id"]
     changed_boot = module.json.loads(module.json.dumps(report))
     changed_boot["execution"]["boot_id"] = str(uuid.uuid4())
     assert module.compatibility_mismatches(report, changed_boot) == []
+    changed_markers = module.json.loads(module.json.dumps(report))
+    changed_markers["execution"]["measurement_start_unix_ns"] = 300
+    changed_markers["execution"]["measurement_stop_unix_ns"] = 400
+    assert module.compatibility_mismatches(report, changed_markers) == []
     assert queue_report["queue"]["negotiated_features"] == "0x1000"
     assert indirect_report["queue"]["descriptor_layout"] == "indirect"
     assert packed_report["queue"]["format"] == "packed"

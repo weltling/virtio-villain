@@ -195,6 +195,8 @@ workload, backend, instrumentation, and timing settings. Each sample records
 request bytes, submissions, completions, notifications, timing mode, and clock
 source. Queue settings record the device queue count and depth per queue.
 Each execution records a UUID that identifies its independent guest boot.
+The execution section also records Unix nanosecond markers immediately before
+and after the complete VMM command.
 The queue settings also record the split or packed format and the direct or
 indirect descriptor layout. They record the notification policy and negotiated
 feature mask as well.
