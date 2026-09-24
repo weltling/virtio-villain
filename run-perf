@@ -162,6 +162,138 @@ class NetworkSender:
             self.thread.join(timeout=1)
 
 
+def parse_proc_stat(text):
+    name_start = text.find("(")
+    name_end = text.rfind(")")
+    if name_start < 0 or name_end <= name_start:
+        raise ValueError("Invalid proc stat record")
+    fields = text[name_end + 2:].split()
+    if len(fields) < 20:
+        raise ValueError("Incomplete proc stat record")
+    return {
+        "name": text[name_start + 1:name_end],
+        "ppid": int(fields[1]),
+        "user_ticks": int(fields[11]),
+        "kernel_ticks": int(fields[12]),
+        "start_ticks": int(fields[19]),
+    }
+
+
+def parse_proc_status(text):
+    values = {}
+    for line in text.splitlines():
+        name, separator, value = line.partition(":")
+        if separator and name in {
+                "voluntary_ctxt_switches", "nonvoluntary_ctxt_switches"}:
+            values[name] = int(value.strip())
+    return {
+        "voluntary_context_switches": values.get(
+            "voluntary_ctxt_switches", 0),
+        "involuntary_context_switches": values.get(
+            "nonvoluntary_ctxt_switches", 0),
+    }
+
+
+class ThreadAccounting:
+    def __init__(self, executable):
+        self.executable = os.path.realpath(shutil.which(executable) or executable)
+        self.parent_pid = os.getpid()
+        self.clock_ticks = os.sysconf("SC_CLK_TCK")
+        self.records = {}
+        self.stop_event = threading.Event()
+        self.thread = None
+
+    @staticmethod
+    def _read(path):
+        try:
+            with open(path, encoding="utf-8") as proc_file:
+                return proc_file.read()
+        except (OSError, UnicodeError):
+            return None
+
+    def _descendants(self):
+        descendants = set()
+        pending = [self.parent_pid]
+        while pending:
+            parent = pending.pop()
+            children = self._read(
+                f"/proc/{parent}/task/{parent}/children")
+            if children is None:
+                continue
+            for value in children.split():
+                child = int(value)
+                if child not in descendants:
+                    descendants.add(child)
+                    pending.append(child)
+        return descendants
+
+    def _matches_executable(self, pid):
+        try:
+            return os.path.samefile(self.executable, f"/proc/{pid}/exe")
+        except OSError:
+            return False
+
+    def _sample(self):
+        for pid in self._descendants():
+            if not self._matches_executable(pid):
+                continue
+            try:
+                tasks = os.scandir(f"/proc/{pid}/task")
+            except OSError:
+                continue
+            with tasks:
+                for task in tasks:
+                    stat_text = self._read(f"{task.path}/stat")
+                    status_text = self._read(f"{task.path}/status")
+                    if stat_text is None or status_text is None:
+                        continue
+                    try:
+                        stat = parse_proc_stat(stat_text)
+                        switches = parse_proc_status(status_text)
+                    except (TypeError, ValueError):
+                        continue
+                    tid = int(task.name)
+                    key = (pid, tid, stat["start_ticks"])
+                    self.records[key] = {
+                        "pid": pid,
+                        "tid": tid,
+                        "name": stat["name"],
+                        "user_ticks": stat["user_ticks"],
+                        "kernel_ticks": stat["kernel_ticks"],
+                        **switches,
+                    }
+
+    def _run(self):
+        while not self.stop_event.is_set():
+            self._sample()
+            self.stop_event.wait(0.005)
+
+    def start(self):
+        self.thread = threading.Thread(target=self._run, daemon=True)
+        self.thread.start()
+
+    def stop(self):
+        self.stop_event.set()
+        if self.thread is not None:
+            self.thread.join(timeout=1)
+        result = []
+        for record in self.records.values():
+            result.append({
+                "pid": record["pid"],
+                "tid": record["tid"],
+                "name": record["name"],
+                "user_cpu_ns": (
+                    record["user_ticks"] * 1_000_000_000 // self.clock_ticks),
+                "kernel_cpu_ns": (
+                    record["kernel_ticks"] * 1_000_000_000 // self.clock_ticks),
+                "voluntary_context_switches": record[
+                    "voluntary_context_switches"],
+                "involuntary_context_switches": record[
+                    "involuntary_context_switches"],
+            })
+        return sorted(result, key=lambda item: (item["pid"], item["tid"]))
+
+
 def unused_udp_port():
     udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     udp_socket.bind(("127.0.0.1", 0))
@@ -582,11 +714,17 @@ def run_guest(args, runner):
         try:
             if network_sender is not None:
                 network_sender.start()
+            accounting = (ThreadAccounting(args.vmm)
+                          if args.thread_accounting else None)
+            if accounting is not None:
+                accounting.start()
             args.measurement_start_unix_ns = time.time_ns()
             try:
                 samples = run_vmm(cmd, spawn, args.rounds)
             finally:
                 args.measurement_stop_unix_ns = time.time_ns()
+                if accounting is not None:
+                    args.thread_accounting_data = accounting.stop()
         finally:
             if network_sender is not None:
                 network_sender.stop()
@@ -664,9 +802,14 @@ def make_report(args, backend, samples, kernel):
                      "request_bytes": sample["request_bytes"]},
         "backend": resource,
         "instrumentation": {
-            "enabled": args.strace_profile is not None,
+            "enabled": (args.strace_profile is not None or
+                        args.thread_accounting),
+            "strace_enabled": args.strace_profile is not None,
             "strace_profile": (os.path.abspath(args.strace_profile)
                                if args.strace_profile else None),
+            "thread_accounting_enabled": args.thread_accounting,
+            "thread_accounting": getattr(
+                args, "thread_accounting_data", None),
         },
         "timing": {"mode": sample["timing_mode"],
                    "clock_source": sample["clock_source"],
@@ -681,7 +824,8 @@ def compatibility_mismatches(baseline, candidate):
     ignored = {"samples", "summary", "execution.boot_id",
                "execution.measurement_start_unix_ns",
                "execution.measurement_stop_unix_ns",
-               "instrumentation.strace_profile"}
+               "instrumentation.strace_profile",
+               "instrumentation.thread_accounting"}
     fixed_vmm = {"accelerator", "backend", "cpu_model", "machine",
                  "process_mode"}
     mismatches = []
@@ -887,6 +1031,7 @@ def parse_args(argv=None):
                         default="default")
     parser.add_argument("--direct", action="store_true")
     parser.add_argument("--strace-profile", metavar="PATH")
+    parser.add_argument("--thread-accounting", action="store_true")
     parser.add_argument("--experiment-class",
                         choices=("queue", "frontend", "backend"),
                         default="queue")
@@ -901,6 +1046,8 @@ def parse_args(argv=None):
         parser.error("--vmm is required unless --compare is used")
     if args.compare and args.strace_profile:
         parser.error("--strace-profile cannot be used with --compare")
+    if args.compare and args.thread_accounting:
+        parser.error("--thread-accounting cannot be used with --compare")
     for name in ("iterations", "rounds", "warmup", "sample_every", "cpus",
                  "disk_size", "timeout"):
         if getattr(args, name) < 1:

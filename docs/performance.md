@@ -220,6 +220,12 @@ System call tracing adds measurement cost. Use it to locate host side time,
 not as an uninstrumented throughput result. Apply the same tracing setting to
 both VMMs when comparing traced reports.
 
+Use `--thread-accounting` to sample Linux process counters for VMM threads.
+The report records observed thread IDs and names, user and kernel CPU time,
+and voluntary and involuntary context switch counts. The monitor follows the
+VMM process behind an optional strace wrapper. Sampling adds measurement cost
+and can miss threads that exist for less than one sampling interval.
+
 Latency mode still reports complete round duration and operation rate for
 context. Its instrumentation cost means those rates are not throughput mode
 results. Throughput mode does not make percentile claims.

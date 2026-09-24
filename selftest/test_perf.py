@@ -356,6 +356,35 @@ def main():
     assert summary["mean_service_time_ns"] == 15000
     assert round(summary["payload_bytes_per_second"], 2) == 273066666.67
     assert summary["notifications_per_submission"] == 1
+    stat_fields = ["S", "1"] + ["0"] * 9 + ["7", "3"] + ["0"] * 6 + ["99"]
+    proc_stat = module.parse_proc_stat(
+        f"123 (worker thread) {' '.join(stat_fields)}")
+    assert proc_stat == {
+        "name": "worker thread", "ppid": 1, "user_ticks": 7,
+        "kernel_ticks": 3, "start_ticks": 99}
+    assert module.parse_proc_status(
+        "voluntary_ctxt_switches:\t5\n"
+        "nonvoluntary_ctxt_switches:\t2\n") == {
+            "voluntary_context_switches": 5,
+            "involuntary_context_switches": 2,
+        }
+    accounting = module.ThreadAccounting(module.sys.executable)
+    accounting.start()
+    child_code = (
+        "import threading; "
+        "t=threading.Thread(target=lambda: sum(range(10000000))); "
+        "t.start(); sum(range(10000000)); t.join()")
+    subprocess.run([
+        module.sys.executable, "-c", child_code,
+    ], check=True)
+    accounting_records = accounting.stop()
+    assert accounting_records
+    assert all(record["user_cpu_ns"] >= 0 for record in accounting_records)
+    assert all(record["kernel_cpu_ns"] >= 0 for record in accounting_records)
+    assert all(record["voluntary_context_switches"] >= 0
+               for record in accounting_records)
+    assert all(record["involuntary_context_switches"] >= 0
+               for record in accounting_records)
     timeout = subprocess.TimeoutExpired(
         ["vmm"], 1, output=output.encode())
     with mock.patch.object(module.subprocess, "run", side_effect=timeout):
@@ -422,6 +451,8 @@ def main():
     assert module.parse_args(
         ["-m", "vmm", "--strace-profile", "syscalls.txt"]
     ).strace_profile == "syscalls.txt"
+    assert module.parse_args(
+        ["-m", "vmm", "--thread-accounting"]).thread_accounting is True
     block_args = module.parse_args(
         ["-m", "vmm", "--device", "blk", "--block-operation", "write",
          "--block-pattern", "random", "--block-request-size", "1024"])
@@ -486,6 +517,12 @@ def main():
             assert False
         except ValueError:
             pass
+        try:
+            module.parse_args(["--compare", "a.json", "b.json",
+                               "--thread-accounting"])
+            assert False
+        except ValueError:
+            pass
     cmdline_args = module.parse_args(
         ["-m", "vmm", "--device", "blk", "--queue-depth", "16",
          "--batch-size", "16"])
@@ -543,6 +580,20 @@ def main():
     assert run_vmm.call_args.args[0] == [
         "strace", "-f", "-c", "-o", os.path.abspath("syscalls.txt"),
         "--", "vmm"]
+    accounting_args = module.parse_args(
+        ["-m", "vmm", "--thread-accounting"])
+    accounting_data = [{"pid": 10, "tid": 10, "name": "vmm"}]
+    accounting_monitor = mock.Mock()
+    accounting_monitor.stop.return_value = accounting_data
+    with mock.patch.object(module, "ThreadAccounting",
+                           return_value=accounting_monitor), \
+            mock.patch.object(module, "run_vmm", return_value=samples):
+        module.run_guest(accounting_args, mock.Mock(
+            detect_vmm=mock.Mock(return_value=command_backend),
+            fetch_kernel=mock.Mock(return_value="kernel")))
+    accounting_monitor.start.assert_called_once_with()
+    accounting_monitor.stop.assert_called_once_with()
+    assert accounting_args.thread_accounting_data == accounting_data
     with mock.patch.object(module, "run_vmm",
                            return_value=network_receive_samples), \
             mock.patch.object(module, "unused_udp_port",
@@ -755,13 +806,21 @@ def main():
     assert report["vmm"]["process_mode"] == "single"
     assert report["vmm"]["sha256"] is None
     assert report["instrumentation"] == {
-        "enabled": False, "strace_profile": None}
+        "enabled": False,
+        "strace_enabled": False,
+        "strace_profile": None,
+        "thread_accounting_enabled": False,
+        "thread_accounting": None,
+    }
     with mock.patch.object(module, "get_version", return_value=None):
         profile_report = module.make_report(
             profile_args, backend, samples, "/boot/vmlinux")
     assert profile_report["instrumentation"] == {
         "enabled": True,
+        "strace_enabled": True,
         "strace_profile": os.path.abspath("syscalls.txt"),
+        "thread_accounting_enabled": False,
+        "thread_accounting": None,
     }
     changed_artifact = module.json.loads(module.json.dumps(profile_report))
     changed_artifact["instrumentation"]["strace_profile"] = "/other.txt"
@@ -769,6 +828,19 @@ def main():
         profile_report, changed_artifact) == []
     assert "instrumentation.enabled" in module.compatibility_mismatches(
         report, profile_report)
+    accounting_args.thread_accounting_data = accounting_data
+    with mock.patch.object(module, "get_version", return_value=None):
+        accounting_report = module.make_report(
+            accounting_args, backend, samples, "/boot/vmlinux")
+    assert accounting_report["instrumentation"]["thread_accounting"] == (
+        accounting_data)
+    assert accounting_report["instrumentation"][
+        "thread_accounting_enabled"] is True
+    changed_accounting = module.json.loads(
+        module.json.dumps(accounting_report))
+    changed_accounting["instrumentation"]["thread_accounting"] = []
+    assert module.compatibility_mismatches(
+        accounting_report, changed_accounting) == []
     assert module.compatibility_mismatches(report, report) == []
     changed = module.json.loads(module.json.dumps(report))
     changed["queue"]["depth"] = 16
