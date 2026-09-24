@@ -6,6 +6,7 @@ import importlib.machinery
 import importlib.util
 import os
 import subprocess
+import tempfile
 from unittest import mock
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -398,6 +399,9 @@ def main():
         ["-m", "vmm", "--device", "blk",
          "--device-queues", "4"]).device_queues == 4
     assert module.parse_args(
+        ["-m", "vmm", "--device", "blk",
+         "--disk-type", "vhdx"]).disk_type == "vhdx"
+    assert module.parse_args(
         ["-m", "vmm", "--descriptor-layout", "indirect"]).descriptor_layout == (
             "indirect")
     assert module.parse_args(
@@ -439,6 +443,12 @@ def main():
         try:
             module.parse_args(["-m", "vmm", "--device", "rng",
                                "--block-request-size", "1024"])
+            assert False
+        except ValueError:
+            pass
+        try:
+            module.parse_args(["-m", "vmm", "--device", "rng",
+                               "--disk-type", "qcow2"])
             assert False
         except ValueError:
             pass
@@ -489,6 +499,16 @@ def main():
     assert "vv.perf_block_operation=write" in block_cmdline
     assert "vv.perf_block_pattern=random" in block_cmdline
     assert "vv.perf_block_request_size=1024" in block_cmdline
+    disk_args = module.parse_args(
+        ["-m", "vmm", "--device", "blk", "--disk-type", "vhdx"])
+    with mock.patch.object(module, "run_vmm", return_value=samples), \
+            mock.patch.object(module, "create_disk_image") as create_disk:
+        module.run_guest(disk_args, mock.Mock(
+            detect_vmm=mock.Mock(return_value=command_backend),
+            fetch_kernel=mock.Mock(return_value="kernel")))
+    disk_path = command_backend.build_cmd.call_args.args[2]
+    assert disk_path.endswith(".vhdx")
+    create_disk.assert_called_once_with(disk_path, "vhdx", 64)
     with mock.patch.object(module, "run_vmm",
                            return_value=network_receive_samples), \
             mock.patch.object(module, "unused_udp_port",
@@ -563,6 +583,16 @@ def main():
                                                "cap_net_admin")
     assert not module.has_effective_capability("cap_net_admin=e",
                                                "cap_net_admin")
+    with tempfile.TemporaryDirectory() as temp_dir:
+        raw_path = os.path.join(temp_dir, "disk.raw")
+        module.create_disk_image(raw_path, "raw", 1)
+        assert os.path.getsize(raw_path) == 1024 * 1024
+    with mock.patch.object(module.subprocess, "run") as create_image:
+        module.create_disk_image("disk.vhd", "vhd", 64)
+    create_image.assert_called_once_with(
+        ["qemu-img", "create", "-f", "vpc", "-o", "subformat=fixed",
+         "disk.vhd", str(64 * 1024 * 1024)],
+        check=True, capture_output=True)
     queue_args = module.parse_args(
         ["-m", "vmm", "--device", "blk", "--device-queues", "4"])
     with mock.patch.object(module, "run_vmm", return_value=samples):
@@ -667,6 +697,13 @@ def main():
     assert write_report["workload"]["address_pattern"] == "random"
     assert report["backend"]["io_engine"] == "default"
     assert report["backend"]["type"] == "file"
+    assert report["backend"]["format"] == "raw"
+    vhdx_args = module.parse_args(
+        ["-m", "openvmm", "--device", "blk", "--disk-type", "vhdx"])
+    with mock.patch.object(module, "get_version", return_value=None):
+        vhdx_report = module.make_report(
+            vhdx_args, backend, samples, "/boot/vmlinux")
+    assert vhdx_report["backend"]["format"] == "vhdx"
     assert report["guest"]["kernel"] == "/boot/vmlinux"
     assert report["vmm"]["process_mode"] == "single"
     assert module.compatibility_mismatches(report, report) == []

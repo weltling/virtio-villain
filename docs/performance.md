@@ -53,6 +53,10 @@ Use `--iterations`, `--warmup`, and `--rounds` to change the sample shape.
 Use `--cpus`, `--memory`, `--io-engine`, and `--direct` to change the VM and
 block backend configuration.
 
+Use `--disk-type` to select `raw`, `qcow2`, `vhd`, or `vhdx`. Raw is the
+default. Other formats require `qemu-img`. The selected format is recorded in
+the backend report section.
+
 Block requests default to reads at sector zero. Use `--block-operation` to
 select `read` or `write`. Use `--block-pattern` to select `fixed`,
 `sequential`, or `random` addresses. Use `--block-request-size` to select

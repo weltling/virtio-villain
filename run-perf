@@ -36,6 +36,8 @@ BACKEND_DEVICES = {
     "qemu": {"blk", "net", "rng", "vsock"},
     "openvmm": {"blk", "net", "rng"},
 }
+DISK_FORMATS = ("raw", "qcow2", "vhd", "vhdx")
+DISK_SUFFIXES = {disk_type: f".{disk_type}" for disk_type in DISK_FORMATS}
 PAYLOAD_RATE_OPERATIONS = {"blk_read", "blk_write", "net_rx", "rng_fill"}
 RESULT_PREFIX = "VVPERF "
 LATENCY_PREFIX = "VVPERF_LATENCY "
@@ -182,6 +184,25 @@ def load_runner():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def create_disk_image(path, disk_type, size_mib):
+    size = size_mib * 1024 * 1024
+    if disk_type == "raw":
+        with open(path, "wb") as disk_file:
+            disk_file.truncate(size)
+        return
+    qemu_format = {"qcow2": "qcow2", "vhd": "vpc", "vhdx": "vhdx"}[
+        disk_type]
+    command = ["qemu-img", "create", "-f", qemu_format]
+    if disk_type == "vhd":
+        command += ["-o", "subformat=fixed"]
+    command += [path, str(size)]
+    try:
+        subprocess.run(command, check=True, capture_output=True)
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise RuntimeError(
+            f"Cannot create {disk_type} performance disk: {error}") from error
 
 
 def parse_results(output):
@@ -453,9 +474,8 @@ def run_guest(args, runner):
     kernel = args.kernel or runner.fetch_kernel()
     initramfs = os.path.join(ROOT, "target", "perf-initramfs.cpio.gz")
     with tempfile.TemporaryDirectory(prefix="vvperf.") as temp_dir:
-        disk = os.path.join(temp_dir, "disk.raw")
-        with open(disk, "wb") as disk_file:
-            disk_file.truncate(args.disk_size * 1024 * 1024)
+        disk = os.path.join(temp_dir, "disk" + DISK_SUFFIXES[args.disk_type])
+        create_disk_image(disk, args.disk_type, args.disk_size)
         cmdline = (
             f"console={backend.console_device} "
             f"initcall_blacklist={DEVICE_INITCALL[args.device]} "
@@ -571,7 +591,7 @@ def make_report(args, backend, samples, kernel):
     if sample["workload"] == "blk":
         direct = args.direct or (
             backend.name == "openvmm" and args.io_engine == "aio")
-        resource = {"type": "file", "format": "raw",
+        resource = {"type": "file", "format": args.disk_type,
                     "direct": direct,
                     "disk_size_mib": args.disk_size,
                     "io_engine": args.io_engine}
@@ -824,6 +844,8 @@ def parse_args(argv=None):
     parser.add_argument("--cpus", type=int, default=1)
     parser.add_argument("--memory", default="256M")
     parser.add_argument("--disk-size", type=int, default=64, metavar="MIB")
+    parser.add_argument("-d", "--disk-type", choices=DISK_FORMATS,
+                        default="raw")
     parser.add_argument("--timeout", type=int, default=60)
     parser.add_argument("--io-engine", choices=("default", "io_uring", "aio", "sync"),
                         default="default")
@@ -848,7 +870,8 @@ def parse_args(argv=None):
         parser.error("--batch-size must not exceed --queue-depth")
     if args.device != "blk" and (args.block_operation != "read" or
                                  args.block_pattern != "fixed" or
-                                 args.block_request_size != 4096):
+                                 args.block_request_size != 4096 or
+                                 args.disk_type != "raw"):
         parser.error("block options require --device blk")
     if args.device != "net" and args.net_operation != "transmit":
         parser.error("network operation requires --device net")
