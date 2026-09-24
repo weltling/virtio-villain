@@ -57,6 +57,17 @@ Use `--disk-type` to select `raw`, `qcow2`, `vhd`, or `vhdx`. Raw is the
 default. Other formats require `qemu-img`. The selected format is recorded in
 the backend report section.
 
+Temporary disk images use the system temporary directory by default. Use
+`--work-dir` to place them on a specific filesystem. This is useful when an
+image must use persistent storage instead of tmpfs. The resolved directory is
+recorded in the backend report section and must match when reports are
+compared.
+
+```bash
+./run-perf -m ./openvmm --device blk --disk-type vhdx \
+	--work-dir /path/on/ext4
+```
+
 Block requests default to reads at sector zero. Use `--block-operation` to
 select `read` or `write`. Use `--block-pattern` to select `fixed`,
 `sequential`, or `random` addresses. Use `--block-request-size` to select

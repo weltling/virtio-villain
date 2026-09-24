@@ -614,6 +614,16 @@ def run_vmm(cmd, spawn, rounds):
     return samples
 
 
+def create_work_directory(work_dir):
+    try:
+        return tempfile.TemporaryDirectory(prefix="vvperf.", dir=work_dir)
+    except OSError as error:
+        location = os.path.abspath(work_dir or tempfile.gettempdir())
+        raise RuntimeError(
+            f"Cannot create performance work directory in {location}: "
+            f"{error}") from error
+
+
 def run_guest(args, runner):
     backend = runner.detect_vmm(args.vmm)
     if args.device not in BACKEND_DEVICES.get(backend.name, set()):
@@ -621,7 +631,8 @@ def run_guest(args, runner):
             f"{backend.name} does not provide virtio-{args.device}")
     kernel = args.kernel or runner.fetch_kernel()
     initramfs = os.path.join(ROOT, "target", "perf-initramfs.cpio.gz")
-    with tempfile.TemporaryDirectory(prefix="vvperf.") as temp_dir:
+    with create_work_directory(args.work_dir) as temp_dir:
+        args.work_dir_used = os.path.realpath(os.path.dirname(temp_dir))
         disk = os.path.join(temp_dir, "disk" + DISK_SUFFIXES[args.disk_type])
         create_disk_image(disk, args.disk_type, args.disk_size)
         cmdline = (
@@ -756,7 +767,11 @@ def make_report(args, backend, samples, kernel):
         resource = {"type": "file", "format": args.disk_type,
                     "direct": direct,
                     "disk_size_mib": args.disk_size,
-                    "io_engine": args.io_engine}
+                    "io_engine": args.io_engine,
+                    "work_dir": getattr(
+                        args, "work_dir_used",
+                        os.path.realpath(
+                            args.work_dir or tempfile.gettempdir()))}
     elif sample["workload"] == "net":
         endpoints = {"qemu": "user", "ch": "tap", "openvmm": "consomme"}
         resource = {"type": "network",
@@ -1024,6 +1039,7 @@ def parse_args(argv=None):
     parser.add_argument("--cpus", type=int, default=1)
     parser.add_argument("--memory", default="256M")
     parser.add_argument("--disk-size", type=int, default=64, metavar="MIB")
+    parser.add_argument("--work-dir", metavar="PATH")
     parser.add_argument("-d", "--disk-type", choices=DISK_FORMATS,
                         default="raw")
     parser.add_argument("--timeout", type=int, default=60)

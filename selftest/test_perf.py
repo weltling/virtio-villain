@@ -553,15 +553,35 @@ def main():
     assert "vv.perf_block_pattern=random" in block_cmdline
     assert "vv.perf_block_request_size=1024" in block_cmdline
     disk_args = module.parse_args(
-        ["-m", "vmm", "--device", "blk", "--disk-type", "vhdx"])
+        ["-m", "vmm", "--device", "blk", "--disk-type", "vhdx",
+         "--work-dir", "/performance"])
     with mock.patch.object(module, "run_vmm", return_value=samples), \
-            mock.patch.object(module, "create_disk_image") as create_disk:
+            mock.patch.object(module, "create_disk_image") as create_disk, \
+            mock.patch.object(module.tempfile, "TemporaryDirectory") as temp:
+        temp.return_value.__enter__.return_value = "/performance/vvperf.test"
         module.run_guest(disk_args, mock.Mock(
             detect_vmm=mock.Mock(return_value=command_backend),
             fetch_kernel=mock.Mock(return_value="kernel")))
     disk_path = command_backend.build_cmd.call_args.args[2]
-    assert disk_path.endswith(".vhdx")
+    assert disk_path == "/performance/vvperf.test/disk.vhdx"
+    temp.assert_called_once_with(prefix="vvperf.", dir="/performance")
     create_disk.assert_called_once_with(disk_path, "vhdx", 64)
+    assert disk_args.work_dir_used == "/performance"
+    default_disk_args = module.parse_args(
+        ["-m", "vmm", "--device", "blk", "--disk-type", "vhdx"])
+    with mock.patch.object(module, "run_vmm", return_value=samples), \
+            mock.patch.object(module, "create_disk_image"), \
+            mock.patch.object(module.tempfile, "TemporaryDirectory") as temp:
+        temp.return_value.__enter__.return_value = "/tmp/vvperf.test"
+        module.run_guest(default_disk_args, mock.Mock(
+            detect_vmm=mock.Mock(return_value=command_backend),
+            fetch_kernel=mock.Mock(return_value="kernel")))
+    temp.assert_called_once_with(prefix="vvperf.", dir=None)
+    with mock.patch.object(module.tempfile, "TemporaryDirectory",
+                           side_effect=OSError("permission denied")):
+        expect_runtime_error(
+            lambda: module.create_work_directory("/performance"),
+            "Cannot create performance work directory in /performance")
     marker_args = module.parse_args(["-m", "vmm"])
     with mock.patch.object(module, "run_vmm", return_value=samples), \
             mock.patch.object(module.time, "time_ns",
@@ -802,6 +822,14 @@ def main():
         vhdx_report = module.make_report(
             vhdx_args, backend, samples, "/boot/vmlinux")
     assert vhdx_report["backend"]["format"] == "vhdx"
+    assert vhdx_report["backend"]["work_dir"] == os.path.realpath(
+        tempfile.gettempdir())
+    with mock.patch.object(module, "get_version", return_value=None):
+        placed_report = module.make_report(
+            disk_args, backend, samples, "/boot/vmlinux")
+    assert placed_report["backend"]["work_dir"] == "/performance"
+    assert "backend.work_dir" in module.compatibility_mismatches(
+        vhdx_report, placed_report)
     assert report["guest"]["kernel"] == "/boot/vmlinux"
     assert report["vmm"]["process_mode"] == "single"
     assert report["vmm"]["sha256"] is None
