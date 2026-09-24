@@ -22,6 +22,9 @@
 static test_result_t test_pci_notification_data(struct virtio_dev *dev,
                                                 struct vring *vr)
 {
+    if (!virtio_pci_feature_offered(dev, VIRTIO_F_NOTIFICATION_DATA))
+        return TEST_SKIP;
+
     struct virtio_blk_outhdr *hdr = vv_alloc_pages(1);
     uint8_t *data = vv_alloc_pages(1);
     uint8_t *status = vv_alloc_pages(1);
