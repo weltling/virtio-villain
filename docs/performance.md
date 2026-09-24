@@ -203,6 +203,19 @@ nanoseconds. The runner calculates p50, p90, p99, and p99.9 with the nearest
 rank method across all measured rounds. A VMM version is omitted when the
 binary has no supported version query.
 
+Use `--strace-profile PATH` to wrap only the VMM process with `strace -f -c`.
+The raw syscall count and time summary is written to `PATH`. The absolute
+artifact path is recorded in the report instrumentation section.
+
+```bash
+./run-perf -m ./openvmm --device blk --format json -o perf.json \
+	--strace-profile perf.strace
+```
+
+System call tracing adds measurement cost. Use it to locate host side time,
+not as an uninstrumented throughput result. Apply the same tracing setting to
+both VMMs when comparing traced reports.
+
 Latency mode still reports complete round duration and operation rate for
 context. Its instrumentation cost means those rates are not throughput mode
 results. Throughput mode does not make percentile claims.

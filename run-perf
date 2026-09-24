@@ -542,6 +542,9 @@ def run_guest(args, runner):
         if backend.name == "qemu" and args.timing_mode == "latency":
             opts["cpu_model"] = "host"
         cmd = backend.build_cmd(kernel, initramfs, disk, cmdline, opts)
+        if args.strace_profile:
+            cmd = ["strace", "-f", "-c", "-o",
+                   os.path.abspath(args.strace_profile), "--", *cmd]
         spawn = {"capture_output": True, "timeout": args.timeout}
         master_fd = None
         slave_fd = None
@@ -634,7 +637,11 @@ def make_report(args, backend, samples, kernel):
                      "address_pattern": sample["address_pattern"],
                      "request_bytes": sample["request_bytes"]},
         "backend": resource,
-        "instrumentation": {"enabled": False},
+        "instrumentation": {
+            "enabled": args.strace_profile is not None,
+            "strace_profile": (os.path.abspath(args.strace_profile)
+                               if args.strace_profile else None),
+        },
         "timing": {"mode": sample["timing_mode"],
                    "clock_source": sample["clock_source"],
                    "sample_every": sample["sample_every"]},
@@ -645,7 +652,7 @@ def make_report(args, backend, samples, kernel):
 
 def compatibility_mismatches(baseline, candidate):
     """Return fields that prevent a valid report comparison."""
-    ignored = {"samples", "summary"}
+    ignored = {"samples", "summary", "instrumentation.strace_profile"}
     fixed_vmm = {"accelerator", "backend", "cpu_model", "machine",
                  "process_mode"}
     mismatches = []
@@ -850,6 +857,7 @@ def parse_args(argv=None):
     parser.add_argument("--io-engine", choices=("default", "io_uring", "aio", "sync"),
                         default="default")
     parser.add_argument("--direct", action="store_true")
+    parser.add_argument("--strace-profile", metavar="PATH")
     parser.add_argument("--experiment-class",
                         choices=("queue", "frontend", "backend"),
                         default="queue")
@@ -862,6 +870,8 @@ def parse_args(argv=None):
         parser.error("--compare cannot be used with --vmm")
     if not args.compare and not args.vmm:
         parser.error("--vmm is required unless --compare is used")
+    if args.compare and args.strace_profile:
+        parser.error("--strace-profile cannot be used with --compare")
     for name in ("iterations", "rounds", "warmup", "sample_every", "cpus",
                  "disk_size", "timeout"):
         if getattr(args, name) < 1:

@@ -412,6 +412,9 @@ def main():
     assert module.parse_args(
         ["-m", "vmm", "--timing-mode", "throughput"]).timing_mode == (
             "throughput")
+    assert module.parse_args(
+        ["-m", "vmm", "--strace-profile", "syscalls.txt"]
+    ).strace_profile == "syscalls.txt"
     block_args = module.parse_args(
         ["-m", "vmm", "--device", "blk", "--block-operation", "write",
          "--block-pattern", "random", "--block-request-size", "1024"])
@@ -470,6 +473,12 @@ def main():
             assert False
         except ValueError:
             pass
+        try:
+            module.parse_args(["--compare", "a.json", "b.json",
+                               "--strace-profile", "syscalls.txt"])
+            assert False
+        except ValueError:
+            pass
     cmdline_args = module.parse_args(
         ["-m", "vmm", "--device", "blk", "--queue-depth", "16",
          "--batch-size", "16"])
@@ -509,6 +518,15 @@ def main():
     disk_path = command_backend.build_cmd.call_args.args[2]
     assert disk_path.endswith(".vhdx")
     create_disk.assert_called_once_with(disk_path, "vhdx", 64)
+    profile_args = module.parse_args(
+        ["-m", "vmm", "--strace-profile", "syscalls.txt"])
+    with mock.patch.object(module, "run_vmm", return_value=samples) as run_vmm:
+        module.run_guest(profile_args, mock.Mock(
+            detect_vmm=mock.Mock(return_value=command_backend),
+            fetch_kernel=mock.Mock(return_value="kernel")))
+    assert run_vmm.call_args.args[0] == [
+        "strace", "-f", "-c", "-o", os.path.abspath("syscalls.txt"),
+        "--", "vmm"]
     with mock.patch.object(module, "run_vmm",
                            return_value=network_receive_samples), \
             mock.patch.object(module, "unused_udp_port",
@@ -706,6 +724,21 @@ def main():
     assert vhdx_report["backend"]["format"] == "vhdx"
     assert report["guest"]["kernel"] == "/boot/vmlinux"
     assert report["vmm"]["process_mode"] == "single"
+    assert report["instrumentation"] == {
+        "enabled": False, "strace_profile": None}
+    with mock.patch.object(module, "get_version", return_value=None):
+        profile_report = module.make_report(
+            profile_args, backend, samples, "/boot/vmlinux")
+    assert profile_report["instrumentation"] == {
+        "enabled": True,
+        "strace_profile": os.path.abspath("syscalls.txt"),
+    }
+    changed_artifact = module.json.loads(module.json.dumps(profile_report))
+    changed_artifact["instrumentation"]["strace_profile"] = "/other.txt"
+    assert module.compatibility_mismatches(
+        profile_report, changed_artifact) == []
+    assert "instrumentation.enabled" in module.compatibility_mismatches(
+        report, profile_report)
     assert module.compatibility_mismatches(report, report) == []
     changed = module.json.loads(module.json.dumps(report))
     changed["queue"]["depth"] = 16
