@@ -732,6 +732,8 @@ def main():
     assert comparison["round_ranges_overlap"] is True
     assert round(comparison["baseline"]["relative_spread_percent"], 2) == 75
     assert comparison["baseline"]["vmm"]["path"] == report["vmm"]["path"]
+    assert comparison["baseline"]["workload"]["operation"] == "blk_read"
+    assert comparison["candidate"]["workload"]["address_pattern"] == "fixed"
     candidate["summary"]["operations_per_second"] = 115000
     candidate["summary"]["operations_per_second_min"] = 110000
     candidate["summary"]["operations_per_second_max"] = 120000
@@ -772,6 +774,10 @@ def main():
     single_comparison = module.compare_reports(single_round, single_round)
     assert single_comparison["baseline"]["relative_spread_percent"] == 0
     comparison_text = module.format_comparison(comparison)
+    assert "Baseline operation: read" in comparison_text
+    assert "Candidate operation: read" in comparison_text
+    assert "Baseline address pattern: fixed" in comparison_text
+    assert "Candidate address pattern: fixed" in comparison_text
     assert "Change:       +72.50%" in comparison_text
     assert "Ranges overlap:  no" in comparison_text
     assert module.parse_args(
@@ -786,9 +792,11 @@ def main():
     assert "Change:       +0.00%" in print_output.call_args.args[0]
     human = module.format_human(report)
     assert "virtio block read throughput" in human
+    assert "Operation:     read" in human
     assert "Address pattern: fixed" in human
     write_human = module.format_human(write_report)
     assert "virtio block write throughput" in write_human
+    assert "Operation:     write" in write_human
     assert "Address pattern: random" in write_human
     assert "Requests:      200" in human
     assert "Operation rate: 66666.67 operations/s" in human

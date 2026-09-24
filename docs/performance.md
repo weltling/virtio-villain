@@ -180,10 +180,11 @@ operation rate for every round. JSON output keeps all samples for automated
 comparison.
 
 Block, RNG, and network receive reports include payload bytes per second.
-Block reports also record the operation and address pattern. Network transmit
-only proves that the device consumed the buffer, so it does not report
-delivered payload rate. Vsock also omits payload rate. Every workload reports
-device notifications per submission.
+Block reports also record and display the read or write operation and the
+fixed, sequential, or random address pattern. Comparison output displays these
+fields for both reports. Network transmit only proves that the device consumed
+the buffer, so it does not report delivered payload rate. Vsock also omits
+payload rate. Every workload reports device notifications per submission.
 
 JSON schema version 3 separates experiment, host, guest, VMM, execution, queue,
 workload, backend, instrumentation, and timing settings. Each sample records

@@ -722,6 +722,7 @@ def compare_reports(baseline, candidate):
             "relative_spread_percent": (
                 (baseline_range[1] - baseline_range[0]) / baseline_rate * 100),
             "vmm": baseline["vmm"],
+            "workload": baseline["workload"],
         },
         "candidate": {
             "value": candidate_rate,
@@ -729,11 +730,11 @@ def compare_reports(baseline, candidate):
             "relative_spread_percent": (
                 (candidate_range[1] - candidate_range[0]) / candidate_rate * 100),
             "vmm": candidate["vmm"],
+            "workload": candidate["workload"],
         },
         "change_percent": (candidate_rate / baseline_rate - 1) * 100,
         "round_ranges_overlap": ranges_overlap,
         "experiment": baseline["experiment"],
-        "workload": baseline["workload"],
     }
 
 
@@ -752,11 +753,24 @@ def format_comparison(comparison):
     baseline = comparison["baseline"]
     candidate = comparison["candidate"]
     overlap = "yes" if comparison["round_ranges_overlap"] else "no"
-    return "\n".join([
+    lines = [
         "virtio performance comparison",
         "",
         f"Baseline VMM: {baseline['vmm']['path']}",
         f"Candidate VMM: {candidate['vmm']['path']}",
+    ]
+    if baseline["workload"]["device"] == "blk":
+        lines += [
+            ("Baseline operation: " +
+             baseline["workload"]["operation"].removeprefix("blk_")),
+            ("Candidate operation: " +
+             candidate["workload"]["operation"].removeprefix("blk_")),
+            ("Baseline address pattern: " +
+             baseline["workload"]["address_pattern"]),
+            ("Candidate address pattern: " +
+             candidate["workload"]["address_pattern"]),
+        ]
+    lines += [
         f"Baseline:     {baseline['value']:.2f} operations/s",
         f"Candidate:    {candidate['value']:.2f} operations/s",
         f"Change:       {comparison['change_percent']:+.2f}%",
@@ -767,7 +781,8 @@ def format_comparison(comparison):
          f"{candidate['round_range'][1]:.2f} operations/s"),
         f"Candidate spread: {candidate['relative_spread_percent']:.2f}%",
         f"Ranges overlap:  {overlap}",
-    ])
+    ]
+    return "\n".join(lines)
 
 
 def parse_args(argv=None):
@@ -865,6 +880,7 @@ def format_human(report, verbose=False):
         f"virtio {label} {report['timing']['mode']}",
         "",
         f"Request size:  {request_size_text}",
+        f"Operation:     {workload['operation'].removeprefix('blk_')}",
         f"Queue depth:   {report['queue']['depth']}",
         f"Queue format:  {report['queue']['format']}",
         f"Device queues: {report['queue']['device_queues']}",
