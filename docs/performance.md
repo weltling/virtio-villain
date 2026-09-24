@@ -247,6 +247,79 @@ Coverage and sanitizer instrumentation add substantial cost. Use a release
 VMM build without instrumentation for representative measurements. Keep the
 host load stable and run enough rounds to expose variance.
 
+## Host preparation
+
+Inspect the CPU topology before choosing a CPU set. Keep all logical siblings
+of each selected physical core in the set. Avoid CPUs that handle storage,
+network, or other frequent interrupts. On a host with multiple NUMA nodes, use
+CPUs and memory from the node local to the device under test.
+
+```bash
+lscpu -e=CPU,NODE,SOCKET,CORE,ONLINE
+cat /proc/interrupts
+```
+
+Set `CPU_LIST` to the selected comma separated logical CPU list. Apply that
+affinity to the runner so the VMM inherits it.
+
+```bash
+taskset -c "$CPU_LIST" ./run-perf ...
+```
+
+Inspect the frequency driver, governor, energy preference, and turbo state.
+Record the original values before changing them. When the driver provides a
+performance governor, use it for the complete campaign. Keep the turbo state
+unchanged between baseline and candidate runs.
+
+```bash
+cpupower frequency-info
+cat /sys/devices/system/cpu/cpufreq/policy*/scaling_governor
+```
+
+If `irqbalance` is active, stop it after selecting CPUs so it cannot move
+interrupts during the campaign. Record its original state and restore that
+state afterward.
+
+Store performance images on the same filesystem and storage device for every
+run. Close active builds, editor indexers, other VMs, and graphical remote
+sessions before a campaign. Run from SSH or a text console when possible. Wait
+until the one minute load average is near zero.
+
+```bash
+uptime
+```
+
+Run one workload at a time. Do not run baseline and candidate VMMs at the same
+time. For two VMM binaries, alternate independent boots in this order.
+
+```text
+baseline
+candidate
+candidate
+baseline
+```
+
+Repeat this sequence at least three times for six independent boots per VMM.
+Use the median and median absolute deviation across boots for the comparison.
+The statistics in one report cover rounds within one boot and do not replace
+this boot level summary.
+
+Use at least 10000 warmup requests, 100000 requests per round, and five rounds
+when comparing block backends.
+
+```bash
+taskset -c "$CPU_LIST" ./run-perf -m ./openvmm --device blk \
+	--warmup 10000 --rounds 5 -n 100000
+```
+
+Keep the request shape, image format, queue settings, direct IO setting, and
+VMM build type identical across a comparison. The runner creates a fresh image
+for each boot.
+
+Use an exit trap in campaign scripts to restore every changed governor, energy
+preference, turbo setting, and service state after success, failure, or an
+interruption. Do not assume the original governor or service state.
+
 ## Scope
 
 This runner measures request throughput or sampled request latency in the
