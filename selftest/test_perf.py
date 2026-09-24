@@ -7,6 +7,7 @@ import importlib.util
 import os
 import subprocess
 import tempfile
+import uuid
 from unittest import mock
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -700,6 +701,11 @@ def main():
     assert report["queue"]["device_queues"] == 1
     assert queue_report["queue"]["device_queues"] == 4
     assert queue_report["execution"]["cpus"] == 4
+    assert uuid.UUID(report["execution"]["boot_id"]).version == 4
+    assert report["execution"]["boot_id"] != queue_report["execution"]["boot_id"]
+    changed_boot = module.json.loads(module.json.dumps(report))
+    changed_boot["execution"]["boot_id"] = str(uuid.uuid4())
+    assert module.compatibility_mismatches(report, changed_boot) == []
     assert queue_report["queue"]["negotiated_features"] == "0x1000"
     assert indirect_report["queue"]["descriptor_layout"] == "indirect"
     assert packed_report["queue"]["format"] == "packed"

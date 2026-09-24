@@ -19,6 +19,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import uuid
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 DEVICE_INITCALL = {
@@ -636,7 +637,8 @@ def make_report(args, backend, samples, kernel):
                  "processor": get_processor_model()},
         "guest": {"kernel": os.path.abspath(kernel)},
         "vmm": vmm,
-        "execution": {"cpus": max(args.cpus, args.device_queues),
+        "execution": {"boot_id": str(uuid.uuid4()),
+                      "cpus": max(args.cpus, args.device_queues),
                       "memory": args.memory,
                       "iterations": args.iterations, "rounds": args.rounds,
                       "warmup": args.warmup},
@@ -667,7 +669,8 @@ def make_report(args, backend, samples, kernel):
 
 def compatibility_mismatches(baseline, candidate):
     """Return fields that prevent a valid report comparison."""
-    ignored = {"samples", "summary", "instrumentation.strace_profile"}
+    ignored = {"samples", "summary", "execution.boot_id",
+               "instrumentation.strace_profile"}
     fixed_vmm = {"accelerator", "backend", "cpu_model", "machine",
                  "process_mode"}
     mismatches = []
