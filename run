@@ -762,11 +762,13 @@ class OpenVmm(VmmBackend):
     def _blk_arg(disk_path, port, opts, read_only=False):
         """Build a --virtio-blk value for a disk on the given PCIe port.
 
-        Maps the cross backend --io-engine and --direct opts to OpenVMM's
-        `;direct` file modifier. The aio engine implies O_DIRECT.
+        Maps --direct to the OpenVMM `;direct` file modifier.
         """
         engine = opts.get("io_engine", "default")
-        direct = bool(opts.get("direct")) or engine == "aio"
+        if engine not in ("default", "io_uring"):
+            raise ValueError(
+                f"OpenVMM does not support selecting the {engine} IO engine")
+        direct = bool(opts.get("direct"))
         spec = f"file:{disk_path}"
         if direct:
             spec += ";direct"
@@ -808,11 +810,8 @@ class OpenVmm(VmmBackend):
 
         cmd = [
             self.binary,
+            "--hypervisor", "kvm",
             "--hv",
-            # Run the VM in this process. By default OpenVMM launches the
-            # VM in a child worker process; the runner tracks and kills
-            # only the launcher, so the worker would linger and starve the
-            # host. Keeping it single process makes teardown a clean kill.
             "--single-process",
             "-k", kernel,
             "-r", initramfs,

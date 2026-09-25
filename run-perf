@@ -776,12 +776,14 @@ def make_report(args, backend, samples, kernel):
         vmm["cpu_model"] = ("host" if args.timing_mode == "latency"
                             else "default")
     if sample["workload"] == "blk":
-        direct = args.direct or (
-            backend.name == "openvmm" and args.io_engine == "aio")
+        direct = args.direct
+        io_engine = args.io_engine
+        if backend.name == "openvmm" and io_engine == "default":
+            io_engine = "io_uring"
         resource = {"type": "file", "format": args.disk_type,
                     "direct": direct,
                     "disk_size_mib": args.disk_size,
-                    "io_engine": args.io_engine,
+                    "io_engine": io_engine,
                     "work_dir": getattr(
                         args, "work_dir_used",
                         os.path.realpath(

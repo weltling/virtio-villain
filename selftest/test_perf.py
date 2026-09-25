@@ -846,7 +846,13 @@ def main():
     assert report["workload"]["prefill_requests"] == 0
     assert write_report["workload"]["operation"] == "blk_write"
     assert write_report["workload"]["address_pattern"] == "random"
-    assert report["backend"]["io_engine"] == "default"
+    assert report["backend"]["io_engine"] == "io_uring"
+    io_uring_args = module.parse_args(
+        ["-m", "openvmm", "--device", "blk", "--io-engine", "io_uring"])
+    with mock.patch.object(module, "get_version", return_value=None):
+        io_uring_report = module.make_report(
+            io_uring_args, backend, samples, "/boot/vmlinux")
+    assert io_uring_report["backend"]["io_engine"] == "io_uring"
     assert report["backend"]["type"] == "file"
     assert report["backend"]["format"] == "raw"
     vhdx_args = module.parse_args(

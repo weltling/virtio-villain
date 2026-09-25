@@ -698,10 +698,11 @@ def test_unit_openvmm_build_cmd_direct_boot_layout():
     assert _openvmm_opt(cmd, "-c") == "console=ttyS0 vv.test=T0001"
     assert _openvmm_opt(cmd, "-m") == "256M"
     assert _openvmm_opt(cmd, "-p") == "2"
+    assert _openvmm_opt(cmd, "--hypervisor") == "kvm"
+    assert "--hv" in cmd
     assert _openvmm_opt(cmd, "--pcie-root-complex") == "rc0"
     # Runner output rides on COM1, not the virtio-console device.
     assert _openvmm_opt(cmd, "--com1") == "console"
-    # The VM must run in one process so the runner's kill reaps it.
     assert "--single-process" in cmd
     # The disk, net, console and rng ports are always declared.
     assert set(_openvmm_ports(cmd)) >= {"disk", "net", "console", "rng"}
@@ -720,10 +721,22 @@ def test_unit_openvmm_build_cmd_blk_direct():
     assert _openvmm_opt(cmd, "--virtio-blk") == "file:/d.raw;direct,pcie_port=disk"
 
 
-def test_unit_openvmm_build_cmd_blk_aio_forces_direct():
+def test_unit_openvmm_build_cmd_accepts_io_uring():
     be = RUN_MOD.OpenVmm("/opt/openvmm/openvmm")
-    cmd = be.build_cmd("/k", "/i", "/d.raw", "c", {"io_engine": "aio"})
-    assert ";direct" in _openvmm_opt(cmd, "--virtio-blk")
+    cmd = be.build_cmd("/k", "/i", "/d.raw", "c", {"io_engine": "io_uring"})
+    assert _openvmm_opt(cmd, "--virtio-blk") == "file:/d.raw,pcie_port=disk"
+
+
+def test_unit_openvmm_build_cmd_rejects_unsupported_io_engines():
+    be = RUN_MOD.OpenVmm("/opt/openvmm/openvmm")
+    for engine in ("aio", "sync"):
+        try:
+            be.build_cmd("/k", "/i", "/d.raw", "c", {"io_engine": engine})
+        except ValueError as error:
+            assert str(error) == (
+                f"OpenVMM does not support selecting the {engine} IO engine")
+        else:
+            raise AssertionError(f"OpenVMM accepted the {engine} IO engine")
 
 
 def test_unit_openvmm_build_cmd_net_consomme():
