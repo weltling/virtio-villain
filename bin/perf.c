@@ -101,6 +101,7 @@ struct perf_workload {
     bool net_receive;
     unsigned net_header_size;
     bool block_write;
+    bool block_data_initialized;
     enum perf_block_pattern block_pattern;
     uint64_t block_request_count;
     struct virtio_blk_outhdr *block_header[MAX_DEVICE_QUEUES][MAX_QUEUE_DEPTH];
@@ -757,6 +758,12 @@ static void reset_blk(struct perf_workload *workload, unsigned queue,
     workload->block_header[queue][slot]->sector =
         request * (workload->request_size / 512);
     *workload->status[queue][slot] = 0xff;
+    if (!workload->block_write && workload->block_data_initialized) {
+        uint8_t *data = workload->block_data[queue][slot];
+
+        data[0] = 0xbd;
+        data[workload->request_size - 1] = 0xbd;
+    }
 }
 
 static int validate_blk(struct perf_workload *workload,
@@ -764,7 +771,15 @@ static int validate_blk(struct perf_workload *workload,
                         const uint32_t *lengths)
 {
     (void)lengths;
-    return *workload->status[queue][slot] == VIRTIO_BLK_S_OK ? 0 : -1;
+    if (*workload->status[queue][slot] != VIRTIO_BLK_S_OK)
+        return -1;
+    if (!workload->block_write && workload->block_data_initialized) {
+        uint8_t *data = workload->block_data[queue][slot];
+
+        if (data[0] != 0x42 || data[workload->request_size - 1] != 0x42)
+            return -1;
+    }
+    return 0;
 }
 
 static int prepare_rng(struct virtio_dev *dev, struct vring *vr,
@@ -1246,6 +1261,14 @@ int main(void)
         }
         wanted_features = (unsigned __int128)1 << VIRTIO_BLK_F_MQ;
     }
+    if (workload.device_id == VIRTIO_PCI_DEVICE_BLK &&
+        (workload.block_write || block_prefill != 0)) {
+        if (!virtio_pci_feature_offered(&dev, VIRTIO_BLK_F_FLUSH)) {
+            printf("VVPERF error=block_flush_unsupported\n");
+            shutdown_guest(1);
+        }
+        wanted_features |= (unsigned __int128)1 << VIRTIO_BLK_F_FLUSH;
+    }
     if (workload.indirect) {
         if (!virtio_pci_feature_offered(&dev, VIRTIO_F_INDIRECT_DESC)) {
             printf("VVPERF error=indirect_unsupported\n");
@@ -1354,21 +1377,27 @@ int main(void)
     perf_stats_init(&stats);
     enum perf_request_result result;
     if (block_prefill != 0) {
+        enum perf_block_pattern measured_pattern = workload.block_pattern;
+
         if (workload.device_id != VIRTIO_PCI_DEVICE_BLK ||
             workload.block_write || workload.indirect) {
             printf("VVPERF error=block_prefill\n");
             shutdown_guest(1);
         }
+        workload.block_pattern = PERF_BLOCK_SEQUENTIAL;
         set_blk_write(&workload, true);
         result = run_block_requests(&dev, &workload, block_prefill,
                                     batch_size, &stats,
                                     &(struct perf_latency){0});
         set_blk_write(&workload, false);
+        workload.block_pattern = measured_pattern;
         if (result != PERF_REQUEST_OK) {
             printf("VVPERF error=%s phase=prefill\n",
                    request_error(result));
             shutdown_guest(1);
         }
+        workload.block_data_initialized =
+            block_prefill >= workload.block_request_count;
         perf_stats_init(&stats);
     }
     if (workload.device_id == VIRTIO_PCI_DEVICE_BLK)

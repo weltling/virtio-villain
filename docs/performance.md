@@ -86,11 +86,14 @@ requests advance by the selected request size and wrap at device capacity.
 Random requests use a fixed deterministic sequence and stay within device
 capacity. Write buffers contain a fixed byte value. Write completion is
 measured at the used ring and does not imply that data reached durable storage.
+Block write workloads and read prefill negotiate `VIRTIO_BLK_F_FLUSH` so
+devices may use writeback caching. The workload does not submit flush requests.
 
 Use `--block-prefill REQUESTS` with a direct block read to issue unmeasured
-writes before warmup. The writes use the selected request size and address
-pattern. This allocates payload ranges before reads from a sparse disk image.
-The request count is recorded in the workload report section.
+writes before warmup. The writes use the selected request size and sequential
+addresses. When the prefill covers the complete disk, each read checks that
+the device replaced poisoned buffer bytes with the expected disk data. The
+request count is recorded in the workload report section.
 
 ```bash
 ./run-perf -m ./openvmm --device blk --disk-type vhdx \
