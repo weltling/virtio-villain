@@ -104,6 +104,7 @@ struct perf_workload {
     enum perf_block_pattern block_pattern;
     uint64_t block_request_count;
     struct virtio_blk_outhdr *block_header[MAX_DEVICE_QUEUES][MAX_QUEUE_DEPTH];
+    uint8_t *block_data[MAX_DEVICE_QUEUES][MAX_QUEUE_DEPTH];
     uint8_t *status[MAX_DEVICE_QUEUES][MAX_QUEUE_DEPTH];
     struct virtio_vsock_hdr *vsock_request[MAX_QUEUE_DEPTH];
     struct virtio_vsock_hdr *response[MAX_QUEUE_DEPTH];
@@ -704,12 +705,39 @@ static int prepare_blk(struct virtio_dev *dev, struct vring *vr,
             uint16_t head = prepare_chain(request->vr, slot, descriptors, 3,
                                           workload->indirect, request);
             workload->block_header[queue][slot] = header;
+            workload->block_data[queue][slot] = data;
             workload->status[queue][slot] = status;
             perf_slot_init(&request->slots[slot], head, head, header);
         }
     }
     workload->request_count = 1;
     return workload->queue_depth * (workload->indirect ? 1 : 3);
+}
+
+static void set_blk_write(struct perf_workload *workload, bool write)
+{
+    workload->block_write = write;
+    for (unsigned queue = 0; queue < workload->device_queues; queue++) {
+        struct perf_queue_request *request = &workload->requests[queue];
+
+        for (unsigned slot = 0; slot < workload->queue_depth; slot++) {
+            struct vring_desc *data = &request->chains[slot].descriptors[1];
+
+            workload->block_header[queue][slot]->type =
+                write ? VIRTIO_BLK_T_OUT : VIRTIO_BLK_T_IN;
+            data->flags = VRING_DESC_F_NEXT |
+                          (write ? 0 : VRING_DESC_F_WRITE);
+            if (write)
+                memset(workload->block_data[queue][slot], 0x42,
+                       workload->request_size);
+            if (!workload->packed) {
+                uint16_t head = slot * request->chains[slot].count;
+
+                vring_raw_set_desc(request->vr, head + 1, data->addr,
+                                   data->len, data->flags, head + 2);
+            }
+        }
+    }
 }
 
 static void reset_blk(struct perf_workload *workload, unsigned queue,
@@ -1108,6 +1136,7 @@ int main(void)
                                               DEFAULT_ITERATIONS);
     unsigned rounds = read_cmdline_value("vv.perf_rounds", DEFAULT_ROUNDS);
     unsigned warmup = read_cmdline_value("vv.perf_warmup", DEFAULT_WARMUP);
+    unsigned block_prefill = read_cmdline_value("vv.perf_block_prefill", 0);
     unsigned queue_depth = read_cmdline_value("vv.perf_queue_depth", 1);
     unsigned batch_size = read_cmdline_value("vv.perf_batch_size", 1);
     unsigned device_queues = read_cmdline_value("vv.perf_device_queues", 1);
@@ -1324,6 +1353,24 @@ int main(void)
 
     perf_stats_init(&stats);
     enum perf_request_result result;
+    if (block_prefill != 0) {
+        if (workload.device_id != VIRTIO_PCI_DEVICE_BLK ||
+            workload.block_write || workload.indirect) {
+            printf("VVPERF error=block_prefill\n");
+            shutdown_guest(1);
+        }
+        set_blk_write(&workload, true);
+        result = run_block_requests(&dev, &workload, block_prefill,
+                                    batch_size, &stats,
+                                    &(struct perf_latency){0});
+        set_blk_write(&workload, false);
+        if (result != PERF_REQUEST_OK) {
+            printf("VVPERF error=%s phase=prefill\n",
+                   request_error(result));
+            shutdown_guest(1);
+        }
+        perf_stats_init(&stats);
+    }
     if (workload.device_id == VIRTIO_PCI_DEVICE_BLK)
         result = run_block_requests(&dev, &workload, warmup, batch_size,
                                     &stats, &(struct perf_latency){0});

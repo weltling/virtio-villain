@@ -652,6 +652,7 @@ def run_guest(args, runner):
             f"vv.perf_block_operation={args.block_operation} "
             f"vv.perf_block_pattern={args.block_pattern} "
             f"vv.perf_block_request_size={args.block_request_size} "
+            f"vv.perf_block_prefill={args.block_prefill} "
             f"vv.perf_net_operation={args.net_operation} "
             f"vv.perf_net_header_size="
             f"{12 if backend.name in {'ch', 'openvmm'} else 10} "
@@ -814,7 +815,8 @@ def make_report(args, backend, samples, kernel):
         "workload": {"device": sample["workload"],
                      "operation": sample["operation"],
                      "address_pattern": sample["address_pattern"],
-                     "request_bytes": sample["request_bytes"]},
+                     "request_bytes": sample["request_bytes"],
+                     "prefill_requests": args.block_prefill},
         "backend": resource,
         "instrumentation": {
             "enabled": (args.strace_profile is not None or
@@ -1034,6 +1036,8 @@ def parse_args(argv=None):
     parser.add_argument("--block-request-size", type=int,
                         choices=(512, 1024, 2048, 4096), default=4096,
                         metavar="BYTES")
+    parser.add_argument("--block-prefill", type=int, default=0,
+                        metavar="REQUESTS")
     parser.add_argument("--net-operation", choices=("transmit", "receive"),
                         default="transmit")
     parser.add_argument("--cpus", type=int, default=1)
@@ -1070,6 +1074,12 @@ def parse_args(argv=None):
             parser.error(f"--{name.replace('_', '-')} must be positive")
     if args.batch_size > args.queue_depth:
         parser.error("--batch-size must not exceed --queue-depth")
+    if args.block_prefill < 0:
+        parser.error("--block-prefill must not be negative")
+    if args.block_prefill and (args.device != "blk" or
+                               args.block_operation != "read" or
+                               args.descriptor_layout != "direct"):
+        parser.error("--block-prefill requires a direct block read")
     if args.device != "blk" and (args.block_operation != "read" or
                                  args.block_pattern != "fixed" or
                                  args.block_request_size != 4096 or

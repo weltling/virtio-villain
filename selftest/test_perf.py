@@ -453,6 +453,9 @@ def main():
     ).strace_profile == "syscalls.txt"
     assert module.parse_args(
         ["-m", "vmm", "--thread-accounting"]).thread_accounting is True
+    prefill_args = module.parse_args(
+        ["-m", "vmm", "--block-prefill", "65536"])
+    assert prefill_args.block_prefill == 65536
     block_args = module.parse_args(
         ["-m", "vmm", "--device", "blk", "--block-operation", "write",
          "--block-pattern", "random", "--block-request-size", "1024"])
@@ -512,6 +515,23 @@ def main():
         except ValueError:
             pass
         try:
+            module.parse_args(["-m", "vmm", "--block-operation", "write",
+                               "--block-prefill", "65536"])
+            assert False
+        except ValueError:
+            pass
+        try:
+            module.parse_args(["-m", "vmm", "--block-prefill", "-1"])
+            assert False
+        except ValueError:
+            pass
+        try:
+            module.parse_args(["-m", "vmm", "--descriptor-layout",
+                               "indirect", "--block-prefill", "65536"])
+            assert False
+        except ValueError:
+            pass
+        try:
             module.parse_args(["--compare", "a.json", "b.json",
                                "--strace-profile", "syscalls.txt"])
             assert False
@@ -544,6 +564,13 @@ def main():
     assert "vv.perf_block_operation=read" in guest_cmdline
     assert "vv.perf_block_pattern=fixed" in guest_cmdline
     assert "vv.perf_block_request_size=4096" in guest_cmdline
+    assert "vv.perf_block_prefill=0" in guest_cmdline
+    with mock.patch.object(module, "run_vmm", return_value=samples):
+        module.run_guest(prefill_args, mock.Mock(
+            detect_vmm=mock.Mock(return_value=command_backend),
+            fetch_kernel=mock.Mock(return_value="kernel")))
+    prefill_cmdline = command_backend.build_cmd.call_args.args[3]
+    assert "vv.perf_block_prefill=65536" in prefill_cmdline
     with mock.patch.object(module, "run_vmm", return_value=samples):
         module.run_guest(block_args, mock.Mock(
             detect_vmm=mock.Mock(return_value=command_backend),
@@ -811,6 +838,7 @@ def main():
     assert report["workload"]["device"] == "blk"
     assert report["workload"]["operation"] == "blk_read"
     assert report["workload"]["address_pattern"] == "fixed"
+    assert report["workload"]["prefill_requests"] == 0
     assert write_report["workload"]["operation"] == "blk_write"
     assert write_report["workload"]["address_pattern"] == "random"
     assert report["backend"]["io_engine"] == "default"
@@ -904,6 +932,10 @@ def main():
     changed = module.json.loads(module.json.dumps(report))
     changed["workload"]["address_pattern"] = "random"
     assert "workload.address_pattern" in module.compatibility_mismatches(
+        report, changed)
+    changed = module.json.loads(module.json.dumps(report))
+    changed["workload"]["prefill_requests"] = 65536
+    assert "workload.prefill_requests" in module.compatibility_mismatches(
         report, changed)
     qemu_args = module.parse_args(["-m", "qemu", "--device", "net"])
     qemu_backend = type("Backend", (), {"name": "qemu"})()

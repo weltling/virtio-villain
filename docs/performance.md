@@ -87,6 +87,17 @@ Random requests use a fixed deterministic sequence and stay within device
 capacity. Write buffers contain a fixed byte value. Write completion is
 measured at the used ring and does not imply that data reached durable storage.
 
+Use `--block-prefill REQUESTS` with a direct block read to issue unmeasured
+writes before warmup. The writes use the selected request size and address
+pattern. This allocates payload ranges before reads from a sparse disk image.
+The request count is recorded in the workload report section.
+
+```bash
+./run-perf -m ./openvmm --device blk --disk-type vhdx \
+	--block-operation read --block-pattern sequential \
+	--block-prefill 65536
+```
+
 The current request sizes fit in one guest page. Larger requests require a
 descriptor segment layout that can represent separate guest physical pages.
 
