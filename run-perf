@@ -768,7 +768,7 @@ def make_report(args, backend, samples, kernel):
            "version": get_version(args.vmm),
            "sha256": get_binary_sha256(args.vmm),
            "process_mode": ("single" if backend.name == "openvmm"
-                    else "default")}
+                            else "default")}
     if backend.name == "qemu":
         vmm["machine"] = ("virt" if platform.machine() == "aarch64"
                           else "default")
