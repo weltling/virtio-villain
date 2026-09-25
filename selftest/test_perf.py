@@ -385,14 +385,19 @@ def main():
                for record in accounting_records)
     assert all(record["involuntary_context_switches"] >= 0
                for record in accounting_records)
-    timeout = subprocess.TimeoutExpired(
-        ["vmm"], 1, output=output.encode())
-    with mock.patch.object(module.subprocess, "run", side_effect=timeout):
+    process = mock.Mock(pid=123)
+    process.communicate.side_effect = [
+        subprocess.TimeoutExpired(["vmm"], 1), (output.encode(), b"")]
+    with mock.patch.object(module.subprocess, "Popen", return_value=process), \
+            mock.patch.object(module.os, "killpg") as killpg:
         assert len(module.run_vmm(["vmm"], {}, 2)) == 2
-    partial_timeout = subprocess.TimeoutExpired(
-        ["vmm"], 1, output=output.splitlines()[0].encode())
-    with mock.patch.object(module.subprocess, "run",
-                           side_effect=partial_timeout):
+    killpg.assert_called_once_with(123, module.signal.SIGKILL)
+    process = mock.Mock(pid=124)
+    process.communicate.side_effect = [
+        subprocess.TimeoutExpired(["vmm"], 1),
+        (output.splitlines()[0].encode(), b"")]
+    with mock.patch.object(module.subprocess, "Popen", return_value=process), \
+            mock.patch.object(module.os, "killpg"):
         try:
             module.run_vmm(["vmm"], {}, 2)
             assert False

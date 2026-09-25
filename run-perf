@@ -12,6 +12,7 @@ import os
 import platform
 import pty
 import re
+import signal
 import shutil
 import socket
 import statistics
@@ -600,11 +601,23 @@ def build_guest():
 
 
 def run_vmm(cmd, spawn, rounds):
+    spawn = dict(spawn)
+    timeout = spawn.pop("timeout", None)
+    if spawn.pop("capture_output", False):
+        spawn["stdout"] = subprocess.PIPE
+        spawn["stderr"] = subprocess.PIPE
+    if "preexec_fn" not in spawn:
+        spawn["start_new_session"] = True
+    process = subprocess.Popen(cmd, **spawn)
     try:
-        result = subprocess.run(cmd, **spawn)
-        raw_output = result.stdout + result.stderr
-    except subprocess.TimeoutExpired as error:
-        raw_output = (error.stdout or b"") + (error.stderr or b"")
+        stdout, stderr = process.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError, OSError):
+            process.kill()
+        stdout, stderr = process.communicate()
+    raw_output = (stdout or b"") + (stderr or b"")
     output = raw_output.decode(errors="replace")
     samples = parse_results(output)
     if len(samples) != rounds:
@@ -755,7 +768,7 @@ def make_report(args, backend, samples, kernel):
            "version": get_version(args.vmm),
            "sha256": get_binary_sha256(args.vmm),
            "process_mode": ("single" if backend.name == "openvmm"
-                            else "default")}
+                    else "default")}
     if backend.name == "qemu":
         vmm["machine"] = ("virt" if platform.machine() == "aarch64"
                           else "default")
