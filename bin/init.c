@@ -219,8 +219,15 @@ static int run_test(struct test_entry *t)
     dev.common->device_status |= VIRTIO_STATUS_DRIVER_OK;
     __sync_synchronize();
 
-    test_fn fn = (test_fn)t->fn;
-    test_result_t result = apply_xfail(t, fn(&dev, &queues[test_q]));
+    test_result_t result;
+    if (t->flags & TEST_FLAG_DUAL_Q) {
+        test_dual_q_fn fn = (test_dual_q_fn)t->fn;
+        result = fn(&dev, &queues[test_q], &queues[nq - 1]);
+    } else {
+        test_fn fn = (test_fn)t->fn;
+        result = fn(&dev, &queues[test_q]);
+    }
+    result = apply_xfail(t, result);
     printf("[%s] %s\n", result_str(result), t->name);
 
     virtio_pci_reset(&dev);

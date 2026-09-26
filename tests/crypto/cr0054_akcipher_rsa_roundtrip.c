@@ -22,7 +22,8 @@
 #include <string.h>
 
 static test_result_t test_crypto_rsa_roundtrip(struct virtio_dev *dev,
-                                               struct vring *vr)
+                                               struct vring *vr,
+                                               struct vring *cvr)
 {
     if (!dev->device_cfg)
         return TEST_SKIP;
@@ -33,12 +34,8 @@ static test_result_t test_crypto_rsa_roundtrip(struct virtio_dev *dev,
     if (!(cfg->akcipher_algo & (1u << VIRTIO_CRYPTO_AKCIPHER_RSA)))
         return TEST_SKIP;
 
-    struct vring cvr;
-    vring_alloc(&cvr, 16);
-    vring_attach(dev, &cvr, (uint16_t)cfg->max_dataqueues);
-
     int ok, notsupp;
-    uint64_t pub_id = crypto_rsa_create_session(dev, &cvr, 0, rsa_pub_der,
+    uint64_t pub_id = crypto_rsa_create_session(dev, cvr, 0, rsa_pub_der,
                                                 sizeof(rsa_pub_der),
                                                 VIRTIO_CRYPTO_AKCIPHER_KEY_TYPE_PUBLIC,
                                                 VIRTIO_CRYPTO_RSA_RAW_PADDING,
@@ -48,7 +45,7 @@ static test_result_t test_crypto_rsa_roundtrip(struct virtio_dev *dev,
         return TEST_SKIP;
     if (!ok)
         TFAIL("public key session create did not ack OK");
-    uint64_t priv_id = crypto_rsa_create_session(dev, &cvr, 1, rsa_priv_der,
+    uint64_t priv_id = crypto_rsa_create_session(dev, cvr, 1, rsa_priv_der,
                                                  sizeof(rsa_priv_der),
                                                  VIRTIO_CRYPTO_AKCIPHER_KEY_TYPE_PRIVATE,
                                                  VIRTIO_CRYPTO_RSA_RAW_PADDING,
@@ -127,7 +124,7 @@ static test_result_t test_crypto_rsa_roundtrip(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
-REGISTER_TEST(CR0054, VIRTIO_PCI_DEVICE_CRYPTO,
-              test_crypto_rsa_roundtrip,
-              "An RSA encrypt then decrypt recovers the message",
-              VIRTIO_SPEC_V1_2, "5.9.10");
+REGISTER_TEST_DUAL_Q(CR0054, VIRTIO_PCI_DEVICE_CRYPTO,
+                     test_crypto_rsa_roundtrip,
+                     "An RSA encrypt then decrypt recovers the message",
+                     VIRTIO_SPEC_V1_2, "5.9.10");

@@ -78,6 +78,9 @@ typedef enum {
 extern int vv_wait_scale;
 
 typedef test_result_t (*test_fn)(struct virtio_dev *dev, struct vring *vr);
+typedef test_result_t (*test_dual_q_fn)(struct virtio_dev *dev,
+                                       struct vring *vr,
+                                       struct vring *ctrl_vr);
 typedef test_result_t (*test_packed_fn)(struct virtio_dev *dev,
                                        struct vring_packed *vr);
 typedef test_result_t (*test_mmio_fn)(struct virtio_mmio_dev *dev);
@@ -88,6 +91,7 @@ typedef test_result_t (*test_mmio_fn)(struct virtio_mmio_dev *dev);
 #define TEST_FLAG_XFAIL     4
 #define TEST_FLAG_NEEDS_ISR 8
 #define TEST_FLAG_NEEDS_CFG 16
+#define TEST_FLAG_DUAL_Q    32
 /*
  * Expected-fail marker. A test with this flag inverts its verdict:
  * a non-PASS outcome (FAIL/REJECT/WEDGED) becomes XFAIL (counted as
@@ -141,6 +145,13 @@ struct test_entry {
     static struct test_entry _test_##tname = { \
         #tname, description, specver, sect, dev_id, (void *)(func), 0, \
         (qidx) + 1, 0, 0, {0} \
+    }
+
+#define REGISTER_TEST_DUAL_Q(tname, dev_id, func, description, specver, sect) \
+    __attribute__((section("test_registry"), used, aligned(128))) \
+    static struct test_entry _test_##tname = { \
+        #tname, description, specver, sect, dev_id, (void *)(func), \
+        TEST_FLAG_DUAL_Q, 0, 2, 0, {0} \
     }
 
 #define REGISTER_TEST_PACKED(tname, dev_id, func, description, specver, sect) \
