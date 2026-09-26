@@ -99,7 +99,7 @@
 /* Write-zeroes flags (spec 5.2.6.2). */
 #define VIRTIO_BLK_WRITE_ZEROES_FLAG_UNMAP 0x1
 
-/* GET_ID returns a NUL-padded ASCII string of this length (spec 5.2.6). */
+/* Maximum GET_ID response length (spec 5.2.6). */
 #define VIRTIO_BLK_ID_BYTES         20
 
 /* Config space byte offsets (spec 5.2.4). */
