@@ -533,6 +533,8 @@ def test_unit_qemu_no_fuzz_device_attaches_full_set():
     assert any(str(a).startswith("vhost-vsock-pci") for a in cmd)
     assert any(str(a).startswith("virtio-rng-pci") for a in cmd)
     assert any("virtio-crypto" in str(a) for a in cmd)
+    assert "virtio-sound-pci,audiodev=snd0" in cmd
+    assert cmd[cmd.index("-audiodev") + 1] == "none,id=snd0"
     # The full set includes an explicit NIC, so no default suppression.
     assert "none" not in cmd
 

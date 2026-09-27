@@ -630,6 +630,9 @@ class Qemu(VmmBackend):
                     f",packed={packed_flag}"]
         if want("rtc"):
             cmd += ["-device", f"virtio-rtc-pci,packed={packed_flag}"]
+        if want("sound"):
+            cmd += ["-device", "virtio-sound-pci,audiodev=snd0",
+                    "-audiodev", "none,id=snd0"]
         if not want("net"):
             # Suppress QEMU's default NIC so a non-net focus does not pay
             # to emulate an unused virtio-net and its option ROM.
@@ -1866,6 +1869,7 @@ PREFIX_DIR = {
     "RTC": "rtc",
     "F": "fs",
     "CR": "crypto",
+    "SND": "sound",
 }
 
 # Reverse: directory name to set of accepted prefixes.
@@ -1890,6 +1894,7 @@ PREFIX_DEVICE_ID = {
     "RTC": 0x1051,               # rtc
     "F": 0x105a,                 # fs
     "CR": 0x1054,                # crypto
+    "SND": 0x1059,               # sound
 }
 
 
