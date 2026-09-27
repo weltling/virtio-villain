@@ -39,7 +39,7 @@ DEVICE_LABEL = {
 BACKEND_DEVICES = {
     "ch": {"blk", "net", "rng", "vsock"},
     "qemu": {"blk", "net", "rng", "vsock"},
-    "openvmm": {"blk", "net", "rng"},
+    "openvmm": {"blk", "net", "rng", "vsock"},
 }
 DISK_FORMATS = ("raw", "qcow2", "vhd", "vhdx")
 DISK_SUFFIXES = {disk_type: f".{disk_type}" for disk_type in DISK_FORMATS}
@@ -732,7 +732,7 @@ def run_guest(args, runner):
         if args.device == "vsock" and backend.name == "qemu":
             vsock_listener = VsockListener(5678)
             vsock_listener.start()
-        elif args.device == "vsock" and backend.name == "ch":
+        elif args.device == "vsock" and backend.name in ("ch", "openvmm"):
             vsock_path = disk.rsplit(".", 1)[0] + ".vsock_5678"
             vsock_listener = VsockListener(5678, path=vsock_path)
             vsock_listener.start()
@@ -798,7 +798,7 @@ def make_report(args, backend, samples, kernel):
         source = ("default" if backend.name == "openvmm" else "/dev/urandom")
         resource = {"type": "rng", "source": source}
     else:
-        endpoints = {"qemu": "vhost", "ch": "unix"}
+        endpoints = {"qemu": "vhost", "ch": "unix", "openvmm": "unix"}
         resource = {"type": "vsock", "endpoint": endpoints[backend.name]}
     return {
         "schema_version": 3,

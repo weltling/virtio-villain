@@ -1087,7 +1087,7 @@ def main():
         "type": "network", "endpoint": "tap"}
     report["queue"]["depth"] = 16
     assert "Queue depth:   16" in module.format_human(report)
-    assert "vsock" not in module.BACKEND_DEVICES["openvmm"]
+    assert "vsock" in module.BACKEND_DEVICES["openvmm"]
     assert "vsock" in module.BACKEND_DEVICES["ch"]
     with open(os.path.join(ROOT, "bin", "perf.c"), encoding="utf-8") as source_file:
         guest_source = source_file.read()
