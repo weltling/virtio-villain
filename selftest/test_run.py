@@ -779,11 +779,12 @@ def test_unit_openvmm_default_keeps_guest_actions_unset():
     assert "--guest-reset-action" not in cmd
 
 
-def test_unit_openvmm_build_cmd_no_vsock():
-    """virtio-vsock has no PCIe port option, so it is never offered."""
+def test_unit_openvmm_build_cmd_vsock_on_pcie_port():
     be = RUN_MOD.OpenVmm("/opt/openvmm/openvmm")
     cmd = be.build_cmd("/k", "/i", "/d.raw", "c", {})
-    assert not any("vsock" in a for a in cmd)
+    assert _openvmm_opt(cmd, "--virtio-vsock-path") == "/d.vsock"
+    assert _openvmm_opt(cmd, "--virtio-vsock-bus") == "pcie"
+    assert "vsock" in _openvmm_ports(cmd)
 
 
 def test_unit_openvmm_build_cmd_pmem_optional():

@@ -746,11 +746,10 @@ class OpenVmm(VmmBackend):
     device free for the console tests to claim without hijacking the
     runner stream.
 
-    virtio-vsock has no PCIe port option on the command line, so offering
-    it would crash the VM in direct boot. It is therefore omitted, and the
-    vsock tests report no device on this backend. OpenVMM also has no
-    virtio-balloon, virtio-mem, or virtio-watchdog device, so those
-    families are unavailable here too.
+    Virtio devices use named PCIe ports so direct boot does not depend on
+    the legacy PCI interrupt routing provided by PCAT firmware. OpenVMM has
+    no virtio-balloon, virtio-mem, or virtio-watchdog device, so those
+    families are unavailable here.
     """
     name = "openvmm"
     console_device = "ttyAMA0" if platform.machine() == "aarch64" else "ttyS0"
@@ -784,6 +783,7 @@ class OpenVmm(VmmBackend):
         mem = opts.get("memory", "512M")
         pmem_path = opts.get("pmem_path")
         fs_socket = opts.get("fs_socket")
+        vsock_path = disk_path.rsplit(".", 1)[0] + ".vsock"
         # When fuzzing one device, attach only that device so the guest
         # boots faster. None (the conformance runs) attaches the full set.
         only = opts.get("fuzz_device")
@@ -803,6 +803,8 @@ class OpenVmm(VmmBackend):
             ports.append("console")
         if want("rng"):
             ports.append("rng")
+        if want("vsock"):
+            ports.append("vsock")
         if want("pmem") and pmem_path:
             ports.append("pmem")
         if want("fs") and fs_socket:
@@ -840,6 +842,9 @@ class OpenVmm(VmmBackend):
                     "--virtio-console-pcie-port", "console"]
         if want("rng"):
             cmd += ["--virtio-rng", "--virtio-rng-pcie-port", "rng"]
+        if want("vsock"):
+            cmd += ["--virtio-vsock-path", vsock_path,
+                    "--virtio-vsock-bus", "pcie"]
         if want("pmem") and pmem_path:
             cmd += ["--virtio-pmem", f"pcie_port=pmem:{pmem_path}"]
         if want("fs") and fs_socket:
