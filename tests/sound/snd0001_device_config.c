@@ -9,14 +9,9 @@
 #include "tests/test.h"
 #include "lib/vring.h"
 #include "lib/virtio_pci.h"
+#include "lib/virtio_snd.h"
 
 #include <stdint.h>
-
-struct virtio_snd_config {
-    uint32_t jacks;
-    uint32_t streams;
-    uint32_t chmaps;
-} __attribute__((packed));
 
 static test_result_t test_sound_device_config(struct virtio_dev *dev,
                                               struct vring *vr)
