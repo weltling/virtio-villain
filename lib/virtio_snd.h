@@ -45,6 +45,17 @@ struct virtio_snd_pcm_set_params {
     uint8_t padding;
 } __attribute__((packed));
 
+struct virtio_snd_pcm_info {
+    uint32_t hda_fn_nid;
+    uint32_t features;
+    uint64_t formats;
+    uint64_t rates;
+    uint8_t direction;
+    uint8_t channels_min;
+    uint8_t channels_max;
+    uint8_t padding[5];
+} __attribute__((packed));
+
 struct virtio_snd_config {
     uint32_t jacks;
     uint32_t streams;
