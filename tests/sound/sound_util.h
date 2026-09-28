@@ -16,6 +16,10 @@
 #define SND_PCM_FMT_S16    5
 #define SND_PCM_RATE_48000 7
 
+#define SND_PCM_FEATURES_VALID  ((1u << 5) - 1)
+#define SND_PCM_FORMATS_VALID   ((1ULL << 26) - 1)
+#define SND_PCM_RATES_VALID     ((1ULL << 14) - 1)
+
 static inline test_result_t snd_submit_control(struct virtio_dev *dev,
                                                struct vring *vr,
                                                const void *request,
