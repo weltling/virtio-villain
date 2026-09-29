@@ -29,6 +29,15 @@ struct virtio_snd_query_info {
     uint32_t size;
 } __attribute__((packed));
 
+struct virtio_snd_jack_info {
+    uint32_t hda_fn_nid;
+    uint32_t features;
+    uint32_t hda_reg_defconf;
+    uint32_t hda_reg_caps;
+    uint8_t connected;
+    uint8_t padding[7];
+} __attribute__((packed));
+
 struct virtio_snd_pcm_hdr {
     struct virtio_snd_hdr hdr;
     uint32_t stream_id;
@@ -54,6 +63,15 @@ struct virtio_snd_pcm_info {
     uint8_t channels_min;
     uint8_t channels_max;
     uint8_t padding[5];
+} __attribute__((packed));
+
+#define VIRTIO_SND_CHMAP_MAX_SIZE  18
+
+struct virtio_snd_chmap_info {
+    uint32_t hda_fn_nid;
+    uint8_t direction;
+    uint8_t channels;
+    uint8_t positions[VIRTIO_SND_CHMAP_MAX_SIZE];
 } __attribute__((packed));
 
 struct virtio_snd_config {
