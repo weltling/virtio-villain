@@ -54,16 +54,16 @@ static inline test_result_t snd_submit_control(struct virtio_dev *dev,
     return result;
 }
 
-static inline test_result_t snd_expect_safe_handling(struct virtio_dev *dev,
-                                                     struct vring *vr,
-                                                     const void *request,
-                                                     uint32_t request_len,
-                                                     uint32_t response_len)
+static inline test_result_t snd_submit_safe_control(struct virtio_dev *dev,
+                                                    struct vring *vr,
+                                                    const void *request,
+                                                    uint32_t request_len,
+                                                    uint32_t response_len,
+                                                    uint32_t *status)
 {
-    uint32_t status = 0;
     uint32_t used_len = 0;
     test_result_t result = snd_submit_control(
-        dev, vr, request, request_len, response_len, &status, &used_len);
+        dev, vr, request, request_len, response_len, status, &used_len);
     if (result != TEST_PASS)
         return result;
 
@@ -73,14 +73,28 @@ static inline test_result_t snd_expect_safe_handling(struct virtio_dev *dev,
         TFAIL("sound response length %u exceeds writable buffer %u",
               used_len, response_len);
 
-    if (status == VIRTIO_SND_S_OK)
+    if (*status == VIRTIO_SND_S_OK ||
+        *status == VIRTIO_SND_S_BAD_MSG ||
+        *status == VIRTIO_SND_S_NOT_SUPP ||
+        *status == VIRTIO_SND_S_IO_ERR)
         return TEST_PASS;
-    if (status != VIRTIO_SND_S_BAD_MSG &&
-        status != VIRTIO_SND_S_NOT_SUPP &&
-        status != VIRTIO_SND_S_IO_ERR)
-        TFAIL("invalid sound response status 0x%08x", status);
+    TFAIL("invalid sound response status 0x%08x", *status);
+}
 
-    TREJECT("sound request safely rejected with status 0x%04x", status);
+static inline test_result_t snd_expect_safe_handling(struct virtio_dev *dev,
+                                                     struct vring *vr,
+                                                     const void *request,
+                                                     uint32_t request_len,
+                                                     uint32_t response_len)
+{
+    uint32_t status = 0;
+    test_result_t result = snd_submit_safe_control(
+        dev, vr, request, request_len, response_len, &status);
+    if (result != TEST_PASS)
+        return result;
+    if (status != VIRTIO_SND_S_OK)
+        TREJECT("sound request safely rejected with status 0x%04x", status);
+    return TEST_PASS;
 }
 
 static inline test_result_t snd_expect_ok(struct virtio_dev *dev,
@@ -95,8 +109,9 @@ static inline test_result_t snd_expect_ok(struct virtio_dev *dev,
         &status, &used_len);
     if (result != TEST_PASS)
         return result;
-    if (used_len < sizeof(struct virtio_snd_hdr))
-        TFAIL("sound request completed with %u response bytes", used_len);
+    if (used_len != sizeof(struct virtio_snd_hdr))
+        TFAIL("sound request completed with %u response bytes, expected %zu",
+              used_len, sizeof(struct virtio_snd_hdr));
     if (status != VIRTIO_SND_S_OK)
         TFAIL("valid sound request returned status 0x%04x", status);
     return TEST_PASS;
@@ -169,6 +184,92 @@ static inline test_result_t snd_make_valid_params(
     params->format = format;
     params->rate = rate;
     return TEST_PASS;
+}
+
+static inline test_result_t snd_set_valid_params(struct virtio_dev *dev,
+                                                 struct vring *vr,
+                                                 uint32_t stream_id)
+{
+    struct virtio_snd_pcm_set_params params;
+    struct virtio_snd_pcm_info info;
+    test_result_t result = snd_make_valid_params(
+        dev, vr, stream_id, &params, &info);
+    if (result != TEST_PASS)
+        return result;
+    return snd_expect_ok(dev, vr, &params, sizeof(params));
+}
+
+static inline test_result_t snd_expect_pcm_command_ok(
+    struct virtio_dev *dev, struct vring *vr, uint32_t stream_id,
+    uint32_t code)
+{
+    struct virtio_snd_pcm_hdr req = {
+        .hdr.code = code,
+        .stream_id = stream_id,
+    };
+    return snd_expect_ok(dev, vr, &req, sizeof(req));
+}
+
+static inline test_result_t snd_expect_pcm_command_safe(
+    struct virtio_dev *dev, struct vring *vr, uint32_t stream_id,
+    uint32_t code)
+{
+    struct virtio_snd_pcm_hdr req = {
+        .hdr.code = code,
+        .stream_id = stream_id,
+    };
+    return snd_expect_safe_handling(dev, vr, &req, sizeof(req),
+                                    sizeof(struct virtio_snd_hdr));
+}
+
+static inline test_result_t snd_submit_pcm_command_safe(
+    struct virtio_dev *dev, struct vring *vr, uint32_t stream_id,
+    uint32_t code)
+{
+    struct virtio_snd_pcm_hdr req = {
+        .hdr.code = code,
+        .stream_id = stream_id,
+    };
+    uint32_t status = 0;
+    return snd_submit_safe_control(
+        dev, vr, &req, sizeof(req), sizeof(struct virtio_snd_hdr), &status);
+}
+
+static inline test_result_t snd_prepare_stream(struct virtio_dev *dev,
+                                               struct vring *vr,
+                                               uint32_t stream_id)
+{
+    test_result_t result = snd_set_valid_params(dev, vr, stream_id);
+    if (result != TEST_PASS)
+        return result;
+    return snd_expect_pcm_command_ok(
+        dev, vr, stream_id, VIRTIO_SND_R_PCM_PREPARE);
+}
+
+static inline test_result_t snd_start_stream(struct virtio_dev *dev,
+                                             struct vring *vr,
+                                             uint32_t stream_id)
+{
+    test_result_t result = snd_prepare_stream(dev, vr, stream_id);
+    if (result != TEST_PASS)
+        return result;
+    return snd_expect_pcm_command_ok(
+        dev, vr, stream_id, VIRTIO_SND_R_PCM_START);
+}
+
+static inline test_result_t snd_complete_lifecycle(struct virtio_dev *dev,
+                                                   struct vring *vr,
+                                                   uint32_t stream_id)
+{
+    test_result_t result = snd_start_stream(dev, vr, stream_id);
+    if (result != TEST_PASS)
+        return result;
+    result = snd_expect_pcm_command_ok(
+        dev, vr, stream_id, VIRTIO_SND_R_PCM_STOP);
+    if (result != TEST_PASS)
+        return result;
+    return snd_expect_pcm_command_ok(
+        dev, vr, stream_id, VIRTIO_SND_R_PCM_RELEASE);
 }
 
 static inline volatile struct virtio_snd_config *
