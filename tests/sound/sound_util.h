@@ -102,6 +102,75 @@ static inline test_result_t snd_expect_ok(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
+static inline test_result_t snd_get_pcm_info(struct virtio_dev *dev,
+                                             struct vring *vr,
+                                             uint32_t stream_id,
+                                             struct virtio_snd_pcm_info *info)
+{
+    struct virtio_snd_query_info *req = vv_alloc_pages(1);
+    uint8_t *resp = vv_alloc_pages(1);
+    const uint32_t response_len =
+        sizeof(struct virtio_snd_hdr) + sizeof(*info);
+    uint16_t used_idx = vr->used->idx;
+
+    req->hdr.code = VIRTIO_SND_R_PCM_INFO;
+    req->start_id = stream_id;
+    req->count = 1;
+    req->size = sizeof(*info);
+    memset(resp, 0xff, response_len);
+
+    vring_raw_set_desc(vr, 0, vv_virt_to_phys(req), sizeof(*req),
+                       VRING_DESC_F_NEXT, 1);
+    vring_raw_set_desc(vr, 1, vv_virt_to_phys(resp), response_len,
+                       VRING_DESC_F_WRITE, 0);
+    vring_raw_set_avail(vr, vr->avail->idx % vr->size, 0);
+    vring_raw_set_avail_idx(vr, vr->avail->idx + 1);
+
+    test_result_t result = vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
+    if (result != TEST_PASS)
+        return result;
+    uint32_t used_len = vr->used->ring[used_idx % vr->size].len;
+    if (used_len != response_len)
+        TFAIL("PCM_INFO used length %u, expected %u",
+              used_len, response_len);
+    struct virtio_snd_hdr *hdr = (struct virtio_snd_hdr *)resp;
+    if (hdr->code != VIRTIO_SND_S_OK)
+        TFAIL("PCM_INFO status 0x%08x", hdr->code);
+    memcpy(info, resp + sizeof(*hdr), sizeof(*info));
+    return TEST_PASS;
+}
+
+static inline test_result_t snd_make_valid_params(
+    struct virtio_dev *dev, struct vring *vr, uint32_t stream_id,
+    struct virtio_snd_pcm_set_params *params,
+    struct virtio_snd_pcm_info *info)
+{
+    test_result_t result = snd_get_pcm_info(dev, vr, stream_id, info);
+    if (result != TEST_PASS)
+        return result;
+    if (info->channels_min == 0 || info->formats == 0 || info->rates == 0)
+        TFAIL("stream %u lacks a valid channel, format, or rate", stream_id);
+
+    uint8_t format = 0;
+    while (format < 64 && !(info->formats & (1ULL << format)))
+        format++;
+    uint8_t rate = 0;
+    while (rate < 64 && !(info->rates & (1ULL << rate)))
+        rate++;
+    if (format == 64 || rate == 64)
+        TFAIL("stream %u capability masks have no selectable bit", stream_id);
+
+    memset(params, 0, sizeof(*params));
+    params->hdr.hdr.code = VIRTIO_SND_R_PCM_SET_PARAMS;
+    params->hdr.stream_id = stream_id;
+    params->buffer_bytes = 4096;
+    params->period_bytes = 1024;
+    params->channels = info->channels_min;
+    params->format = format;
+    params->rate = rate;
+    return TEST_PASS;
+}
+
 static inline volatile struct virtio_snd_config *
 snd_config(struct virtio_dev *dev)
 {
