@@ -82,6 +82,7 @@ virtio-villain/
     watchdog/           # D - watchdog device violations
     iommu/              # I - virtio-iommu device violations
     rtc/                # RTC - RTC / clock device violations
+    sound/              # SND - sound control, lifecycle, TX/RX violations
     fs/                 # F - virtio-fs device violations
 ```
 
@@ -132,7 +133,7 @@ the VMM under test exposes the device).
 | F      | 5.11 | File system (virtio-fs)              | yes |
 | -      | 5.12 | RPMB                                 | no  |
 | I      | 5.13 | IOMMU                                | yes |
-| O      | 5.14 | Sound                                | reserved |
+| SND    | 5.14 | Sound                                | yes |
 | R      | 5.15 | Memory (virtio-mem)                  | yes |
 | H      | 5.16 | I2C                                  | reserved |
 | W      | 5.17 | SCMI                                 | reserved |
