@@ -220,7 +220,10 @@ static int run_test(struct test_entry *t)
     __sync_synchronize();
 
     test_result_t result;
-    if (t->flags & TEST_FLAG_DUAL_Q) {
+    if (t->flags & TEST_FLAG_CONTROL_Q) {
+        test_dual_q_fn fn = (test_dual_q_fn)t->fn;
+        result = fn(&dev, &queues[0], &queues[test_q]);
+    } else if (t->flags & TEST_FLAG_DUAL_Q) {
         test_dual_q_fn fn = (test_dual_q_fn)t->fn;
         result = fn(&dev, &queues[test_q], &queues[nq - 1]);
     } else {
