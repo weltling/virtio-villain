@@ -18,6 +18,9 @@
 #define VIRTIO_SND_S_NOT_SUPP  0x8002
 #define VIRTIO_SND_S_IO_ERR    0x8003
 
+#define VIRTIO_SND_D_OUTPUT  0
+#define VIRTIO_SND_D_INPUT   1
+
 struct virtio_snd_hdr {
     uint32_t code;
 } __attribute__((packed));
@@ -63,6 +66,15 @@ struct virtio_snd_pcm_info {
     uint8_t channels_min;
     uint8_t channels_max;
     uint8_t padding[5];
+} __attribute__((packed));
+
+struct virtio_snd_pcm_xfer {
+    uint32_t stream_id;
+} __attribute__((packed));
+
+struct virtio_snd_pcm_status {
+    uint32_t status;
+    uint32_t latency_bytes;
 } __attribute__((packed));
 
 #define VIRTIO_SND_CHMAP_MAX_SIZE  18
