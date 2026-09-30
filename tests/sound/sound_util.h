@@ -155,6 +155,27 @@ static inline test_result_t snd_get_pcm_info(struct virtio_dev *dev,
     return TEST_PASS;
 }
 
+static inline test_result_t snd_find_pcm_stream(
+    struct virtio_dev *dev, struct vring *vr, uint8_t direction,
+    uint32_t *stream_id, struct virtio_snd_pcm_info *info)
+{
+    volatile struct virtio_snd_config *cfg =
+        (volatile struct virtio_snd_config *)dev->device_cfg;
+    if (!cfg || dev->device_cfg_length < sizeof(*cfg))
+        return TEST_SKIP;
+
+    for (uint32_t id = 0; id < cfg->streams; id++) {
+        test_result_t result = snd_get_pcm_info(dev, vr, id, info);
+        if (result != TEST_PASS)
+            return result;
+        if (info->direction == direction) {
+            *stream_id = id;
+            return TEST_PASS;
+        }
+    }
+    return TEST_SKIP;
+}
+
 static inline test_result_t snd_make_valid_params(
     struct virtio_dev *dev, struct vring *vr, uint32_t stream_id,
     struct virtio_snd_pcm_set_params *params,
@@ -270,6 +291,105 @@ static inline test_result_t snd_complete_lifecycle(struct virtio_dev *dev,
         return result;
     return snd_expect_pcm_command_ok(
         dev, vr, stream_id, VIRTIO_SND_R_PCM_RELEASE);
+}
+
+static inline test_result_t snd_submit_pcm_xfer(
+    struct virtio_dev *dev, struct vring *vr, uint32_t stream_id,
+    bool capture, uint32_t data_len)
+{
+    struct virtio_snd_pcm_xfer *xfer = vv_alloc_pages(1);
+    uint8_t *data = vv_alloc_pages(1);
+    struct virtio_snd_pcm_status *status = vv_alloc_pages(1);
+    uint16_t avail_idx = vr->avail->idx;
+    uint16_t used_idx = vr->used->idx;
+
+    if (data_len > PAGE_SIZE)
+        TFAIL("PCM transfer exceeds one page");
+    xfer->stream_id = stream_id;
+    memset(data, capture ? 0xff : 0, data_len);
+    memset(status, 0xff, sizeof(*status));
+
+    vring_raw_set_desc(vr, 0, vv_virt_to_phys(xfer), sizeof(*xfer),
+                       VRING_DESC_F_NEXT, 1);
+    vring_raw_set_desc(vr, 1, vv_virt_to_phys(data), data_len,
+                       VRING_DESC_F_NEXT |
+                       (capture ? VRING_DESC_F_WRITE : 0), 2);
+    vring_raw_set_desc(vr, 2, vv_virt_to_phys(status), sizeof(*status),
+                       VRING_DESC_F_WRITE, 0);
+    vring_raw_set_avail(vr, avail_idx % vr->size, 0);
+    vring_raw_set_avail_idx(vr, avail_idx + 1);
+
+    test_result_t result = vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
+    if (result != TEST_PASS)
+        return result;
+    uint32_t used_len = vr->used->ring[used_idx % vr->size].len;
+    uint32_t expected = sizeof(*status) + (capture ? data_len : 0);
+    if (used_len != expected)
+        TFAIL("PCM transfer used length %u, expected %u",
+              used_len, expected);
+    if (status->status != VIRTIO_SND_S_OK)
+        TFAIL("PCM transfer status 0x%08x", status->status);
+    return TEST_PASS;
+}
+
+static inline test_result_t snd_wait_pcm_safe(
+    struct virtio_dev *dev, struct vring *vr, uint16_t used_idx,
+    uint32_t writable_capacity, struct virtio_snd_pcm_status *status,
+    uint32_t status_capacity)
+{
+    test_result_t result = vv_kick_and_wait(dev, vr, 0, VV_TIMEOUT_MS);
+    if (result != TEST_PASS)
+        return result;
+
+    uint32_t used_len = vr->used->ring[used_idx % vr->size].len;
+    if (used_len > writable_capacity)
+        TFAIL("PCM transfer used length %u exceeds writable capacity %u",
+              used_len, writable_capacity);
+    if (status_capacity >= sizeof(uint32_t)) {
+        if (used_len < sizeof(uint32_t))
+            TFAIL("PCM transfer completed with only %u response bytes",
+                  used_len);
+        if (status->status == VIRTIO_SND_S_OK)
+            return TEST_PASS;
+        if (status->status != VIRTIO_SND_S_BAD_MSG &&
+            status->status != VIRTIO_SND_S_NOT_SUPP &&
+            status->status != VIRTIO_SND_S_IO_ERR)
+            TFAIL("invalid PCM transfer status 0x%08x", status->status);
+        TREJECT("PCM transfer safely rejected with status 0x%04x",
+                status->status);
+    }
+    return TEST_PASS;
+}
+
+static inline test_result_t snd_submit_pcm_xfer_safe(
+    struct virtio_dev *dev, struct vring *vr, uint32_t stream_id,
+    bool capture, uint32_t data_len)
+{
+    struct virtio_snd_pcm_xfer *xfer = vv_alloc_pages(1);
+    uint8_t *data = vv_alloc_pages(1);
+    struct virtio_snd_pcm_status *status = vv_alloc_pages(1);
+    uint16_t avail_idx = vr->avail->idx;
+    uint16_t used_idx = vr->used->idx;
+
+    if (data_len > PAGE_SIZE)
+        TFAIL("PCM transfer exceeds one page");
+    xfer->stream_id = stream_id;
+    memset(data, capture ? 0xff : 0, data_len);
+    memset(status, 0xff, sizeof(*status));
+
+    vring_raw_set_desc(vr, 0, vv_virt_to_phys(xfer), sizeof(*xfer),
+                       VRING_DESC_F_NEXT, 1);
+    vring_raw_set_desc(vr, 1, vv_virt_to_phys(data), data_len,
+                       VRING_DESC_F_NEXT |
+                       (capture ? VRING_DESC_F_WRITE : 0), 2);
+    vring_raw_set_desc(vr, 2, vv_virt_to_phys(status), sizeof(*status),
+                       VRING_DESC_F_WRITE, 0);
+    vring_raw_set_avail(vr, avail_idx % vr->size, 0);
+    vring_raw_set_avail_idx(vr, avail_idx + 1);
+
+    uint32_t writable = sizeof(*status) + (capture ? data_len : 0);
+    return snd_wait_pcm_safe(dev, vr, used_idx, writable, status,
+                             sizeof(*status));
 }
 
 static inline volatile struct virtio_snd_config *
