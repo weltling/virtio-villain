@@ -8,6 +8,7 @@
 
 #include <stdint.h>
 #include <string.h>
+#include <unistd.h>
 
 #define SND_JACK_INFO_SIZE   24
 #define SND_PCM_INFO_SIZE    32
@@ -390,6 +391,33 @@ static inline test_result_t snd_submit_pcm_xfer_safe(
     uint32_t writable = sizeof(*status) + (capture ? data_len : 0);
     return snd_wait_pcm_safe(dev, vr, used_idx, writable, status,
                              sizeof(*status));
+}
+
+static inline test_result_t snd_reset_reinit(struct virtio_dev *dev,
+                                             struct vring *control_vr,
+                                             struct vring *pcm_vr)
+{
+    uint16_t control_size = control_vr->size;
+    uint16_t control_queue = control_vr->queue;
+    uint16_t pcm_size = pcm_vr->size;
+    uint16_t pcm_queue = pcm_vr->queue;
+
+    virtio_pci_reset(dev);
+    if (dev->common->device_status != 0)
+        TWEDGED("sound device did not acknowledge reset");
+    if (virtio_pci_init(dev) < 0)
+        TWEDGED("sound device failed to reinitialize after reset");
+
+    vring_alloc(control_vr, control_size);
+    vring_attach(dev, control_vr, control_queue);
+    vring_alloc(pcm_vr, pcm_size);
+    vring_attach(dev, pcm_vr, pcm_queue);
+
+    dev->common->device_status |= VIRTIO_STATUS_DRIVER_OK;
+    __sync_synchronize();
+    if (!(dev->common->device_status & VIRTIO_STATUS_DRIVER_OK))
+        TWEDGED("sound device rejected DRIVER_OK after reset");
+    return TEST_PASS;
 }
 
 static inline volatile struct virtio_snd_config *
