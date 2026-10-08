@@ -82,7 +82,7 @@ virtio-villain/
     watchdog/           # D - watchdog device violations
     iommu/              # I - virtio-iommu device violations
     rtc/                # RTC - RTC / clock device violations
-    sound/              # SND - sound control, lifecycle, TX/RX violations
+    sound/              # SND - sound control, PCM, descriptor, reset violations
     fs/                 # F - virtio-fs device violations
 ```
 
