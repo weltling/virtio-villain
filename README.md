@@ -44,9 +44,11 @@ multiple VMMs and comparing outcomes.
 Cloud Hypervisor, QEMU, and OpenVMM are supported today, all as PCI
 hosts. QEMU is also driven in microvm mode for the MMIO transport
 tests. OpenVMM boots via Linux direct boot and places every virtio
-device on a native PCIe root port. The framework is VMM agnostic and
-any VMM exposing virtio PCI or MMIO devices can be added by
-implementing a backend in `run`.
+device, including vsock, on a native PCIe root port. The vsock tests
+need an OpenVMM built with the PCIe vsock bus selector
+`--virtio-vsock-bus pcie`. The framework is VMM agnostic and any VMM
+exposing virtio PCI or MMIO devices can be added by implementing a
+backend in `run`.
 
 ## Architecture
 
