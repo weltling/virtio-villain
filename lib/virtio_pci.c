@@ -22,6 +22,10 @@ struct virtio_caps {
     uint32_t isr_offset;
     uint32_t isr_length;
     uint8_t  pci_cfg_cap_offset; /* for VIRTIO_PCI_CAP_PCI_CFG */
+    uint8_t  shared_memory_bar;
+    uint8_t  shared_memory_id;
+    uint64_t shared_memory_offset;
+    uint64_t shared_memory_length;
 };
 
 static int parse_caps(const char *slot, struct virtio_caps *caps)
@@ -63,6 +67,13 @@ static int parse_caps(const char *slot, struct virtio_caps *caps)
                 caps->isr_length = length;
             } else if (cfg_type == VIRTIO_PCI_CAP_PCI_CFG) {
                 caps->pci_cfg_cap_offset = cap_ptr;
+            } else if (cfg_type == VIRTIO_PCI_CAP_SHARED_MEM) {
+                caps->shared_memory_bar = bar;
+                caps->shared_memory_id = pci_cfg_read8(fd, cap_ptr + 5);
+                caps->shared_memory_offset =
+                    offset | ((uint64_t)pci_cfg_read32(fd, cap_ptr + 16) << 32);
+                caps->shared_memory_length =
+                    length | ((uint64_t)pci_cfg_read32(fd, cap_ptr + 20) << 32);
             }
         }
         cap_ptr = cap_next;
@@ -113,6 +124,10 @@ int virtio_pci_attach(uint16_t device_id, struct virtio_dev *dev)
     }
 
     dev->pci_cfg_cap_offset = caps.pci_cfg_cap_offset;
+    dev->shared_memory_bar = caps.shared_memory_bar;
+    dev->shared_memory_id = caps.shared_memory_id;
+    dev->shared_memory_offset = caps.shared_memory_offset;
+    dev->shared_memory_length = caps.shared_memory_length;
 
     return 0;
 }

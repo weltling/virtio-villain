@@ -12,9 +12,18 @@
 static test_result_t test_packed_desc_spanning_memory_hole(struct virtio_dev *dev,
                                                           struct vring_packed *vr)
 {
-    uint8_t *data = vv_alloc_pages(1);
-    return pk_blk_chain(dev, vr, VIRTIO_BLK_T_IN, vv_virt_to_phys(data),
-                        256 * 1024 * 1024, VRING_PACKED_DESC_F_WRITE);
+    uint64_t ram_top = vv_parse_ram_top();
+    uint64_t data_phys;
+    if (!ram_top ||
+        !vv_alloc_page_near_ram_top(ram_top, &data_phys))
+        return TEST_SKIP;
+
+    uint64_t span = ram_top - data_phys + PAGE_SIZE;
+    if (span > UINT32_MAX)
+        return TEST_SKIP;
+
+    return pk_blk_chain(dev, vr, VIRTIO_BLK_T_IN, data_phys, (uint32_t)span,
+                        VRING_PACKED_DESC_F_WRITE);
 }
 
 REGISTER_TEST_PACKED(P0078, VIRTIO_PCI_DEVICE_BLK,

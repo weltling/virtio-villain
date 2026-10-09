@@ -27,20 +27,24 @@ static test_result_t test_desc_spanning_hole(struct virtio_dev *dev,
     hdr->sector = 0;
     *status = 0xFF;
 
-    /* Allocate a page for the data buffer start */
-    uint8_t *data = vv_alloc_pages(1);
-    uint64_t data_phys = vv_virt_to_phys(data);
+    uint64_t ram_top = vv_parse_ram_top();
+    uint64_t data_phys;
+    if (!ram_top ||
+        !vv_alloc_page_near_ram_top(ram_top, &data_phys))
+        return TEST_SKIP;
+    uint64_t span = ram_top - data_phys + PAGE_SIZE;
+    if (span > UINT32_MAX)
+        return TEST_SKIP;
 
     /* Header descriptor (valid) */
     vring_raw_set_desc(vr, 0, vv_virt_to_phys(hdr), sizeof(*hdr),
                        VRING_DESC_F_NEXT, 1);
 
     /*
-     * Data descriptor: starts at a valid page but claims 256MB length,
-     * which will span well beyond the end of guest RAM into a memory
-     * hole. The device must handle this gracefully.
+     * Data descriptor starts in a valid high page and extends one page
+     * past the detected end of RAM.
      */
-    vring_raw_set_desc(vr, 1, data_phys, 256 * 1024 * 1024,
+    vring_raw_set_desc(vr, 1, data_phys, (uint32_t)span,
                        VRING_DESC_F_NEXT | VRING_DESC_F_WRITE, 2);
 
     /* Status descriptor (valid) */

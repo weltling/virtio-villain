@@ -95,6 +95,8 @@ struct virtio_dev {
     volatile uint8_t *isr;                     /* ISR status register */
     uint64_t bar_phys;                         /* primary BAR guest physical base */
     uint64_t common_phys;                      /* guest physical addr of common cfg */
+    uint64_t shared_memory_offset;              /* offset within the shared memory BAR */
+    uint64_t shared_memory_length;              /* shared memory region size */
     uint32_t notify_off_multiplier;            /* notify offset multiplier */
     uint32_t device_cfg_length;                /* device config region size */
     uint32_t notify_length;                    /* notification region size */
@@ -102,6 +104,8 @@ struct virtio_dev {
     uint32_t isr_length;                       /* ISR region size */
     uint16_t device_id;                        /* virtio device type */
     uint8_t  pci_cfg_cap_offset;               /* PCI cfg access cap offset */
+    uint8_t  shared_memory_bar;                 /* shared memory BAR number */
+    uint8_t  shared_memory_id;                  /* shared memory region id */
     char slot[256];                            /* PCI BDF slot string */
 };
 
