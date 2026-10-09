@@ -1062,7 +1062,7 @@ def _parse_result(output, returncode):
     stream at any character boundary (CH writes its own warnings
     inline). Strip those log lines first, then look for the tag.
     """
-    cleaned = re.sub(r"cloud-hypervisor:[^\n]*\n", "", output)
+    cleaned = _clean_result_output(output)
     m = re.search(r"\[(XPASS|XFAIL|FAIL|REJECT|WEDGED|SKIP|PASS)\]", cleaned)
     if m:
         return m.group(1)
@@ -1080,7 +1080,7 @@ def _parse_batch_results(output, test_names):
     found in the output are marked WEDGED (the VM died before
     reaching them).
     """
-    cleaned = re.sub(r"cloud-hypervisor:[^\n]*\n", "", output)
+    cleaned = _clean_result_output(output)
     results = {}
     for name in test_names:
         marker = re.search(
@@ -1089,6 +1089,30 @@ def _parse_batch_results(output, test_names):
             cleaned)
         results[name] = marker.group(1) if marker else "WEDGED"
     return results
+
+
+_VERDICT_MARKER_RE = re.compile(
+    r"\[(?:XPASS|XFAIL|FAIL|REJECT|WEDGED|SKIP|PASS)\]")
+
+
+def _remove_spliced_log_lines(output, pattern):
+    """Remove matching logs while retaining any verdict text inside them."""
+    def replace(match):
+        line = match.group(0)
+        marker = _VERDICT_MARKER_RE.search(line)
+        if not marker:
+            return ""
+        return line[marker.start():].rstrip("\n")
+
+    return re.sub(pattern, replace, output)
+
+
+def _clean_result_output(output):
+    """Remove host and guest log lines that can splice into verdict markers."""
+    output = _remove_spliced_log_lines(
+        output, r"cloud-hypervisor:[^\n]*(?:\n|$)")
+    return _remove_spliced_log_lines(
+        output, r"\[\s*\d+\.\d+\][^\n]*(?:\n|$)")
 
 
 def _find_virtiofsd():
@@ -1511,7 +1535,18 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
     # The VMM writes its own log lines into the same stdout stream and
     # can split a verdict marker at any character boundary; strip those
     # lines first, then match the tag.
-    vmm_noise_re = re.compile(rb"cloud-hypervisor:[^\n]*\n")
+    vmm_noise_re = re.compile(rb"cloud-hypervisor:[^\n]*(?:\n|$)")
+    kernel_noise_re = re.compile(rb"\[\s*\d+\.\d+\][^\n]*(?:\n|$)")
+    verdict_marker_re = re.compile(
+        rb"\[(?:XPASS|XFAIL|FAIL|REJECT|WEDGED|SKIP|PASS)\]")
+
+    def _remove_stream_log(match):
+        line = match.group(0)
+        marker = verdict_marker_re.search(line)
+        if not marker:
+            return b""
+        return line[marker.start():].rstrip(b"\n")
+
     wanted = {t.encode() for t in test_names}
     escaped_names = sorted((re.escape(t) for t in wanted), key=len,
                            reverse=True)
@@ -1659,8 +1694,10 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
                 # could reach the target before a verdict line was
                 # complete and kill with a name not yet captured, which
                 # then parses as a spurious WEDGED.
-                tail = joined[max(scan_from - 256, 0):]
-                cleaned_tail = vmm_noise_re.sub(b"", tail)
+                tail = joined[max(scan_from - 8192, 0):]
+                cleaned_tail = vmm_noise_re.sub(_remove_stream_log, tail)
+                cleaned_tail = kernel_noise_re.sub(
+                    _remove_stream_log, cleaned_tail)
                 for m in marker_name_re.finditer(cleaned_tail):
                     reported.add(m.group(1))
                 scan_from = len(joined)

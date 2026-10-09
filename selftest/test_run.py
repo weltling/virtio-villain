@@ -1569,6 +1569,24 @@ def test_unit_parse_batch_results_kernel_log_spliced_after_name():
     assert r == {"B0144": "PASS"}
 
 
+def test_unit_parse_batch_results_kernel_log_spliced_inside_name():
+    output = "[PASS] B0[    0.373672] pci_bus 0000:04: scanning bus\n144\n"
+    r = RUN_MOD._parse_batch_results(output, ["B0144"])
+    assert r == {"B0144": "PASS"}
+
+
+def test_unit_parse_batch_results_name_spliced_inside_kernel_log():
+    output = "[    0.373672] pci_bus [PASS] B0144\n"
+    r = RUN_MOD._parse_batch_results(output, ["B0144"])
+    assert r == {"B0144": "PASS"}
+
+
+def test_unit_parse_batch_results_split_name_spliced_inside_kernel_log():
+    output = "[    0.373672] pci_bus [PASS] B0\n144\n"
+    r = RUN_MOD._parse_batch_results(output, ["B0144"])
+    assert r == {"B0144": "PASS"}
+
+
 def test_unit_parse_batch_results_single():
     output = "[PASS] RNG0001\n"
     r = RUN_MOD._parse_batch_results(output, ["RNG0001"])
