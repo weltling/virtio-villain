@@ -391,6 +391,7 @@ static void shutdown(int failures)
     for (int i = 0; i < 20; i++)
         usleep(50 * 1000);
 
+#if defined(__x86_64__) || defined(__i386__)
     int fd = open("/dev/port", O_WRONLY);
     if (fd >= 0) {
         uint8_t val = 0x01;
@@ -399,12 +400,11 @@ static void shutdown(int failures)
         (void)r;
         close(fd);
     } else {
-#if defined(__x86_64__) || defined(__i386__)
         if (iopl(3) != 0)
             ioperm(0x501, 1, 1);
         outb(0x01, 0x501);
-#endif
     }
+#endif
 
     reboot(RB_POWER_OFF);
     _exit(failures ? 1 : 0);

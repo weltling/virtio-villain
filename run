@@ -1081,14 +1081,13 @@ def _parse_batch_results(output, test_names):
     reaching them).
     """
     cleaned = re.sub(r"cloud-hypervisor:[^\n]*\n", "", output)
-    found = {}
-    for m in re.finditer(
-            r"\[(XPASS|XFAIL|FAIL|REJECT|WEDGED|SKIP|PASS)\]\s+(\S+)",
-            cleaned):
-        found[m.group(2)] = m.group(1)
     results = {}
     for name in test_names:
-        results[name] = found.get(name, "WEDGED")
+        marker = re.search(
+            rf"\[(XPASS|XFAIL|FAIL|REJECT|WEDGED|SKIP|PASS)\]\s+"
+            rf"{re.escape(name)}(?![A-Za-z0-9_])",
+            cleaned)
+        results[name] = marker.group(1) if marker else "WEDGED"
     return results
 
 
@@ -1513,11 +1512,16 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
     # can split a verdict marker at any character boundary; strip those
     # lines first, then match the tag.
     vmm_noise_re = re.compile(rb"cloud-hypervisor:[^\n]*\n")
-    # Match a full verdict line "[TAG] NAME" and capture the name. The
-    # batch kill and the result parser both key off the name so the VM
-    # is never killed before a verdict line the parser needs is complete.
+    wanted = {t.encode() for t in test_names}
+    escaped_names = sorted((re.escape(t) for t in wanted), key=len,
+                           reverse=True)
+    # Match the exact requested IDs. Kernel printk can splice directly
+    # after the ID before the guest's newline reaches the serial device,
+    # so whitespace cannot be required after the name.
     marker_name_re = re.compile(
-        rb"\[(?:PASS|FAIL|REJECT|WEDGED|SKIP|XFAIL|XPASS)\]\s+(\S+)")
+        rb"\[(?:PASS|FAIL|REJECT|WEDGED|SKIP|XFAIL|XPASS)\]\s+("
+        + rb"|".join(escaped_names)
+        + rb")(?![A-Za-z0-9_])")
 
     saved_term = _save_term() if console else None
     proc = None
@@ -1536,9 +1540,8 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
     # the two into one pipe lets a log line splice into a marker at a
     # byte boundary and corrupt it, which surfaces as a spurious WEDGED
     # for whichever test provoked a VMM log at verdict time. Keep stderr
-    # on its own pipe for the non console path so the marker stream
-    # stays clean, and drain it in a thread. Console mode stays merged
-    # for live interactive viewing.
+    # on its own pipe so the marker stream stays clean, and drain it in
+    # a thread. In console mode the drain thread also streams stderr live.
     err_chunks = []
     err_thread = None
     try:
@@ -1564,7 +1567,7 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
                 cmd,
                 stdin=stdin_arg,
                 stdout=subprocess.PIPE,
-                stderr=(subprocess.STDOUT if console else subprocess.PIPE),
+                stderr=subprocess.PIPE,
                 start_new_session=new_session,
                 preexec_fn=preexec,
             )
@@ -1575,15 +1578,19 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
             if openvmm_master is not None:
                 os.close(slave_fd)
         _register_proc(proc)
-        if not console and proc.stderr is not None:
-            def _drain_stderr(stream, sink):
+        if proc.stderr is not None:
+            def _drain_stderr(stream, sink, stream_live):
                 try:
                     for eb in iter(lambda: stream.read1(4096), b""):
                         sink.append(eb)
+                        if stream_live:
+                            sys.stderr.buffer.write(eb)
+                            sys.stderr.buffer.flush()
                 except (OSError, ValueError):
                     pass
             err_thread = threading.Thread(
-                target=_drain_stderr, args=(proc.stderr, err_chunks),
+                target=_drain_stderr,
+                args=(proc.stderr, err_chunks, console),
                 name=f"stderr-{test_names[0]}", daemon=True)
             err_thread.start()
         chunks = []
@@ -1630,7 +1637,6 @@ def run_test(backend, kernel, test_name, timeout, verbose=0, console=False,
                 _kill_proc(proc)
         timer = threading.Timer(effective_timeout, _on_timeout)
         timer.start()
-        wanted = {t.encode() for t in test_names}
         reported = set()
         scan_from = 0
         marker_seen = False
