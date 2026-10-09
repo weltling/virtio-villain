@@ -816,7 +816,12 @@ class OpenVmm(VmmBackend):
         cmd = [
             self.binary,
             "--hypervisor", "kvm",
-            "--hv",
+        ]
+        # KVM/aarch64 does not provide SynIC, so enabling HV#1 would make
+        # OpenVMM create a VMBus instance that cannot start.
+        if platform.machine() != "aarch64":
+            cmd.append("--hv")
+        cmd += [
             "--single-process",
             "-k", kernel,
             "-r", initramfs,

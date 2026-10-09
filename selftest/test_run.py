@@ -692,9 +692,15 @@ def test_unit_openvmm_detect_by_name():
 
 def test_unit_openvmm_build_cmd_direct_boot_layout():
     """Every virtio device is placed on its own named PCIe root port."""
-    be = RUN_MOD.OpenVmm("/opt/openvmm/openvmm")
-    cmd = be.build_cmd("/k", "/i", "/d.raw", "console=ttyS0 vv.test=T0001",
-                       {"cpus": 2, "memory": "256M"})
+    original = RUN_MOD.platform.machine
+    try:
+        RUN_MOD.platform.machine = lambda: "x86_64"
+        be = RUN_MOD.OpenVmm("/opt/openvmm/openvmm")
+        cmd = be.build_cmd(
+            "/k", "/i", "/d.raw", "console=ttyS0 vv.test=T0001",
+            {"cpus": 2, "memory": "256M"})
+    finally:
+        RUN_MOD.platform.machine = original
     assert _openvmm_opt(cmd, "-k") == "/k"
     assert _openvmm_opt(cmd, "-r") == "/i"
     assert _openvmm_opt(cmd, "-c") == "console=ttyS0 vv.test=T0001"
@@ -708,6 +714,18 @@ def test_unit_openvmm_build_cmd_direct_boot_layout():
     assert "--single-process" in cmd
     # The disk, net, console and rng ports are always declared.
     assert set(_openvmm_ports(cmd)) >= {"disk", "net", "console", "rng"}
+
+
+def test_unit_openvmm_aarch64_disables_hv():
+    """KVM/aarch64 cannot provide the SynIC required by VMBus."""
+    original = RUN_MOD.platform.machine
+    try:
+        RUN_MOD.platform.machine = lambda: "aarch64"
+        be = RUN_MOD.OpenVmm("/opt/openvmm/openvmm")
+        cmd = be.build_cmd("/k", "/i", "/d.raw", "console=ttyAMA0", {})
+    finally:
+        RUN_MOD.platform.machine = original
+    assert "--hv" not in cmd
 
 
 def test_unit_openvmm_build_cmd_blk_on_pcie_port():
