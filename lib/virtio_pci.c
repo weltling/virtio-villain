@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #include "virtio_pci.h"
+#include "virtio_spec.h"
 #include "pci.h"
 #include "util.h"
 
@@ -188,7 +189,10 @@ int virtio_pci_init_features(struct virtio_dev *dev, unsigned __int128 wanted)
         __sync_synchronize();
         offered |= (unsigned __int128)cfg->device_feature << (32 * w);
     }
-    unsigned __int128 neg = wanted & offered;
+    /* Devices behind an IOMMU may require ACCESS_PLATFORM for FEATURES_OK. */
+    unsigned __int128 required =
+        (unsigned __int128)1 << VIRTIO_F_ACCESS_PLATFORM;
+    unsigned __int128 neg = (wanted | required) & offered;
 
     for (unsigned w = 0; w < 4; w++) {
         cfg->driver_feature_select = w;

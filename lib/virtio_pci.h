@@ -120,14 +120,14 @@ int virtio_pci_find(uint16_t device_id, struct virtio_dev *dev);
 int virtio_pci_attach(uint16_t device_id, struct virtio_dev *dev);
 
 /*
- * Perform virtio device initialization sequence up to DRIVER_OK.
- * Negotiates zero features for simplicity.
+ * Perform virtio device initialization sequence up to FEATURES_OK.
+ * Negotiates ACCESS_PLATFORM when offered, but no optional features.
  */
 int virtio_pci_init(struct virtio_dev *dev);
 
 /*
- * Like virtio_pci_init, but negotiates the requested feature bits
- * (restricted to those the device offers) instead of zero.
+ * Like virtio_pci_init, but also negotiates the requested feature bits
+ * (restricted to those the device offers).
  */
 int virtio_pci_init_features(struct virtio_dev *dev, unsigned __int128 wanted);
 
