@@ -53,7 +53,27 @@ static test_result_t sparse_q02_read(struct virtio_dev *dev,
     cfg->device_status |= VIRTIO_STATUS_DRIVER_OK;
     __sync_synchronize();
 
-    TSKIP("not implemented");
+    /* One read on queue 2, then look at the PBA. */
+    struct vring *vr = &q[2];
+    struct virtio_blk_outhdr *hdr = blk_hdr(VIRTIO_BLK_T_IN, 0);
+    uint8_t *data = vv_alloc_pages(1);
+    uint8_t *st = vv_alloc_pages(1);
+    /* Not a valid status, so a byte the device never wrote stays visible. */
+    *st = 0xff;
+    vv_desc(vr, 0, hdr, sizeof(*hdr), VRING_DESC_F_NEXT, 1);
+    vv_desc(vr, 1, data, VIRTIO_BLK_SECTOR_SIZE,
+            VRING_DESC_F_NEXT | VRING_DESC_F_WRITE, 2);
+    vv_desc(vr, 2, st, 1, VRING_DESC_F_WRITE, 0);
+    VV_TRY(vv_submit_and_wait(dev, vr, 0));
+    if (*st != VIRTIO_BLK_S_OK)
+        TFAIL("read status 0x%02x", *st);
+    usleep(50000);
+    uint32_t bits = vv_mmio_read32(pbits) & 7u;
+    printf("vv-info PBA after queue 2 completion: 0x%x\n", bits);
+    if (bits != 4u)
+        TFAIL("queue 2 completion set PBA 0x%x, expected 0x4 (vector 2)",
+              bits);
+    return TEST_PASS;
 }
 
 static test_result_t test_blk_sparse_q02_msix(struct virtio_dev *dev,
