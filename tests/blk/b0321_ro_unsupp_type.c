@@ -48,6 +48,7 @@ static test_result_t test_blk_ro_unsupp_type(struct virtio_dev *dev,
 {
     uint8_t *buf = vv_alloc_pages(1);
     uint8_t st;
+    int bad = 0;
 
     if (!virtio_pci_feature_offered(dev, VIRTIO_BLK_F_RO))
         TSKIP("device not read only");
@@ -55,11 +56,22 @@ static test_result_t test_blk_ro_unsupp_type(struct virtio_dev *dev,
     if (!virtio_pci_feature_offered(dev, VIRTIO_BLK_F_LIFETIME)) {
         VV_TRY(blk_req(dev, vr, VIRTIO_BLK_T_GET_LIFETIME, buf,
                        sizeof(struct virtio_blk_lifetime), &st));
+        if (st != VIRTIO_BLK_S_UNSUPP) {
+            printf("vv-info RO GET_LIFETIME status %u (want UNSUPP)\n", st);
+            bad++;
+        }
     }
 
     VV_TRY(blk_req(dev, vr, UNASSIGNED_TYPE, buf, VIRTIO_BLK_SECTOR_SIZE, &st));
+    if (st != VIRTIO_BLK_S_UNSUPP) {
+        printf("vv-info RO type 0x%x status %u (want UNSUPP)\n",
+               UNASSIGNED_TYPE, st);
+        bad++;
+    }
 
-    TSKIP("not implemented");
+    if (bad)
+        TFAIL("%d unsupported types not UNSUPP on RO device", bad);
+    return TEST_PASS;
 }
 
 REGISTER_TEST_REQUIRES(B0321, VIRTIO_PCI_DEVICE_BLK, test_blk_ro_unsupp_type,
