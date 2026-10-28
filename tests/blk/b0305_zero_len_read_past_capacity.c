@@ -10,7 +10,8 @@
  *
  * Send two zero length READs, at sector capacity + 8 and at sector
  * 1 << 54 (the byte offset 1 << 63 is negative as off_t). The test
- * fails if the two get different status codes, or if either is S_OK.
+ * fails if the device does not write either status, if the two get
+ * different status codes, or if either is S_OK.
  */
 #include "tests/test.h"
 
@@ -55,7 +56,16 @@ static test_result_t test_blk_zero_len_read_past_cap(struct virtio_dev *dev,
     /* Byte offset 1 << 63, negative as off_t. */
     VV_TRY(zero_len_read(dev, vr, 1ULL << 54, &s_far));
 
-    TSKIP("not implemented");
+    if (s_near == 0xFF || s_far == 0xFF)
+        TFAIL("status not written: sector cap+8 -> 0x%02x, 1<<54 -> 0x%02x",
+              s_near, s_far);
+    if (s_near != s_far)
+        TFAIL("inconsistent status: sector cap+8 -> %u, 1<<54 -> %u",
+              s_near, s_far);
+    if (s_near == VIRTIO_BLK_S_OK)
+        TFAIL("zero length READ past capacity returned S_OK");
+
+    return TEST_PASS;
 }
 
 REGISTER_TEST(B0305, VIRTIO_PCI_DEVICE_BLK, test_blk_zero_len_read_past_cap,
