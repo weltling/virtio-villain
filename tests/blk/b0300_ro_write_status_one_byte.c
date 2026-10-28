@@ -19,6 +19,7 @@ static test_result_t test_blk_ro_write_status_one_byte(struct virtio_dev *dev,
     struct virtio_blk_outhdr *hdr = blk_hdr(VIRTIO_BLK_T_OUT, 0);
     uint8_t *data = vv_alloc_pages(1);
     uint8_t *st = vv_alloc_pages(1);
+    int i;
 
     if (!virtio_pci_feature_offered(dev, VIRTIO_BLK_F_RO))
         TSKIP("device not read only");
@@ -36,7 +37,15 @@ static test_result_t test_blk_ro_write_status_one_byte(struct virtio_dev *dev,
     VV_TRY(vv_submit_and_wait(dev, vr, 0));
     __sync_synchronize();
 
-    TSKIP("not implemented");
+    /* IOERR in the status byte and nothing after it. */
+    if (st[0] != VIRTIO_BLK_S_IOERR)
+        TFAIL("RO write status %u (want IOERR)", st[0]);
+    for (i = 1; i <= CANARY_LEN; i++) {
+        if (st[i] != CANARY)
+            TFAIL("device wrote byte %d past the 1 byte status (0x%02x)",
+                  i, st[i]);
+    }
+    return TEST_PASS;
 }
 
 REGISTER_TEST_REQUIRES(B0300, VIRTIO_PCI_DEVICE_BLK,
