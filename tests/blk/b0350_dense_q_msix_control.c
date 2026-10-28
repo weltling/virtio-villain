@@ -54,7 +54,28 @@ static test_result_t sparse_q_read(struct virtio_dev *dev, uint16_t q0_vector,
     cfg->device_status |= VIRTIO_STATUS_DRIVER_OK;
     __sync_synchronize();
 
-    (void)pba_out;
+    /* One read on queue 1, then look at the PBA. */
+    struct virtio_blk_outhdr *hdr = blk_hdr(VIRTIO_BLK_T_IN, 0);
+    uint8_t *data = vv_alloc_pages(1);
+    uint8_t *st = vv_alloc_pages(1);
+    /* Not a valid status, so a byte the device never wrote stays visible. */
+    *st = 0xff;
+    vv_desc(&q1, 0, hdr, sizeof(*hdr), VRING_DESC_F_NEXT, 1);
+    vv_desc(&q1, 1, data, VIRTIO_BLK_SECTOR_SIZE,
+            VRING_DESC_F_NEXT | VRING_DESC_F_WRITE, 2);
+    vv_desc(&q1, 2, st, 1, VRING_DESC_F_WRITE, 0);
+    VV_TRY(vv_submit_and_wait(dev, &q1, 0));
+    if (*st != VIRTIO_BLK_S_OK)
+        TFAIL("read status 0x%02x", *st);
+    /*
+     * Wait for the first pending bit, then a little longer so a bit for
+     * the wrong vector is not missed.
+     */
+    for (int i = 0; i < 200 && !(vv_mmio_read32(pbits) & 3u); i++)
+        usleep(1000);
+    usleep(50000);
+    *pba_out = vv_mmio_read32(pbits) & 3u;
+    printf("vv-info PBA after queue 1 completion: 0x%x\n", *pba_out);
     return TEST_PASS;
 }
 
@@ -128,7 +149,12 @@ static test_result_t test_blk_dense_q_msix_control(struct virtio_dev *dev,
 
     (void)vr;
     VV_TRY(sparse_q_pba(dev, Q0_VECTOR, &pba));
-    TSKIP("not implemented");
+    if (pba & 1u)
+        TFAIL("queue 1 completion signalled queue 0's vector 0 (PBA 0x%x)",
+              pba);
+    if (!(pba & 2u))
+        TFAIL("queue 1 completion did not signal vector 1 (PBA 0x%x)", pba);
+    return TEST_PASS;
 }
 
 REGISTER_TEST_REQUIRES(B0350, VIRTIO_PCI_DEVICE_BLK,
