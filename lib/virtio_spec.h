@@ -45,6 +45,9 @@
 
 /* Block device (virtio spec 5.2) */
 
+/* Capacity (spec 5.2.4) and sector (spec 5.2.6) count 512 byte units. */
+#define VIRTIO_BLK_SECTOR_SIZE       512
+
 /* Request types (spec 5.2.6). ZONE_* require VIRTIO_BLK_F_ZONED. */
 #define VIRTIO_BLK_T_IN              0
 #define VIRTIO_BLK_T_OUT             1
