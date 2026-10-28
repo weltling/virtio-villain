@@ -8,20 +8,131 @@
  * for example queue 1 without queue 0.
  *
  * Bind queue 0 to vector 0 but leave it disabled, bind queue 1 to
- * vector 1 and enable it. Both MSI-X entries stay masked, so the
- * device records the notification in the Pending Bit Array instead of
- * delivering it, which needs no guest IRQ infrastructure. A read on
+ * vector 1 and enable it. MSI-X is enabled with both entries masked, so
+ * the device records the notification in the Pending Bit Array instead
+ * of delivering it, which needs no guest IRQ infrastructure. A read on
  * queue 1 must set PBA bit 1 and must not set bit 0. A device that
  * numbers its queue workers by their position among the enabled queues
  * instead of by the real queue index signals queue 0's vector.
  */
 #include "tests/test.h"
+#include "lib/pci.h"
+
+#define MSIX_ENABLE        (1u << 31)
+#define MSIX_FUNCTION_MASK (1u << 30)
+
+#define Q0_VECTOR 0
+
+/* Set up the queues on a fresh device, read on queue 1, sample the PBA. */
+static test_result_t sparse_q_read(struct virtio_dev *dev, uint16_t q0_vector,
+                                   volatile uint8_t *pbits, uint32_t *pba_out)
+{
+    volatile struct virtio_pci_common_cfg *cfg = dev->common;
+
+    /* Setup: fresh init with MQ, PBA clear. */
+    virtio_pci_reset(dev);
+    if (virtio_pci_init_features(dev, 1ULL << VIRTIO_BLK_F_MQ) < 0)
+        TFAIL("init with MQ failed");
+    if (cfg->num_queues < 2)
+        TSKIP("need two queues");
+    /* PBA bit n is set while vector n is pending. */
+    if (vv_mmio_read32(pbits) & 3u)
+        TSKIP("PBA bits already set: 0x%x", vv_mmio_read32(pbits));
+
+    struct vring q0, q1;
+    vring_alloc(&q0, 16);
+    vring_alloc(&q1, 16);
+    vring_prepare(dev, &q0, 0);
+    cfg->queue_msix_vector = q0_vector;
+    __sync_synchronize();
+    if (cfg->queue_msix_vector != q0_vector)
+        TSKIP("queue 0 vector not accepted");
+    vring_prepare(dev, &q1, 1);
+    /* vring_prepare() suppresses notifications. This test needs them. */
+    q1.avail->flags = 0;
+    cfg->queue_msix_vector = 1;
+    __sync_synchronize();
+    if (cfg->queue_msix_vector != 1)
+        TSKIP("queue 1 vector not accepted");
+    cfg->queue_enable = 1;
+    __sync_synchronize();
+    cfg->device_status |= VIRTIO_STATUS_DRIVER_OK;
+    __sync_synchronize();
+
+    (void)pba_out;
+    return TEST_PASS;
+}
+
+static test_result_t sparse_q_pba(struct virtio_dev *dev, uint16_t q0_vector,
+                                  uint32_t *pba_out)
+{
+    /* Setup: locate the MSI-X table and PBA. */
+    int fd = pci_cfg_open(dev->slot);
+    if (fd < 0)
+        TFAIL("open PCI config space");
+    uint8_t cap = pci_find_capability(fd, PCI_CAP_ID_MSIX);
+    if (!cap) {
+        close(fd);
+        TSKIP("no MSI-X capability");
+    }
+    uint32_t ctl = pci_cfg_read32(fd, cap);
+    uint32_t tbl = pci_cfg_read32(fd, cap + 4);
+    uint32_t pba = pci_cfg_read32(fd, cap + 8);
+    /* Message Control bits 10:0 hold the table size minus 1. */
+    if (((ctl >> 16) & 0x7ff) + 1 < 2) {
+        close(fd);
+        TSKIP("need two MSI-X vectors");
+    }
+    /* Bits 2:0 select the BAR (BIR), the rest is the offset into it. */
+    volatile uint8_t *tbar = pci_map_bar(dev->slot, tbl & 7);
+    volatile uint8_t *pbar = pci_map_bar(dev->slot, pba & 7);
+    if (!tbar || !pbar) {
+        close(fd);
+        TFAIL("map MSI-X BAR");
+    }
+    volatile uint8_t *table = tbar + (tbl & ~7u);
+    volatile uint8_t *pbits = pbar + (pba & ~7u);
+
+    /*
+     * Setup: mask both entries, then enable MSI-X. A device signals
+     * MSI-X vectors, and so sets PBA bits, only while MSI-X is enabled.
+     * Bit 0 of the Vector Control dword (offset 12) masks the entry.
+     */
+    uint32_t masks[2];
+    for (unsigned v = 0; v < 2; v++) {
+        volatile uint8_t *vc = table + v * 16 + 12;
+        masks[v] = vv_mmio_read32(vc);
+        vv_mmio_write32(vc, masks[v] | 1u);
+    }
+    __sync_synchronize();
+    pci_cfg_write32(fd, cap, (ctl | MSIX_ENABLE) & ~MSIX_FUNCTION_MASK);
+
+    test_result_t r = sparse_q_read(dev, q0_vector, pbits, pba_out);
+
+    /* Cleanup: reset the device, disable MSI-X and restore the masks. */
+    virtio_pci_reset(dev);
+    pci_cfg_write32(fd, cap, ctl & ~MSIX_ENABLE);
+    __sync_synchronize();
+    if (pci_cfg_read32(fd, cap) & MSIX_ENABLE) {
+        close(fd);
+        TFAIL("MSI-X remained enabled after the test");
+    }
+    for (unsigned v = 0; v < 2; v++)
+        vv_mmio_write32(table + v * 16 + 12, masks[v]);
+    __sync_synchronize();
+    close(fd);
+    if (dev->common->device_status != 0)
+        TWEDGED("device reset did not complete after the test");
+    return r;
+}
 
 static test_result_t test_blk_sparse_q_msix_misroute(struct virtio_dev *dev,
                                                      struct vring *vr)
 {
-    (void)dev;
+    uint32_t pba;
+
     (void)vr;
+    VV_TRY(sparse_q_pba(dev, Q0_VECTOR, &pba));
     TSKIP("not implemented");
 }
 
