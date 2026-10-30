@@ -213,6 +213,21 @@ before compilation. If an enabled option is unavailable or dependencies
 change its value, the build fails with the requested option in the
 diagnostic. An absent disabled option is treated as disabled.
 
+Use `--base-config PATH` for a full config from another source revision or
+toolchain. Kconfig adapts its values and reports each adjustment with the
+requested and effective values. This base replaces the bundled configs.
+Additional `--config` files override the base and remain strictly checked.
+Use them to require essential boot options or features. A base config also
+requires an explicit `--output`.
+
+```sh
+./build-kernel \
+  --source /path/to/linux \
+  --base-config /path/to/vendor.config \
+  --config /path/to/required.config \
+  --output /path/to/vendor-build
+```
+
 The supplied config controls boot prerequisites such as the initramfs
 decoder, console and device drivers. The builder does not automatically
 add them. It builds kernel images only. It does not build or package
