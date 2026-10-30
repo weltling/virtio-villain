@@ -55,12 +55,16 @@ def merge_configs(paths):
                    else f"{key}={value}\n" for key, value in values.items())
 
 
-def verify_config(requested, actual):
+def verify_config(requested, actual, *, allow_adjustments=False):
     values = config_values(actual)
-    missing = [f"{key}={value}"
+    missing = [f"{key}={value} -> {values.get(key, 'n')}"
                for key, value in config_values(requested).items()
                if values.get(key, "n") != value]
     if missing:
+        if allow_adjustments:
+            print("warning: Kconfig adjusted base configuration options:\n  "
+                  + "\n  ".join(missing), file=sys.stderr)
+            return
         raise RuntimeError("Kernel configuration did not retain requested options: "
                            + ", ".join(missing))
 
@@ -241,9 +245,10 @@ def git_source(cache, url, ref):
 
 def build(args):
     manifest = json.loads((CONFIG_DIR / "manifest.json").read_text())
-    configs = args.config or [CONFIG_DIR / "common.config",
-                              CONFIG_DIR / f"{args.arch}.config"]
+    configs = ([args.base_config, *(args.config or [])] if args.base_config else
+               args.config or [CONFIG_DIR / "common.config", CONFIG_DIR / f"{args.arch}.config"])
     requested = merge_configs(configs)
+    strict = merge_configs(args.config or []) if args.base_config else requested
     if not config_values(requested):
         raise RuntimeError("No configuration options were supplied")
     cache = (args.cache_dir or ROOT / "target" / "guest-kernel").resolve()
@@ -289,6 +294,8 @@ def build(args):
         identity = {"source": str(source), "arch": args.arch,
                     "cross_compile": args.cross_compile,
                     "requested_sha256": hashlib.sha256(requested.encode()).hexdigest()}
+        if args.base_config:
+            identity["strict_sha256"] = hashlib.sha256(strict.encode()).hexdigest()
         identity_path = output / "inputs.json"
         if identity_path.exists() and json.loads(identity_path.read_text()) != identity:
             raise RuntimeError(f"Build inputs changed. Use a different --output: {root}")
@@ -310,7 +317,10 @@ def build(args):
         if "RUSTC" in env:
             command.append(f"RUSTC={env['RUSTC']}")
         subprocess.run(command + ["allnoconfig"], env=env, check=True)
-        verify_config(requested, (output / ".config").read_text())
+        actual = (output / ".config").read_text()
+        verify_config(strict, actual)
+        if args.base_config:
+            verify_config(requested, actual, allow_adjustments=True)
         targets = ["vmlinux", "bzImage"] if arch == "x86" else ["Image"]
         subprocess.run(command + [f"-j{args.jobs}"] + targets, env=env, check=True)
         images = (
@@ -384,6 +394,9 @@ def parse_args(argv=None):
     parser.add_argument("--config", type=Path, action="append",
                         help="Config file or fragment. Repeat in order. "
                         "Later files override earlier values")
+    parser.add_argument("--base-config", type=Path,
+                        help="Base config adapted by Kconfig with reported adjustments. "
+                        "Explicit --config values remain strict and override the base")
     parser.add_argument("--output", type=Path,
                         help="Separate build directory, required with custom configs")
     parser.add_argument("--result", type=Path,
@@ -404,9 +417,9 @@ def parse_args(argv=None):
     if args.ref and (args.ref.startswith("-") or re.search(r"\s", args.ref)):
         parser.error("--ref must be a branch, tag or commit without whitespace")
     custom = bool(args.source or args.git_url or args.archive or args.url)
-    if custom and not args.config:
-        parser.error("custom sources require at least one --config")
-    if (custom or args.config) and not args.output:
+    if custom and not (args.config or args.base_config):
+        parser.error("custom sources require --config or --base-config")
+    if (custom or args.config or args.base_config) and not args.output:
         parser.error("custom builds require --output")
     if args.version and not re.fullmatch(RELEASE_VERSION, args.version):
         parser.error("--version must be a released kernel version such as 7.2.12")
