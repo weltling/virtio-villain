@@ -254,6 +254,13 @@ class ReleaseTests(unittest.TestCase):
 
 
 class ConfigTests(unittest.TestCase):
+    def test_unchanged_base_config_does_not_warn(self):
+        errors = io.StringIO()
+        with contextlib.redirect_stderr(errors):
+            BUILD.verify_config("CONFIG_MSHV_ROOT=y\n", "CONFIG_MSHV_ROOT=y\n",
+                                allow_adjustments=True)
+        self.assertEqual(errors.getvalue(), "")
+
     def test_requested_values_are_retained(self):
         requested = 'CONFIG_VFIO=y\nCONFIG_NR_CPUS=64\nCONFIG_LOCALVERSION="-vv1"\n'
         BUILD.verify_config(requested, requested + "# generated\n")
