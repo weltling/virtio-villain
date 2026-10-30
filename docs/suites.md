@@ -107,6 +107,15 @@ Call `vv_appliance_main(argc, argv, &suite)` from the `main` function of the sui
 requires PID 1. The appliance mounts procfs, sysfs and devtmpfs and reads
 `vv.run=RUN_ID` and optional `vv.tests=ID,ID` from `/proc/cmdline`.
 
+For a shared immutable boot image, pass `vv.config=smbios` instead of
+`vv.run` and `vv.tests`. Set the SMBIOS Type 1 serial number to the first
+32 characters of the run ID. Set the Type 1 version to `vv:` followed by
+the remaining characters. Set the Type 1 SKU to the selected test IDs
+separated by `+`. Run IDs may contain letters, digits, `_` and `-` and
+must not exceed 61 characters. The encoded selection must not exceed
+32 characters. This mode requires `CONFIG_DMI=y` and `CONFIG_DMIID=y`.
+Missing, invalid or mixed configuration is an infrastructure failure.
+
 Tests return `TEST_PASS`, `TEST_FAIL`, or `TEST_SKIP`. Other verdicts fail unless
 a suite applies its own remapping before returning. Use skips only for optional
 capabilities. Missing execution prerequisites belong in `preflight`. An empty,
