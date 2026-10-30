@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """Host tests for optional Linux builds."""
 
+import contextlib
 import hashlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import importlib.machinery
@@ -53,6 +54,57 @@ def write_archive(path, members, mode="w:xz"):
 
 @unittest.skipUnless(shutil.which("make"), "Make required for kernel build fixtures")
 class ResultTests(unittest.TestCase):
+    def test_base_config_adjustments_are_reported_but_requirements_stay_strict(self):
+        for required_root, available in ((False, True), (True, True), (True, False)):
+            with self.subTest(required_root=required_root, available=available), \
+                    tempfile.TemporaryDirectory() as work:
+                root = Path(work)
+                source = root / "source"
+                source.mkdir()
+                adjustments = (
+                    "s/CONFIG_GCC_VERSION=130200/CONFIG_GCC_VERSION=160201/;"
+                    "s/CONFIG_GCC_PLUGINS=y/# CONFIG_GCC_PLUGINS is not set/;"
+                    "s/# CONFIG_CRYPTO_KRB5 is not set/CONFIG_CRYPTO_KRB5=m/")
+                if not available:
+                    adjustments += ";s/CONFIG_MSHV_ROOT=y/# CONFIG_MSHV_ROOT is not set/"
+                (source / "Makefile").write_text(FIXTURE_MAKEFILE.replace(
+                    '\tcp "$(KCONFIG_ALLCONFIG)" "$(O)/.config"\n',
+                    '\tcp "$(KCONFIG_ALLCONFIG)" "$(O)/.config"\n'
+                    f'\tsed -i \'{adjustments}\' "$(O)/.config"\n'))
+                base = root / "base.config"
+                base.write_text(
+                    "CONFIG_GCC_VERSION=130200\nCONFIG_GCC_PLUGINS=y\n"
+                    "CONFIG_CRYPTO_KRB5=n\nCONFIG_MSHV_ROOT=y\n")
+                options = [
+                    "--source", str(source), "--base-config", str(base),
+                    "--output", str(root / "output"), "--cache-dir", str(root / "cache"),
+                    "--offline", "--arch", "x86_64"]
+                if required_root:
+                    required = root / "required.config"
+                    required.write_text(
+                        "CONFIG_MSHV_ROOT=y\n# CONFIG_GCC_PLUGINS is not set\n")
+                    options += ["--config", str(required)]
+                args = BUILD.parse_args(options)
+                errors = io.StringIO()
+                with contextlib.redirect_stderr(errors):
+                    if not available:
+                        with self.assertRaisesRegex(RuntimeError, "CONFIG_MSHV_ROOT=y"):
+                            BUILD.build(args)
+                        self.assertFalse((root / "output/images").exists())
+                        continue
+                    BUILD.build(args)
+                text = errors.getvalue()
+                self.assertIn("CONFIG_GCC_VERSION=130200 -> 160201", text)
+                self.assertIn("CONFIG_CRYPTO_KRB5=n -> m", text)
+                if required_root:
+                    self.assertNotIn("CONFIG_GCC_PLUGINS", text)
+                    required.write_text("# CONFIG_GCC_PLUGINS is not set\n")
+                    with self.assertRaisesRegex(RuntimeError, "Build inputs changed"):
+                        BUILD.build(args)
+                else:
+                    self.assertIn("CONFIG_GCC_PLUGINS=y -> n", text)
+                self.assertTrue((root / "output/images/bzImage-x86_64").is_file())
+
     def test_result_reports_actual_images_for_both_supported_architectures(self):
         for arch, boot_image, names in (
                 ("x86_64", "bzImage", {"vmlinux", "bzImage"}),
