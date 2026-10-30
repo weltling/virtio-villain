@@ -10,12 +10,23 @@ help:
 	@echo "Compiler and suite build variables can be passed as Make overrides."
 else
 
+ifeq ($(origin CC),default)
+CC = musl-gcc
+endif
 CC      ?= musl-gcc
-CFLAGS  ?= -static -O2 -Wall -Wextra -Werror
-LDFLAGS ?= -static
+CFLAGS  ?= -O2 -Wall -Wextra -Werror -Wformat=2 \
+           -Wstrict-prototypes -Wmissing-prototypes \
+           -Wvla -Wshadow -Wundef -Wwrite-strings -Wpointer-arith \
+           -Werror=implicit-function-declaration \
+           -Werror=incompatible-pointer-types \
+           -fstack-protector-strong -fstack-clash-protection
+LDFLAGS ?= -Wl,-z,noexecstack
+CSTD     = -std=gnu23
+STATIC_LDFLAGS ?= -static
 STRIP   ?= strip
 TARGET  ?= target
 OBJDIR  ?= $(TARGET)/obj
+SELFTEST_DIR ?= $(TARGET)/selftest
 
 # Auto generate per object header dependencies.
 DEPFLAGS = -MMD -MP
@@ -23,6 +34,25 @@ DEPFLAGS = -MMD -MP
 # Quiet by default; pass V=1 for full command lines.
 V ?= 0
 Q = $(if $(filter 1,$(V)),,@)
+
+# Write a value to a file only when it changed, so that targets that
+# depend on the file rebuild only on a real change.
+update_file = printf '%s\n' '$(subst ','\'',$(2))' | cmp -s - $(1) || \
+              printf '%s\n' '$(subst ','\'',$(2))' > $(1)
+
+# Make only compares timestamps. Record the toolchain and flags, so that
+# changing them rebuilds everything instead of mixing objects built by
+# different compilers.
+BUILD_FLAGS = $(CC) $(CPPFLAGS) $(CSTD) $(CFLAGS) $(LDFLAGS) $(STATIC_LDFLAGS)
+
+%/.flags: FORCE
+	@mkdir -p $(@D)
+	@$(call update_file,$@,$(BUILD_FLAGS))
+
+# Harness version that init prints at boot, so that every test log names
+# the exact commit. Outside a Git checkout, pass VV_VERSION=... instead.
+VV_VERSION := $(shell git describe --always --dirty 2>/dev/null || \
+                echo unknown)
 
 SRCS = bin/init.c \
        lib/pci.c \
@@ -37,15 +67,26 @@ SRCS = bin/init.c \
 OBJS = $(patsubst %.c,$(OBJDIR)/%.o,$(SRCS))
 DEPS = $(OBJS:.o=.d)
 
-$(TARGET)/init: $(OBJS)
+$(TARGET)/init: $(OBJS) $(OBJDIR)/.flags
 	@mkdir -p $(TARGET)
 	@echo "  LINK  $@"
-	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -I. -o $@ $(OBJS)
+	$(Q)$(CC) $(CSTD) $(CFLAGS) $(LDFLAGS) $(STATIC_LDFLAGS) -o $@ $(OBJS)
 
-$(OBJDIR)/%.o: %.c
+$(OBJDIR)/%.o: %.c $(OBJDIR)/.flags
 	@mkdir -p $(dir $@)
 	@echo "  CC    $<"
-	$(Q)$(CC) $(CFLAGS) $(DEPFLAGS) -I. -c -o $@ $<
+	$(Q)$(CC) $(CPPFLAGS) $(CSTD) $(CFLAGS) $(DEPFLAGS) -I. -c -o $@ $<
+
+# Only init.o gets the version, so that a new commit does not rebuild all
+# objects. "private" keeps the define away from the prerequisites, and
+# "override" keeps it when CPPFLAGS is set on the command line.
+$(OBJDIR)/bin/init.o: private override CPPFLAGS += \
+                      -DVV_VERSION='"$(VV_VERSION)"'
+$(OBJDIR)/bin/init.o: $(OBJDIR)/.version
+
+$(OBJDIR)/.version: FORCE
+	@mkdir -p $(@D)
+	@$(call update_file,$@,$(VV_VERSION))
 
 -include $(DEPS)
 
@@ -81,15 +122,15 @@ FUZZ_SRCS = bin/fuzz.c \
 FUZZ_OBJS = $(patsubst %.c,$(OBJDIR)/fuzz/%.o,$(FUZZ_SRCS))
 FUZZ_DEPS = $(FUZZ_OBJS:.o=.d)
 
-$(TARGET)/fuzz: $(FUZZ_OBJS)
+$(TARGET)/fuzz: $(FUZZ_OBJS) $(OBJDIR)/.flags
 	@mkdir -p $(TARGET)
 	@echo "  LINK  $@"
-	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -I. -o $@ $(FUZZ_OBJS)
+	$(Q)$(CC) $(CSTD) $(CFLAGS) $(LDFLAGS) $(STATIC_LDFLAGS) -o $@ $(FUZZ_OBJS)
 
-$(OBJDIR)/fuzz/%.o: %.c
+$(OBJDIR)/fuzz/%.o: %.c $(OBJDIR)/.flags
 	@mkdir -p $(dir $@)
 	@echo "  CC    $<"
-	$(Q)$(CC) $(CFLAGS) $(DEPFLAGS) -I. -c -o $@ $<
+	$(Q)$(CC) $(CPPFLAGS) $(CSTD) $(CFLAGS) $(DEPFLAGS) -I. -c -o $@ $<
 
 -include $(FUZZ_DEPS)
 
@@ -103,15 +144,15 @@ PERF_SRCS = bin/perf.c \
 PERF_OBJS = $(patsubst %.c,$(OBJDIR)/perf/%.o,$(PERF_SRCS))
 PERF_DEPS = $(PERF_OBJS:.o=.d)
 
-$(TARGET)/perf: $(PERF_OBJS)
+$(TARGET)/perf: $(PERF_OBJS) $(OBJDIR)/.flags
 	@mkdir -p $(TARGET)
 	@echo "  LINK  $@"
-	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -I. -o $@ $(PERF_OBJS)
+	$(Q)$(CC) $(CSTD) $(CFLAGS) $(LDFLAGS) $(STATIC_LDFLAGS) -o $@ $(PERF_OBJS)
 
-$(OBJDIR)/perf/%.o: %.c
+$(OBJDIR)/perf/%.o: %.c $(OBJDIR)/.flags
 	@mkdir -p $(dir $@)
 	@echo "  CC    $<"
-	$(Q)$(CC) $(CFLAGS) $(DEPFLAGS) -I. -c -o $@ $<
+	$(Q)$(CC) $(CPPFLAGS) $(CSTD) $(CFLAGS) $(DEPFLAGS) -I. -c -o $@ $<
 
 -include $(PERF_DEPS)
 
@@ -127,13 +168,16 @@ appliance-check:
 
 $(APPLIANCE_OBJS): | appliance-check
 
-$(APPLIANCE_TARGET)/obj/%.o: %.c
-	@mkdir -p $(dir $@)
-	$(Q)$(CC) $(CFLAGS) $(DEPFLAGS) -I. $(APPLIANCE_CPPFLAGS) -c -o $@ $<
+# APPLIANCE_CPPFLAGS changes the appliance objects too.
+$(APPLIANCE_TARGET)/.flags: BUILD_FLAGS += $(APPLIANCE_CPPFLAGS)
 
-$(APPLIANCE_TARGET)/init: $(APPLIANCE_OBJS) appliance-check
+$(APPLIANCE_TARGET)/obj/%.o: %.c $(APPLIANCE_TARGET)/.flags
 	@mkdir -p $(dir $@)
-	$(Q)$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(APPLIANCE_OBJS)
+	$(Q)$(CC) $(CPPFLAGS) $(CSTD) $(CFLAGS) $(DEPFLAGS) -I. $(APPLIANCE_CPPFLAGS) -c -o $@ $<
+
+$(APPLIANCE_TARGET)/init: $(APPLIANCE_OBJS) $(APPLIANCE_TARGET)/.flags appliance-check
+	@mkdir -p $(dir $@)
+	$(Q)$(CC) $(CSTD) $(CFLAGS) $(LDFLAGS) $(STATIC_LDFLAGS) -o $@ $(APPLIANCE_OBJS)
 
 appliance: $(APPLIANCE_TARGET)/init
 
@@ -155,10 +199,17 @@ clean:
 	  "$(TARGET)" "$(OBJDIR)" "$(APPLIANCE_TARGET)" \
 	  selftest/test_lib selftest/test_irq selftest/cloud-hypervisor
 
-selftest: selftest/test_lib selftest/test_irq
-	@echo "selftest/lib:"
-	@./selftest/test_lib
-	@./selftest/test_irq
+selftest-c: $(SELFTEST_DIR)/test_lib $(SELFTEST_DIR)/test_irq
+	@$(SELFTEST_DIR)/test_lib
+	@$(SELFTEST_DIR)/test_irq
+
+selftest-sanitize:
+	$(MAKE) selftest-c SELFTEST_DIR=$(TARGET)/selftest-sanitize \
+	  CFLAGS="$(CFLAGS) -O1 -g -fno-omit-frame-pointer \
+	    -fsanitize=address,undefined -fno-sanitize-recover=all" \
+	  LDFLAGS="$(LDFLAGS) -fsanitize=address,undefined"
+
+selftest: selftest-c
 	@python3 -m unittest discover -s selftest -p 'test_msix_host.py'
 	@python3 -m unittest discover -s selftest -p 'test_kernel.py'
 	@python3 -m unittest discover -s selftest -p 'test_artifacts.py'
@@ -174,17 +225,20 @@ selftest: selftest/test_lib selftest/test_irq
 	@echo "selftest/perf:"
 	@python3 selftest/test_perf.py
 
-selftest/test_lib: selftest/test_lib.c \
-		   lib/mmio.h lib/virtio_mmio.h lib/virtio_pci.h lib/virtio_spec.h \
-		   lib/perf_engine.c lib/perf_engine.h \
-		   lib/vring.c lib/vring.h \
-		   lib/vring_packed.c lib/vring_packed.h \
-		   tests/test.h lib/test.h
-	$(CC) -O2 -Wall -Wextra -I. -o $@ selftest/test_lib.c \
-	  lib/perf_engine.c lib/vring.c lib/vring_packed.c
+# Any header change rebuilds the selftests. They build in under a second,
+# so this is simpler than exact header lists, which can go stale.
+SELFTEST_HDRS = $(wildcard lib/*.h tests/*.h)
 
-selftest/test_irq: selftest/test_irq.c lib/irq.c lib/irq.h lib/vfio.h
-	$(CC) -O2 -Wall -Wextra -Werror -I. -o $@ selftest/test_irq.c lib/irq.c
+$(SELFTEST_DIR)/test_lib: selftest/test_lib.c lib/perf_engine.c lib/vring.c \
+                          lib/vring_packed.c $(SELFTEST_HDRS)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CSTD) $(CFLAGS) -I. -o $@ $(filter %.c,$^) $(LDFLAGS)
+
+$(SELFTEST_DIR)/test_irq: selftest/test_irq.c lib/irq.c $(SELFTEST_HDRS)
+	@mkdir -p $(dir $@)
+	$(CC) $(CPPFLAGS) $(CSTD) $(CFLAGS) -I. -o $@ $(filter %.c,$^) $(LDFLAGS)
+
+$(SELFTEST_DIR)/test_lib $(SELFTEST_DIR)/test_irq: $(SELFTEST_DIR)/.flags
 
 PY_SRCS = run run-fuzz run-perf build-kernel $(shell find selftest tests lib -name '*.py' 2>/dev/null)
 
@@ -219,6 +273,8 @@ help:
 	@echo "  appliance           Build explicit APPLIANCE_SRCS independently"
 	@echo "  appliance-initramfs Pack the external appliance as /init"
 	@echo "  selftest            Build and run runner and lib self tests"
+	@echo "  selftest-c          Build and run C library selftests"
+	@echo "  selftest-sanitize   Run C selftests with ASan and UBSan (CC=gcc/clang)"
 	@echo "  guest-kernel        Build an optional Linux image with KERNEL_ARGS"
 	@echo "  flake8              Run flake8 across run, run-fuzz, selftest, tests"
 	@echo "  deps-check          Verify build dependencies are present"
@@ -251,6 +307,8 @@ help:
 	@echo "clean removes TARGET, custom object/appliance outputs and host test binaries."
 	@echo "Caches and results inside those output directories are removed too."
 
-.PHONY: init fuzz perf initramfs fuzz-initramfs perf-initramfs clean selftest flake8 flake8-deps-check help guest-kernel
+FORCE:
+
+.PHONY: FORCE init fuzz perf initramfs fuzz-initramfs perf-initramfs clean selftest selftest-c selftest-sanitize flake8 flake8-deps-check help guest-kernel
 .PHONY: appliance appliance-initramfs appliance-check
 endif

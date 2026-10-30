@@ -895,7 +895,7 @@ int main(int argc, char **argv)
             fixture.write_text(source)
             wrappers = ("getpid", "mount", "fopen", "sync", "reboot", "pause")
             subprocess.run([
-                "cc", "-O2", "-Wall", "-Wextra", "-Werror", "-I", str(ROOT),
+                "cc", "-std=gnu23", "-O2", "-Wall", "-Wextra", "-Werror", "-I", str(ROOT),
                 str(fixture), str(ROOT / "lib/appliance_init.c"),
                 *(f"-Wl,--wrap={name}" for name in wrappers), "-o", str(binary),
             ], check=True, capture_output=True)

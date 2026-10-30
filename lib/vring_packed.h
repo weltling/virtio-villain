@@ -2,6 +2,7 @@
 #ifndef VV_VRING_PACKED_H
 #define VV_VRING_PACKED_H
 
+#include <stddef.h>
 #include <stdint.h>
 #include "virtio_pci.h"
 
@@ -37,6 +38,14 @@ struct vring_packed_event {
     uint16_t off_wrap;
     uint16_t flags;
 } __attribute__((packed));
+
+/* Virtio packed-ring wire layout (spec 2.8). */
+static_assert(sizeof(struct vring_packed_desc) == 16);
+static_assert(offsetof(struct vring_packed_desc, addr) == 0);
+static_assert(offsetof(struct vring_packed_desc, len) == 8);
+static_assert(offsetof(struct vring_packed_desc, id) == 12);
+static_assert(offsetof(struct vring_packed_desc, flags) == 14);
+static_assert(sizeof(struct vring_packed_event) == 4);
 
 struct vring_packed {
     struct vring_packed_desc  *desc;

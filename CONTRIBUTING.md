@@ -47,12 +47,24 @@ VMM integration test suites.
 
 ## Coding Style
 
-- C89 with selected C99 features, `-Wall -Wextra -Werror`.
-- No dynamic allocation in the harness path; tests use a fixed page
-  pool through `vv_alloc_pages`.
+- C23 with GNU extensions. Keep builds warning-free under the diagnostics
+  enabled in the Makefile.
+- Tests allocate locked, zeroed pages through `vv_alloc_pages`.
 - Static functions per file, no cross-file symbol leakage outside the
   `lib/` API.
 - Keep tests deterministic. No timing dependent assertions.
+
+## Verification
+
+Run `make selftest` for host checks and `make selftest-sanitize CC=gcc`
+(or `CC=clang`) for ASan and UBSan checks of the C libraries. Sanitizers
+require a supported host libc and runtime; use a glibc toolchain rather
+than musl-gcc. Instrumented executables live separately under
+`target/selftest-sanitize` and are never packed into the guest initramfs.
+
+These checks do not execute a VMM. For transport changes, also run the
+relevant guest tests. On ARM64, check the MMIO instruction contract with
+`sh selftest/test_mmio_codegen.sh <compiler>`.
 
 ## Commit Messages
 

@@ -109,14 +109,9 @@ int vring_packed_submit_chain(struct vring_packed *vr,
     if (count == 0 || count > vr->size)
         return -1;
 
-    uint16_t indexes[count];
-    uint8_t wraps[count];
-
     *head = vr->next_avail;
     *head_wrap = vr->wrap_counter;
     for (unsigned entry = 0; entry < count; entry++) {
-        indexes[entry] = vr->next_avail;
-        wraps[entry] = vr->wrap_counter;
         struct vring_packed_desc *destination = &vr->desc[vr->next_avail];
         uint16_t unavailable = vr->wrap_counter ? 0 :
                                VRING_PACKED_DESC_F_AVAIL |
@@ -129,17 +124,24 @@ int vring_packed_submit_chain(struct vring_packed *vr,
         vring_packed_advance(vr);
     }
     __sync_synchronize();
-    for (unsigned entry = count; entry > 1; entry--) {
-        unsigned index = entry - 1;
-        uint16_t phase = wraps[index] ? VRING_PACKED_DESC_F_AVAIL :
+    /* Entries follow the head and wrap at most once, as count <= size. */
+    for (unsigned entry = count - 1; entry > 0; entry--) {
+        unsigned slot = *head + entry;
+        uint8_t wrap = *head_wrap;
+
+        if (slot >= vr->size) {
+            slot -= vr->size;
+            wrap ^= 1;
+        }
+        uint16_t phase = wrap ? VRING_PACKED_DESC_F_AVAIL :
                          VRING_PACKED_DESC_F_USED;
 
-        vr->desc[indexes[index]].flags = descriptors[index].flags | phase;
+        vr->desc[slot].flags = descriptors[entry].flags | phase;
     }
     __sync_synchronize();
-    uint16_t phase = wraps[0] ? VRING_PACKED_DESC_F_AVAIL :
+    uint16_t phase = *head_wrap ? VRING_PACKED_DESC_F_AVAIL :
                      VRING_PACKED_DESC_F_USED;
-    vr->desc[indexes[0]].flags = descriptors[0].flags | phase;
+    vr->desc[*head].flags = descriptors[0].flags | phase;
     __sync_synchronize();
     return 0;
 }

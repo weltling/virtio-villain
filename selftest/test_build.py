@@ -112,7 +112,7 @@ class BuildTests(unittest.TestCase):
 
     def test_explicit_compiler_and_flag_overrides_are_forwarded(self):
         result = self.make("init", "CC=gcc", "CFLAGS=-static -O0 -Wall -Werror", "V=1")
-        self.assertIn("gcc -static -O0 -Wall -Werror", result.stdout)
+        self.assertIn("gcc -std=gnu23 -static -O0 -Wall -Werror", result.stdout)
 
     def test_invalid_compiler_produces_a_failing_build(self):
         with self.assertRaises(subprocess.CalledProcessError):

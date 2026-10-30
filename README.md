@@ -200,6 +200,11 @@ make            # produces ./init (static binary, all tests linked in)
 make initramfs  # packages init into initramfs.cpio.gz
 ```
 
+Default builds enable stack protection, stack-clash protection, format and
+prototype diagnostics, and a non-executable stack. These protect the test
+harness; they do not validate deliberately malformed virtio requests.
+`CFLAGS`, `CPPFLAGS`, and `LDFLAGS` can be overridden for diagnostic builds.
+
 The initramfs contains the single `init` binary with all tests compiled
 in. The test to run is selected via kernel command line:
 
@@ -219,8 +224,8 @@ truncating long descriptions with `~`):
 
 Columns: test ID, description, spec version, spec section.
 
-The binary is built with musl and stripped for the initramfs. Each test
-adds ~200-500 bytes of code, so even with 300+ tests the image stays
+The binary is built with musl by default and stripped for the initramfs.
+Each test adds ~200-500 bytes of code, so even with 300+ tests the image stays
 under 4MB. For debugging, keep the unstripped binary on the host and
 use `addr2line` against VMM crash addresses.
 
@@ -380,8 +385,10 @@ exploitability always needs manual analysis. The same triage drives the
 
 Build:
 
-- A C compiler capable of producing a static x86_64 binary (gcc,
-  clang, or musl-gcc all work)
+- GCC 14+ or Clang 19+ with C23 support and static libc development
+  files for the target architecture. The default compiler is `musl-gcc`;
+  pass `CC=gcc` or `CC=clang` to use another toolchain. With musl-gcc,
+  select a recent GCC using `REALGCC=gcc-14` if necessary.
 - `make`
 - Python 3 (standard-library initramfs packaging)
 - binutils (`strip`)

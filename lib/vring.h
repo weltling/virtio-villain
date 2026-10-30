@@ -2,7 +2,7 @@
 #ifndef VV_VRING_H
 #define VV_VRING_H
 
-#include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 #include "virtio_pci.h"
 
@@ -40,6 +40,16 @@ struct vring_used {
     uint16_t idx;
     struct vring_used_elem ring[];
 } __attribute__((packed));
+
+/* Virtio split-ring wire layout (spec 2.7). */
+static_assert(sizeof(struct vring_desc) == 16);
+static_assert(offsetof(struct vring_desc, addr) == 0);
+static_assert(offsetof(struct vring_desc, len) == 8);
+static_assert(offsetof(struct vring_desc, flags) == 12);
+static_assert(offsetof(struct vring_desc, next) == 14);
+static_assert(offsetof(struct vring_avail, ring) == 4);
+static_assert(sizeof(struct vring_used_elem) == 8);
+static_assert(offsetof(struct vring_used, ring) == 4);
 
 struct vring {
     struct vring_desc  *desc;

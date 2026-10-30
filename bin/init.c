@@ -30,6 +30,11 @@
  */
 #define VV_MAX_QUEUES 16
 
+/* Set by the Makefile from git describe. */
+#ifndef VV_VERSION
+#define VV_VERSION "unknown"
+#endif
+
 /*
  * On reset the device reports its maximum supported queue size in the
  * queue_size register (spec 4.1.4.3.2). A driver must not program a
@@ -469,7 +474,7 @@ int main(int argc, char **argv)
     mount("sysfs", "/sys", "sysfs", 0, NULL);
     mount("devtmpfs", "/dev", "devtmpfs", 0, NULL);
 
-    printf("\n[vv] virtio-villain\n\n");
+    printf("\n[vv] virtio-villain %s\n\n", VV_VERSION);
 
     const char *test_name = parse_cmdline_test();
     int mmio_transport = 0;

@@ -12,7 +12,7 @@ assembly=$(mktemp)
 trap 'rm -f "$assembly"' EXIT
 trap 'exit 1' HUP INT TERM
 
-"$@" -O2 -Wall -Wextra -Werror -ffreestanding -S \
+"$@" -std=gnu23 -O2 -Wall -Wextra -Werror -ffreestanding -S \
     "$root/selftest/test_mmio_codegen.c" -o "$assembly"
 
 awk '

@@ -9,25 +9,29 @@
  * using these return helpers must leave resource cleanup to their harness.
  */
 #define TFAIL(fmt, ...) do { \
-    printf("vv-fail %s:%d: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__); \
+    printf("vv-fail %s:%d: " fmt "\n", __FILE__, \
+           __LINE__ __VA_OPT__(,) __VA_ARGS__); \
     fflush(stdout); \
     return TEST_FAIL; \
 } while (0)
 
 #define TWEDGED(fmt, ...) do { \
-    printf("vv-wedged %s:%d: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__); \
+    printf("vv-wedged %s:%d: " fmt "\n", __FILE__, \
+           __LINE__ __VA_OPT__(,) __VA_ARGS__); \
     fflush(stdout); \
     return TEST_WEDGED; \
 } while (0)
 
 #define TREJECT(fmt, ...) do { \
-    printf("vv-reject %s:%d: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__); \
+    printf("vv-reject %s:%d: " fmt "\n", __FILE__, \
+           __LINE__ __VA_OPT__(,) __VA_ARGS__); \
     fflush(stdout); \
     return TEST_REJECT; \
 } while (0)
 
 #define TSKIP(fmt, ...) do { \
-    printf("vv-skip %s:%d: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__); \
+    printf("vv-skip %s:%d: " fmt "\n", __FILE__, \
+           __LINE__ __VA_OPT__(,) __VA_ARGS__); \
     fflush(stdout); \
     return TEST_SKIP; \
 } while (0)

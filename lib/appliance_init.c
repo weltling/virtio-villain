@@ -39,7 +39,8 @@ int vv_appliance_main(int argc, char **argv, const struct vv_test_suite *suite)
     }
     if (stream)
         fclose(stream);
-    char *selection = NULL, *token = NULL, *shutdown = NULL, *save;
+    char *selection = NULL, *shutdown = NULL, *save;
+    const char *token = NULL;
     for (char *arg = strtok_r(cmdline, " \n", &save); arg;
          arg = strtok_r(NULL, " \n", &save)) {
         if (!strncmp(arg, "vv.tests=", 9)) {

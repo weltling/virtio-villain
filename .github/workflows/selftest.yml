@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 name: selftest
 on: [push, pull_request]
+env:
+  REALGCC: gcc-14
 jobs:
   build:
     runs-on: ${{ matrix.runner }}
@@ -10,33 +12,55 @@ jobs:
         include:
           # x86_64 musl, the primary target, packs the initramfs too.
           - arch: x86_64
-            runner: ubuntu-latest
+            runner: ubuntu-24.04
             cc: musl-gcc
-            pkgs: musl-tools
+            pkgs: musl-tools gcc-14
           # aarch64 cross build on the x86_64 runner, compile only.
           - arch: aarch64-cross
-            runner: ubuntu-latest
-            cc: aarch64-linux-gnu-gcc
-            pkgs: gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+            runner: ubuntu-24.04
+            cc: aarch64-linux-gnu-gcc-14
+            pkgs: gcc-14-aarch64-linux-gnu libc6-dev-arm64-cross
           # aarch64 native build, compile only, no KVM so no run.
           - arch: aarch64-native
             runner: ubuntu-24.04-arm
             cc: musl-gcc
-            pkgs: musl-tools
+            pkgs: musl-tools gcc-14
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y ${{ matrix.pkgs }}
       - run: make deps-check CC=${{ matrix.cc }}
-      - run: make -j$(nproc) CC=${{ matrix.cc }}
+      - run: make -j$(nproc) init perf CC=${{ matrix.cc }}
+      - run: sh selftest/test_mmio_codegen.sh ${{ matrix.cc }}
+        if: matrix.arch == 'aarch64-cross'
       - run: make initramfs CC=${{ matrix.cc }}
         if: matrix.arch == 'x86_64'
   selftest:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - run: sudo apt-get update && sudo apt-get install -y musl-tools gcc-14
+      # Suite build and appliance checks compile with plain gcc and cc.
+      - run: |
+          mkdir -p "$RUNNER_TEMP/gcc-14"
+          ln -s /usr/bin/gcc-14 "$RUNNER_TEMP/gcc-14/gcc"
+          ln -s /usr/bin/gcc-14 "$RUNNER_TEMP/gcc-14/cc"
+          echo "$RUNNER_TEMP/gcc-14" >> "$GITHUB_PATH"
       - run: make -j$(nproc)
       - run: make selftest
+  sanitize:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - cc: gcc-14
+            pkgs: gcc-14
+          - cc: clang-19
+            pkgs: clang-19
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y ${{ matrix.pkgs }}
+      - run: make selftest-sanitize CC=${{ matrix.cc }}
   fuzz-build:
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -44,17 +68,17 @@ jobs:
       matrix:
         include:
           - arch: x86_64
-            runner: ubuntu-latest
+            runner: ubuntu-24.04
             cc: musl-gcc
-            pkgs: musl-tools
+            pkgs: musl-tools gcc-14
           - arch: aarch64-cross
-            runner: ubuntu-latest
-            cc: aarch64-linux-gnu-gcc
-            pkgs: gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+            runner: ubuntu-24.04
+            cc: aarch64-linux-gnu-gcc-14
+            pkgs: gcc-14-aarch64-linux-gnu libc6-dev-arm64-cross
           - arch: aarch64-native
             runner: ubuntu-24.04-arm
             cc: musl-gcc
-            pkgs: musl-tools
+            pkgs: musl-tools gcc-14
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt-get update && sudo apt-get install -y ${{ matrix.pkgs }}

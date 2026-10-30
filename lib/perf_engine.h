@@ -2,7 +2,6 @@
 #ifndef VV_PERF_ENGINE_H
 #define VV_PERF_ENGINE_H
 
-#include <stdbool.h>
 #include <stdint.h>
 
 enum perf_slot_state {

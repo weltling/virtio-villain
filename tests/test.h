@@ -90,6 +90,10 @@ struct test_entry {
     char          _pad[40];
 };
 
+/* Keep linker section entries contiguous at their declared alignment. */
+static_assert(sizeof(struct test_entry) == 128);
+static_assert(sizeof(struct mmio_test_variant) % 8 == 0);
+
 /* Use with REGISTER_TEST_Q to select the last queue (e.g. net controlq). */
 #define VV_QUEUE_LAST 0xFE
 
