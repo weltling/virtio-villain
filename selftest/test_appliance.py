@@ -840,9 +840,10 @@ class PackageTests(unittest.TestCase):
 
 @unittest.skipUnless(shutil.which("cc"), "C compiler required")
 class ApplianceStartupTests(unittest.TestCase):
-    def test_host_shutdown_waits_after_sync_without_poweroff(self):
+    def test_cmdline_and_smbios_startup_preserve_shutdown(self):
         source = r'''
 #include <assert.h>
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -860,10 +861,28 @@ int __wrap_mount(const char *source, const char *target, const char *type,
 }
 FILE *__wrap_fopen(const char *path, const char *mode)
 {
-    assert(!strcmp(path, "/proc/cmdline") && !strcmp(mode, "r"));
+    assert(!strcmp(mode, "r"));
+    const char *value = NULL;
+    if (!strcmp(path, "/sys/class/dmi/id/product_serial"))
+        value = getenv("VV_TEST_SERIAL");
+    else if (!strcmp(path, "/sys/class/dmi/id/product_version"))
+        value = getenv("VV_TEST_VERSION");
+    else if (!strcmp(path, "/sys/class/dmi/id/product_sku"))
+        value = getenv("VV_TEST_SKU");
+    else
+        assert(!strcmp(path, "/proc/cmdline"));
+    if (strcmp(path, "/proc/cmdline") && !value) {
+        errno = ENOENT;
+        return NULL;
+    }
     FILE *stream = tmpfile();
     assert(stream);
-    fprintf(stream, "vv.run=token vv.tests=EX001 %s\n", getenv("VV_TEST_CMDLINE"));
+    if (value)
+        fputs(value, stream);
+    else if (getenv("VV_TEST_SMBIOS"))
+        fprintf(stream, "%s\n", getenv("VV_TEST_CMDLINE"));
+    else
+        fprintf(stream, "vv.run=token vv.tests=EX001 %s\n", getenv("VV_TEST_CMDLINE"));
     rewind(stream);
     return stream;
 }
@@ -879,7 +898,14 @@ void vv_list_tests(const struct vv_test_suite *suite) { assert(suite); }
 int vv_run_suite(const struct vv_test_suite *suite, const char *selection,
                  const char *token, int ready)
 {
-    assert(suite && !strcmp(selection, "EX001") && !strcmp(token, "token"));
+    assert(suite);
+    if (getenv("VV_TEST_SMBIOS")) {
+        assert(!strcmp(token, getenv("VV_TEST_EXPECT_TOKEN")));
+        const char *expected = getenv("VV_TEST_EXPECT_SELECTION");
+        assert(expected ? selection && !strcmp(selection, expected) : !selection);
+    } else {
+        assert(!strcmp(selection, "EX001") && !strcmp(token, "token"));
+    }
     printf("RUN ready=%d\n", ready);
     return ready ? 0 : 2;
 }
@@ -910,6 +936,47 @@ int main(int argc, char **argv)
                     self.assertIn(f"RUN ready={ready}\nSYNC\n", result.stdout)
                     self.assertEqual("POWEROFF" in result.stdout, not host)
                     self.assertEqual("SYNC\nvv-appliance-stop token\n" in result.stdout, host)
+            serial = "0123456789abcdef0123456789abcdef"
+            cases = (
+                ("vv.config=smbios", serial + "\n", "vv:-1-EX001\n", "EX001+EX002\n",
+                 serial + "-1-EX001", "EX001,EX002", 1),
+                ("vv.config=smbios", "token\n", "vv:\n", "EX001\n", "token", "EX001", 1),
+                ("vv.config=smbios", serial + "\n", "vv:" + "x" * 29 + "\n", "E" * 32 + "\n",
+                 serial + "x" * 29, "E" * 32, 1),
+                ("vv.config=smbios", None, "vv:\n", "EX001\n", "missing", "EX001", 0),
+                ("vv.config=smbios", "token\n", None, "EX001\n", "missing", "EX001", 0),
+                ("vv.config=smbios", "token\n", "invalid\n", "EX001\n",
+                 "missing", "EX001", 0),
+                ("vv.config=smbios", "invalid token\n", "vv:\n", "EX001\n",
+                 "missing", "EX001", 0),
+                ("vv.config=smbios", "token\n", "vv:\n", None, "token", None, 0),
+                ("vv.config=smbios", "token\n", "vv:\n", "E" * 33 + "\n",
+                 "token", None, 0),
+                ("vv.config=smbios", "token\n", "vv:\n", "EX001 bad\n",
+                 "token", "EX001 bad", 0),
+                ("vv.config=smbios", "token", "vv:\n", "EX001\n", "missing", "EX001", 0),
+                ("vv.config=invalid", None, None, None, "missing", None, 0),
+                ("vv.config=smbios vv.run=token vv.tests=EX001", None, None, None,
+                 "token", "EX001", 0),
+                ("vv.config=smbios vv.config=smbios", "token\n", "vv:\n", "EX001\n",
+                 "token", "EX001", 0),
+            )
+            for cmdline, serial, version, sku, token, selection, ready in cases:
+                with self.subTest(cmdline=cmdline, serial=serial, version=version, sku=sku):
+                    environment = dict(
+                        os.environ, VV_TEST_SMBIOS="1", VV_TEST_CMDLINE=cmdline,
+                        VV_TEST_EXPECT_TOKEN=token)
+                    for name, value in (
+                            ("VV_TEST_SERIAL", serial), ("VV_TEST_VERSION", version),
+                            ("VV_TEST_SKU", sku), ("VV_TEST_EXPECT_SELECTION", selection)):
+                        if value is not None:
+                            environment[name] = value
+                        else:
+                            environment.pop(name, None)
+                    result = subprocess.run(
+                        [str(binary)], capture_output=True, text=True, env=environment,
+                        check=True, timeout=5)
+                    self.assertIn(f"RUN ready={ready}\nSYNC\n", result.stdout)
 
 
 class HostShutdownTests(unittest.TestCase):
