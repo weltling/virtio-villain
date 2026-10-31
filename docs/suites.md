@@ -103,7 +103,7 @@ cast incompatible function pointers. Define a `struct vv_test_suite` with:
   test outcome, including assertions and skips. Cleanup failure fails the test.
 
 Call `vv_appliance_main(argc, argv, &suite)` from the `main` function of the suite.
-`--list` is safe on the host and prints `ID<TAB>description`. Test execution
+`--list` is safe on the host and prints `ID<TAB>description<TAB>version<TAB>section` for every test. Version and section values are empty for tests without a specification reference. Register references with `VV_REGISTER_TEST_SPEC(registry, ID, function, description, version, section)`. Use the version and section of the specification that defines the tested requirement. `VV_REGISTER_TEST` remains available for tests without a specification reference. Test execution
 requires PID 1. The appliance mounts procfs, sysfs and devtmpfs and reads
 `vv.run=RUN_ID` and optional `vv.tests=ID,ID` from `/proc/cmdline`.
 
@@ -293,22 +293,14 @@ package namespace, separate from the framework's `villain` package and from
 other suites. Relative imports also work inside hooks called after loading.
 The loader does not add private directories to `sys.path`.
 
-`--help` after `--suite PATH` shows both common and suite
-options. `--list` does not run the host preflight, boot an appliance, or require
-a kernel or recovery control.
+`--help` after `--suite PATH` shows both common and suite options. `--list` prints a padded human listing with fixed version and section columns on the right for every test. Titles stop before those columns even when reference values are empty. `--list-tsv` prints all four fields for every test without truncating descriptions. Neither listing mode runs the host preflight, boots an appliance, or requires a kernel or recovery control.
 
 Test ID matching ignores letter case. The runner uses registered IDs in
 guest commands and results. Selecting the same ID more than once is an
 error, even when its spelling differs only in letter case. Catalog IDs
 must also be unique without regard to letter case.
 
-A policy can override `list_tests(self, binary)` to return IDs and
-descriptions from its sources before an executable has been built.
-`villain.appliance.source_catalog(paths, macro)` reads literal registration
-descriptions with either three arguments or an initial registry argument.
-It ignores comments and rejects empty, duplicate or malformed entries.
-This is a source index, not a C preprocessor. Execution always uses the
-compiled executable's catalog, including its conditional build choices.
+A policy can override `list_tests(self, binary)` to return IDs and descriptions from its sources before an executable has been built. Values can also be tuples of description, specification version and section. `villain.appliance.source_catalog(paths, macro, metadata=True, definitions=[header])` returns these tuples from registrations. The last two arguments are optional specification fields. The version can be a string literal or a named constant with a string literal definition in a supplied header. The section must be a string literal. Unknown or conflicting constants are errors. An initial registry argument is also supported. Without `metadata=True` the helper returns descriptions as before. It ignores comments and rejects empty, duplicate or malformed entries. This is a source index, not a C preprocessor. Execution always uses the catalog of the compiled executable, including its conditional build choices.
 
 Each selected test runs in a fresh appliance VM with its own run identifier,
 console log and timeout. `--repeat N` repeats that sequence N times.
@@ -375,12 +367,11 @@ including timeouts and entirely unexecuted suites). The diagnostics directory
 contains `results.json` and artifact workspaces for each execution. It also
 retains console and external control logs. The JSON report records image
 hashes and exact launch arguments. Each run entry includes a workspace
-path and test verdicts.
+path and test verdicts. The `description`, `spec_version` and `spec_section` fields retain the registered reference for each run, including failed runs.
 
 Human output uses the same aligned result rows, terminal colors, progress,
 count summary and failure lists as the virtio runner. Test descriptions come
-from the suite catalog. External suites leave virtio specification columns
-empty. Infrastructure problems remain `INFRA`, including failures after an
+from the suite catalog. Registered specification versions and sections use the same columns as virtio tests. Tests without references leave those columns empty. Console logs include a `vv-spec` line before each test with a reference, including in live console mode. Infrastructure problems remain `INFRA`, including failures after an
 otherwise passing guest result. Failure output includes console paths and
 diagnostic excerpts. Repeated cases identify their run in the description.
 
