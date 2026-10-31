@@ -374,6 +374,12 @@ class Qemu(VmmBackend):
             cpu_model=(opts.get("cpu_model") or None) if arch != "aarch64" else None,
             accel=accel, nographic=True, no_reboot=True,
             memory_max=_bump_maxmem(mem), memory_slots=2)
+        if want("mem") and opts.get("mem_region_size"):
+            cmd += [
+                "-object", f"memory-backend-ram,id=mem0,size={opts['mem_region_size']}",
+                "-device", "virtio-mem-pci,memdev=mem0,requested-size=0,"
+                "block-size=2M,unplugged-inaccessible=off",
+            ]
         if want("blk"):
             cmd += ["-drive", self._qemu_drive_arg(disk_path, qemu_fmt, opts),
                     "-device", blk_dev]

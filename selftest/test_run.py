@@ -1082,6 +1082,28 @@ def test_unit_qemu_build_cmd_p9_optional():
     assert "mount_tag=vv9p" in device
 
 
+def test_unit_qemu_mem_region_configuration():
+    original = VMM_MOD.platform.machine
+    try:
+        for arch in ("x86_64", "aarch64"):
+            VMM_MOD.platform.machine = lambda arch=arch: arch
+            be = VMM_MOD.Qemu("qemu-system")
+            without = be.build_cmd("/k", "/i", "/d.raw", "c", {})
+            assert not any("virtio-mem-pci" in arg for arg in without)
+
+            opts = {"fuzz_device": "mem", "mem_region_size": "256M"}
+            cmd = be.build_cmd("/k", "/i", "/d.raw", "c", opts)
+            assert "memory-backend-ram,id=mem0,size=256M" in cmd
+            assert ("virtio-mem-pci,memdev=mem0,requested-size=0,"
+                    "block-size=2M,unplugged-inaccessible=off") in cmd
+
+            opts["fuzz_device"] = "blk"
+            other = be.build_cmd("/k", "/i", "/d.raw", "c", opts)
+            assert not any("virtio-mem-pci" in arg for arg in other)
+    finally:
+        VMM_MOD.platform.machine = original
+
+
 def test_unit_qemu_no_fuzz_device_attaches_full_set():
     """Without a fuzz device focus every device stays present, so the
     conformance command is unchanged."""
