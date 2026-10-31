@@ -12,8 +12,11 @@ static int compare_tests(const void *a, const void *b)
 
 void vv_list_tests(const struct vv_test_suite *suite)
 {
-    for (const struct vv_test_entry *t = suite->begin; t < suite->end; ++t)
-        printf("%s\t%s\n", t->name, t->desc);
+    for (const struct vv_test_entry *t = suite->begin; t < suite->end; ++t) {
+        const char *version = t->spec_version ? t->spec_version : "";
+        const char *section = t->spec_section ? t->spec_section : "";
+        printf("%s\t%s\t%s\t%s\n", t->name, t->desc, version, section);
+    }
 }
 
 int vv_run_suite(const struct vv_test_suite *suite, const char *selection,
@@ -97,6 +100,10 @@ int vv_run_suite(const struct vv_test_suite *suite, const char *selection,
         if (suite->init_context)
             suite->init_context(context);
         printf("%s-RUN %s %s\n", prefix, run_id, tests[i]->name);
+        if (tests[i]->spec_version && *tests[i]->spec_version &&
+            tests[i]->spec_section && *tests[i]->spec_section)
+            printf("vv-spec %s %s %s\n", tests[i]->name,
+                   tests[i]->spec_version, tests[i]->spec_section);
         test_result_t result = tests[i]->fn(context);
         if (suite->cleanup && suite->cleanup(context) != TEST_PASS)
             result = TEST_FAIL;
