@@ -134,7 +134,7 @@ class BuildTests(unittest.TestCase):
         def launch(suite, args, selected, catalog):
             captured.append(args)
             self.assertEqual(selected, ["EX001"])
-            self.assertEqual(catalog, {"EX001": "Example"})
+            self.assertEqual(catalog, {"EX001": ("Example", "", "")})
             self.assertTrue(args.binary.is_file())
             self.assertTrue(args.initramfs.is_file())
             return 0
@@ -201,13 +201,18 @@ class BuildTests(unittest.TestCase):
         self.assertFalse((self.root / "alternate").exists())
 
     def test_listing_with_custom_outputs_does_not_build(self):
-        with contextlib.redirect_stdout(io.StringIO()) as output:
-            status = appliance.main([
-                "--suite", str(self.root), "--list", "--build-dir", "custom"])
-        self.assertEqual(status, 0)
-        self.assertIn("EX001\tExample", output.getvalue())
-        self.assertFalse((self.root / "events").exists())
-        self.assertFalse((self.root / "custom").exists())
+        for option, expected in (
+                ("--list", f"EX001 {'Example':<61} {'':<4} {'':<7}\n"),
+                ("--list-tsv", "EX001\tExample\t\t\n")):
+            with self.subTest(option=option), \
+                 patch.object(appliance.reporting, "terminal_width", return_value=80), \
+                 contextlib.redirect_stdout(io.StringIO()) as output:
+                status = appliance.main([
+                    "--suite", str(self.root), option, "--build-dir", "custom"])
+                self.assertEqual(status, 0)
+                self.assertEqual(output.getvalue(), expected)
+                self.assertFalse((self.root / "events").exists())
+                self.assertFalse((self.root / "custom").exists())
 
     def test_custom_outputs_preserve_explicit_binary_and_archive_without_build(self):
         self.make("kernel", "TARGET=custom")

@@ -13,6 +13,59 @@ from villain import reporting  # noqa: E402
 
 
 class ReportingTests(unittest.TestCase):
+    def test_listing_reserves_reference_columns_for_every_test(self):
+        for referenced in (False, True):
+            tests = {
+                "ML0008": ("x" * 200, "", ""),
+                "MR0004": ("y" * 200, "", ""),
+            }
+            if referenced:
+                tests["TL0001"] = ("short", "6.0b", "7.8")
+            for cols in (80, 140):
+                with self.subTest(referenced=referenced, cols=cols):
+                    rows = reporting.format_test_list(tests, cols)
+                    width = cols - 20
+                    for name, row in zip(tests, rows):
+                        self.assertEqual(len(row), cols)
+                        if name.startswith(("ML", "MR")):
+                            self.assertEqual(row[-12:], " " * 12)
+                            self.assertEqual(row[7:7 + width],
+                                             tests[name][0][:width - 1] + "~")
+                        else:
+                            self.assertEqual(row[-12:], f"{'6.0b':<4} {'7.8':<7}")
+
+    def test_long_unreferenced_result_titles_stop_before_reference_columns(self):
+        tests = {
+            "ML0008": ("x" * 200, "", ""),
+            "MR0004": ("y" * 200, "", ""),
+            "TL0001": ("short", "6.0b", "7.8"),
+        }
+        for cols in (80, 140):
+            for color in (False, True):
+                for name, info in tests.items():
+                    with self.subTest(cols=cols, color=color, name=name):
+                        row = reporting.format_test_line(name, "PASS", info, 200, cols, color)
+                        plain = re.sub(r"\x1b\[[0-9;]*m", "", row)
+                        self.assertEqual(len(plain), cols)
+                        self.assertEqual(plain[-17:], f"{info[1]:<4} {info[2]:<12}")
+                        if not info[1]:
+                            self.assertTrue(plain[:-18].rstrip().endswith("~"))
+
+    def test_listing_uses_native_terminal_padding_and_description_floor(self):
+        tests = {
+            "B0001": ("short", "1.2", "5.2.6"),
+            "TL0001": ("x" * 100, "6.0b", "7.8"),
+            "ML0001": ("Linux UAPI", "", ""),
+        }
+        for cols, width in ((30, 20), (80, 60), (140, 120)):
+            with self.subTest(cols=cols):
+                description = "x" * 100 if width >= 100 else "x" * (width - 1) + "~"
+                self.assertEqual(reporting.format_test_list(tests, cols), [
+                    f"B0001  {'short':<{width}} {'1.2':<4} {'5.2.6':<7}",
+                    f"TL0001 {description:<{width}} {'6.0b':<4} {'7.8':<7}",
+                    f"ML0001 {'Linux UAPI':<{width}} {'':<4} {'':<7}",
+                ])
+
     def test_standard_result_columns(self):
         row = reporting.format_test_line(
             "B0001", "PASS", ("hello world", "1.3", "5.2"), 11)
@@ -24,6 +77,25 @@ class ReportingTests(unittest.TestCase):
         self.assertEqual(row[:17], "[PASS]   ML001   ")
         self.assertEqual(row[17:33], "create partition")
         self.assertEqual(row[33:], " " * 18)
+
+    def test_specification_columns_follow_one_padded_description_column(self):
+        cases = (
+            ("x" * 100, "6.0b", "7.8"),
+            ("short", "6.0b", "7.2"),
+            ("register validation", "6.0b", "7.10.1"),
+            ("virtio case", "1.3", "5.2"),
+            ("long metadata", "123.456", "123.456.789.10"),
+        )
+        for cols, column in ((80, 63), (140, 118)):
+            for color in (False, True):
+                for info in cases:
+                    with self.subTest(cols=cols, color=color, info=info):
+                        row = reporting.format_test_line(
+                            "TL0001", "PASS", info, 100, cols, color)
+                        plain = re.sub(r"\x1b\[[0-9;]*m", "", row)
+                        self.assertEqual(plain.index(info[1]), column)
+                        self.assertEqual(
+                            plain[column:], f"{info[1]:<4} {info[2]:<12}")
 
     def test_width_truncation_and_color_preserve_visible_columns(self):
         info = ("x" * 100, "1.3", "5.2")

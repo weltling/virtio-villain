@@ -37,6 +37,22 @@ def parse(text, selected=("EX001",)):
 
 
 class ResultTests(unittest.TestCase):
+    def test_listing_modes_skip_execution_requirements_and_reject_conflicts(self):
+        suite = appliance.Suite("example", "example-v1", Path("/missing/init"), None)
+        for option in ("--list", "--list-tsv"):
+            with self.subTest(option=option):
+                args = appliance.parse_args(suite, [option])
+                self.assertTrue(args.list)
+                self.assertEqual(args.list_tsv, option == "--list-tsv")
+                for extra in (["--build"], ["EX001"]):
+                    with self.subTest(extra=extra), \
+                         contextlib.redirect_stderr(io.StringIO()) as errors, \
+                         self.assertRaises(SystemExit):
+                        appliance.parse_args(suite, [option, *extra])
+                    self.assertIn(option, errors.getvalue())
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            appliance.parse_args(suite, ["--list", "--list-tsv"])
+
     def test_pass_fail_and_unsupported(self):
         for verdict, status in (("PASS", 0), ("FAIL", 1), ("SKIP", 2)):
             with self.subTest(verdict=verdict):
@@ -98,6 +114,21 @@ class ResultTests(unittest.TestCase):
                               return_value=subprocess.CompletedProcess([], 0, text)), \
                  self.assertRaises(RuntimeError):
                 appliance.catalog("init")
+
+    def test_catalog_preserves_optional_specification_fields(self):
+        text = ("EX001\tregister values\t6.0b\t7.8\n"
+                "EX002\tlegacy case\n")
+        self.assertEqual(appliance.parse_catalog(text), {
+            "EX001": "register values", "EX002": "legacy case"})
+        self.assertEqual(appliance.parse_catalog(text, metadata=True), {
+            "EX001": ("register values", "6.0b", "7.8"),
+            "EX002": ("legacy case", "", "")})
+        for invalid in (
+                "EX001\tcase\tTLFS\t",
+                "EX001\tcase\t\tInterface",
+                "EX001\tcase\tTLFS\tInterface\textra"):
+            with self.subTest(invalid=invalid), self.assertRaises(RuntimeError):
+                appliance.parse_catalog(invalid)
 
     def test_plugin_validation_errors_are_infrastructure(self):
         modules = (
@@ -563,6 +594,58 @@ class WorkspaceTests(unittest.TestCase):
 
 
 class SourceCatalogTests(unittest.TestCase):
+    def test_source_listing_is_padded_and_tsv_preserves_complete_fields(self):
+        tests = {
+            "TL0001": ("x" * 150, "6.0b", "7.8"),
+            "ML0001": ("Linux UAPI", "", ""),
+        }
+
+        class Example(appliance.Suite):
+            def list_tests(self, binary):
+                return tests
+
+        suite = Example("example", "example-v1", Path("/missing/init"), None)
+        with patch.object(appliance, "load_suite", return_value=suite), \
+             patch.object(appliance.reporting, "terminal_width", return_value=140) as width, \
+             contextlib.redirect_stdout(io.StringIO()) as captured:
+            self.assertEqual(appliance.main(["--suite", "/missing", "--list"]), 0)
+        width.assert_called_once_with(sys.stderr)
+        self.assertEqual(captured.getvalue().splitlines(), [
+            f"TL0001 {'x' * 119}~ {'6.0b':<4} {'7.8':<7}",
+            f"ML0001 {'Linux UAPI':<120} {'':<4} {'':<7}",
+        ])
+        with patch.object(appliance, "load_suite", return_value=suite), \
+             patch.object(appliance.reporting, "terminal_width") as width, \
+             contextlib.redirect_stdout(io.StringIO()) as captured:
+            self.assertEqual(appliance.main(["--suite", "/missing", "--list-tsv"]), 0)
+        width.assert_not_called()
+        self.assertEqual(captured.getvalue(),
+                         f"TL0001\t{'x' * 150}\t6.0b\t7.8\nML0001\tLinux UAPI\t\t\n")
+
+    def test_named_specification_version_uses_the_declared_release(self):
+        with tempfile.TemporaryDirectory() as work:
+            root = Path(work)
+            header, source = root / "spec.h", root / "case.c"
+            header.write_text(
+                '/* #define TLFS_SPEC_V6_0B "wrong" */\n'
+                '#define TLFS_SPEC_V6_0B "6.0b"\n')
+            source.write_text(
+                'REGISTER_CASE(EX001, first, "register values", TLFS_SPEC_V6_0B, "7.8");\n')
+            self.assertEqual(appliance.source_catalog(
+                [source], "REGISTER_CASE", metadata=True, definitions=[header]),
+                {"EX001": ("register values", "6.0b", "7.8")})
+            self.assertEqual(appliance.source_catalog(
+                [source], "REGISTER_CASE", definitions=[header]),
+                {"EX001": "register values"})
+            with self.assertRaisesRegex(RuntimeError, "specification constant"):
+                appliance.source_catalog([source], "REGISTER_CASE", metadata=True)
+            header.write_text(
+                '#define TLFS_SPEC_V6_0B "6.0b"\n'
+                '#define TLFS_SPEC_V6_0B "5.0c"\n')
+            with self.assertRaisesRegex(RuntimeError, "Conflicting specification constant"):
+                appliance.source_catalog(
+                    [source], "REGISTER_CASE", metadata=True, definitions=[header])
+
     def test_source_ids_and_descriptions_without_building(self):
         with tempfile.TemporaryDirectory() as work:
             root = Path(work)
@@ -578,6 +661,28 @@ class SourceCatalogTests(unittest.TestCase):
             })
             second.write_text('VV_REGISTER_TEST(registry, EX003, third, "third case");\n')
             self.assertEqual(appliance.source_catalog([second]), {"EX003": "third case"})
+
+    def test_literal_specification_fields_match_compiled_catalogs(self):
+        with tempfile.TemporaryDirectory() as work:
+            source = Path(work) / "case.c"
+            source.write_text(
+                'REGISTER_CASE(EX001, first, "register values",\n'
+                '              "6.0b", "7.8");\n'
+                'REGISTER_CASE(EX002, second, "legacy case");\n'
+                'REGISTER_CASE(EX003, third, "no specification", "", "");\n')
+            expected = {
+                "EX001": ("register values", "6.0b", "7.8"),
+                "EX002": ("legacy case", "", ""),
+                "EX003": ("no specification", "", "")}
+            self.assertEqual(
+                appliance.source_catalog([source], "REGISTER_CASE", metadata=True), expected)
+            self.assertEqual(appliance.source_catalog([source], "REGISTER_CASE"), {
+                name: info[0] for name, info in expected.items()})
+            source.write_text(
+                'VV_REGISTER_TEST_SPEC(registry, EX001, first, "register values",\n'
+                '                      "6.0b", "7.8");\n')
+            self.assertEqual(appliance.source_catalog(
+                [source], "VV_REGISTER_TEST_SPEC", metadata=True), {"EX001": expected["EX001"]})
 
     def test_empty_duplicate_and_nonliteral_registrations_are_errors(self):
         with tempfile.TemporaryDirectory() as work:
@@ -617,8 +722,8 @@ class SourceCatalogTests(unittest.TestCase):
                  patch.object(appliance.subprocess, "run") as run, \
                  contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
                 self.assertEqual(appliance.main([
-                    "--suite", "/unused", "--binary", str(root / "missing-init"), "--list"]), 0)
-                self.assertEqual(stdout.getvalue(), "EX001\tfirst source case\n")
+                    "--suite", "/unused", "--binary", str(root / "missing-init"), "--list-tsv"]), 0)
+                self.assertEqual(stdout.getvalue(), "EX001\tfirst source case\t\t\n")
                 self.assertEqual(stderr.getvalue(), "")
                 self.assertEqual(appliance.main([
                     "--suite", "/unused", "--kernel", str(image), "EX001"]), 2)
@@ -662,10 +767,10 @@ class PackageLocationTests(unittest.TestCase):
                 with self.subTest(selection=selection):
                     result = subprocess.run(
                         [sys.executable, str(ROOT / "run"), "--suite", str(selection),
-                         "--list"], cwd=work, env=self.environment,
+                         "--list-tsv"], cwd=work, env=self.environment,
                         capture_output=True, text=True, timeout=20)
                     self.assertEqual(result.returncode, 0, result.stderr)
-                    self.assertEqual(result.stdout, "EX001\tSource case\n")
+                    self.assertEqual(result.stdout, "EX001\tSource case\t\t\n")
 
     def test_packager_runs_from_another_directory_without_pythonpath(self):
         with tempfile.TemporaryDirectory() as work:
@@ -1502,6 +1607,65 @@ class ParallelTests(unittest.TestCase):
 
 
 class HumanOutputTests(unittest.TestCase):
+    def test_specification_columns_are_aligned_across_tests_and_repetitions(self):
+        info = {
+            "EX001": ("x" * 100, "6.0b", "7.8"),
+            "EX002": ("short", "6.0b", "7.2"),
+            "EX003": ("register validation", "6.0b", "7.10.1"),
+        }
+        with tempfile.TemporaryDirectory() as work:
+            root = Path(work)
+            image = root / "image"
+            image.write_bytes(b"image")
+
+            class ExampleSuite(appliance.Suite):
+                def build_command(self, args, selected, token):
+                    text = output().replace("token", token).replace("EX001", selected[0])
+                    return [sys.executable, "-c", f"print({text!r}, end='')"]
+
+            suite = ExampleSuite("example", "example-v1", root / "init", image)
+            args = appliance.parse_args(suite, [
+                "--kernel", str(image), "--output", str(root / "results"), "--repeat", "2"])
+            with contextlib.redirect_stdout(io.StringIO()) as captured:
+                self.assertEqual(appliance.launch(suite, args, list(info), info), 0)
+            rows = [line for line in captured.getvalue().splitlines()
+                    if line.startswith("[PASS]")]
+            self.assertEqual(len(rows), 6)
+            for row in rows:
+                self.assertEqual(row.index("6.0b"), 63)
+                self.assertEqual(row[68:].strip(), info[row.split()[1]][2])
+
+    def test_specification_fields_survive_repetitions_and_failed_runs(self):
+        info = ("register values", "6.0b", "7.8")
+        for verdict, status in (("PASS", 0), ("FAIL", 1), ("INFRA", 2)):
+            with self.subTest(verdict=verdict), tempfile.TemporaryDirectory() as work:
+                root = Path(work)
+                image = root / "image"
+                image.write_bytes(b"image")
+
+                class ExampleSuite(appliance.Suite):
+                    def build_command(self, args, selected, token):
+                        text = "no guest result\n" if verdict == "INFRA" else output(verdict)
+                        return [sys.executable, "-c",
+                                f"print({text.replace('token', token)!r}, end='')"]
+
+                suite = ExampleSuite("example", "example-v1", root / "init", image)
+                args = appliance.parse_args(suite, [
+                    "--kernel", str(image), "--output", str(root / "results"), "--repeat", "2"])
+                with contextlib.redirect_stdout(io.StringIO()) as captured:
+                    self.assertEqual(
+                        appliance.launch(suite, args, ["EX001"], {"EX001": info}), status)
+                rows = [line for line in captured.getvalue().splitlines()
+                        if line.startswith(f"[{verdict}]")]
+                self.assertEqual(len(rows), 2)
+                for row in rows:
+                    self.assertIn(f"{info[1]} {info[2]}", row)
+                report = json.loads((root / "results/results.json").read_text())
+                for run in report["runs"]:
+                    self.assertEqual(run["description"], info[0])
+                    self.assertEqual(run["spec_version"], info[1])
+                    self.assertEqual(run["spec_section"], info[2])
+
     def test_standard_rows_summary_and_failure_output_in_plain_and_tty_modes(self):
         for tty in (False, True):
             for mode in ("PASS", "FAIL", "infra", "disarm"):
@@ -1735,6 +1899,48 @@ class IntegrationTests(unittest.TestCase):
     def tearDownClass(cls):
         cls.work.cleanup()
 
+    def test_binary_catalog_carries_reference_fields_for_every_entry(self):
+        listed = subprocess.run([str(self.binary), "--list"], check=True,
+                                capture_output=True, text=True)
+        self.assertEqual(sorted(line.split("\t") for line in listed.stdout.splitlines()), [
+            ["EX001", "first example test", "Example 1.0", "2.3"],
+            ["EX002", "second example test", "", ""],
+        ])
+
+    def test_registered_specification_reaches_listing_execution_and_json(self):
+        self.assertEqual(appliance.catalog(self.binary, metadata=True), {
+            "EX001": ("first example test", "Example 1.0", "2.3"),
+            "EX002": ("second example test", "", "")})
+        for option in ("--list", "--list-tsv"):
+            with self.subTest(option=option):
+                listed = subprocess.run([str(ROOT / "run"), "--suite", str(self.plugin), option],
+                                        capture_output=True, text=True, check=True)
+                if option == "--list":
+                    self.assertNotIn("\t", listed.stdout)
+                    self.assertIn("first example test", listed.stdout)
+                    self.assertIn("Example 1.0 2.3", listed.stdout)
+                    self.assertIn("second example test", listed.stdout)
+                else:
+                    self.assertIn("EX001\tfirst example test\tExample 1.0\t2.3\n", listed.stdout)
+                    self.assertIn("EX002\tsecond example test\t\t\n", listed.stdout)
+        for console in (False, True):
+            with self.subTest(console=console):
+                directory = self.root / f"specification-results-{console}"
+                result = subprocess.run([
+                    str(ROOT / "run"), "--suite", str(self.plugin),
+                    "--kernel", str(self.binary), "--output", str(directory),
+                    *(["--console"] if console else []), "EX001"],
+                    capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("Example 1.0", result.stdout)
+                self.assertIn("2.3", result.stdout)
+                report = json.loads((directory / "results.json").read_text())
+                run = report["runs"][0]
+                self.assertEqual(run["spec_version"], "Example 1.0")
+                self.assertEqual(run["spec_section"], "2.3")
+                log = Path(run["console"]).read_text()
+                self.assertIn("vv-spec EX001 Example 1.0 2.3\n", log)
+
     def test_registry_execution_cleanup_and_selection(self):
         for mode, code in (("pass", 0), ("fail", 1), ("skip", 2), ("infra", 2), ("cleanup", 1)):
             with self.subTest(mode=mode):
@@ -1758,7 +1964,7 @@ class IntegrationTests(unittest.TestCase):
                 self.assertEqual(parse(result.stdout)["tests"], {})
 
     def test_existing_runner_loads_plugin_and_preserves_selection(self):
-        listed = subprocess.run([str(ROOT / "run"), "--suite", str(self.plugin), "--list"],
+        listed = subprocess.run([str(ROOT / "run"), "--suite", str(self.plugin), "--list-tsv"],
                                 capture_output=True, text=True, check=True)
         self.assertIn("EX001\t", listed.stdout)
         self.assertIn("EX002\t", listed.stdout)

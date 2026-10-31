@@ -46,7 +46,7 @@ static test_result_t second(struct context *context)
     return TEST_PASS;
 }
 
-VV_REGISTER_TEST(example_registry, EX001, first, "first example test");
+VV_REGISTER_TEST_SPEC(example_registry, EX001, first, "first example test", "Example 1.0", "2.3");
 VV_REGISTER_TEST(example_registry, EX002, second, "second example test");
 
 extern const struct vv_test_entry __start_example_registry[];
