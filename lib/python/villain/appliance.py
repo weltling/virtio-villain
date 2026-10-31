@@ -43,8 +43,8 @@ class Suite:
         default=None, init=False, repr=False, compare=False)
 
     def list_tests(self, binary):
-        """Return the browsable catalog, optionally from source registrations."""
-        return catalog(binary)
+        """Return descriptions or description, version and section tuples."""
+        return catalog(binary, metadata=True)
 
     def add_arguments(self, parser):
         """Register suite-specific launch options without changing the core CLI."""
@@ -126,55 +126,93 @@ def executable(value):
     return str(Path(path).resolve())
 
 
-def catalog(binary):
+def catalog(binary, *, metadata=False):
     result = subprocess.run([executable(binary), "--list"], check=True,
                             capture_output=True, text=True, timeout=10)
-    return parse_catalog(result.stdout)
+    return parse_catalog(result.stdout, metadata=metadata)
 
 
-def parse_catalog(text):
+def parse_catalog(text, *, metadata=False):
     tests = {}
     names = set()
     for line in text.splitlines():
-        name, separator, description = line.partition("\t")
-        if (not separator or not description or "\t" in description
+        fields = line.split("\t")
+        if len(fields) not in (2, 4):
+            raise RuntimeError(f"Invalid test catalog entry: {line!r}")
+        name, description = fields[:2]
+        version, section = fields[2:] if len(fields) == 4 else ("", "")
+        if (not description or bool(version) != bool(section)
                 or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_.-]*", name)
                 or name.upper() in names):
             raise RuntimeError(f"Invalid test catalog entry: {line!r}")
-        tests[name] = description
+        tests[name] = (description, version, section) if metadata else description
         names.add(name.upper())
     if not tests:
         raise RuntimeError("Suite catalog contains no tests")
     return dict(sorted(tests.items()))
 
 
-def source_catalog(paths, macro="VV_REGISTER_TEST"):
-    """Read literal three or four argument registrations without compiling C."""
+def source_catalog(paths, macro="VV_REGISTER_TEST", *, metadata=False, definitions=()):
+    """Read registrations with literal or declared specification versions."""
     identifier = r"[A-Za-z_][A-Za-z0-9_]*"
     literal = r'"(?:[^"\\\r\n]|\\[^\r\n])*"'
     start = rf"^[ \t]*{re.escape(macro)}\s*\("
     registration = re.compile(
         start + rf"\s*(?:{identifier}\s*,\s*)?({identifier})\s*,\s*"
-        + rf"{identifier}\s*,\s*({literal})\s*\)\s*;?[ \t]*$", re.MULTILINE)
+        + rf"{identifier}\s*,\s*({literal})"
+        + rf"(?:\s*,\s*({literal}|{identifier})\s*,\s*({literal}))?\s*\)\s*;?[ \t]*$",
+        re.MULTILINE)
     comments = re.compile(r'"(?:\\.|[^"\\])*"|/\*.*?\*/|//[^\n]*', re.DOTALL)
-    entries = []
-    for path in sorted(map(Path, paths)):
-        text = comments.sub(
+
+    def source_text(path):
+        return comments.sub(
             lambda match: match[0] if match[0].startswith('"') else
             "\n" * match[0].count("\n"), path.read_text())
+
+    constants = {}
+    definition = re.compile(
+        rf"^[ \t]*#[ \t]*define[ \t]+({identifier})[ \t]+({literal})[ \t]*$",
+        re.MULTILINE)
+    for path in sorted(map(Path, definitions)):
+        for match in definition.finditer(source_text(path)):
+            try:
+                value = json.loads(match[2])
+            except json.JSONDecodeError as error:
+                raise RuntimeError(f"Unsupported specification constant in {path}: {error}") \
+                    from error
+            if match[1] in constants and constants[match[1]] != value:
+                raise RuntimeError(f"Conflicting specification constant {match[1]} in {path}")
+            constants[match[1]] = value
+    entries = []
+    for path in sorted(map(Path, paths)):
+        text = source_text(path)
         matches = list(registration.finditer(text))
         if not matches or len(matches) != len(re.findall(start, text, re.MULTILINE)):
             raise RuntimeError(f"Expected literal {macro} registrations in {path}")
         for match in matches:
             try:
-                description = json.loads(match[2])
+                fields = []
+                for value in match.groups()[1:]:
+                    if value is None:
+                        continue
+                    if value.startswith('"'):
+                        fields.append(json.loads(value))
+                    elif value in constants:
+                        fields.append(constants[value])
+                    else:
+                        raise RuntimeError(f"Unknown specification constant {value} in {path}")
             except json.JSONDecodeError as error:
-                raise RuntimeError(f"Unsupported description literal in {path}: {error}") \
+                raise RuntimeError(f"Unsupported registration literal in {path}: {error}") \
                     from error
-            if not description or any(char in description for char in "\r\n\t"):
-                raise RuntimeError(f"Invalid test description in {path}")
-            entries.append(f"{match[1]}\t{description}")
-    return parse_catalog("\n".join(entries))
+            if any(char in value for value in fields for char in "\r\n\t"):
+                raise RuntimeError(f"Invalid test registration field in {path}")
+            entries.append("\t".join((match[1], *fields)))
+    return parse_catalog("\n".join(entries), metadata=metadata)
+
+
+def _catalog_info(tests):
+    return {name: (info, "", "") if isinstance(info, str) else info
+            for name, info in tests.items()}
 
 
 def parse_results(text, selected, token, contract, prefix="VV"):
@@ -311,11 +349,11 @@ def launch(suite, args, selected, descriptions=None):
     output_lock = threading.Lock()
     completed = {}
     human_results = []
-    descriptions = descriptions or {}
+    test_info = _catalog_info(descriptions or {})
     color = sys.stdout.isatty()
     total = len(selected) * args.repeat
     suffix = f" (run {args.repeat})" if args.repeat > 1 else ""
-    longest_desc = max((len(descriptions.get(name, "")) + len(suffix)
+    longest_desc = max((len(test_info.get(name, ("", "", ""))[0]) + len(suffix)
                         for name in selected), default=10)
     tasks = iter(enumerate((iteration, test) for iteration in range(args.repeat)
                            for test in selected))
@@ -338,10 +376,10 @@ def launch(suite, args, selected, descriptions=None):
     def show_outcome(outcome):
         name = outcome["test"]
         status = "INFRA" if outcome["status"] == 2 else outcome["tests"].get(name, "INFRA")
-        description = descriptions.get(name, "")
+        description, version, section = test_info.get(name, ("", "", ""))
         if args.repeat > 1:
             description += f" (run {outcome['iteration']})"
-        info = (description, "", "")
+        info = (description, version, section)
         with output_lock:
             clear_progress()
             human_results.append((name, status, info))
@@ -385,8 +423,11 @@ def launch(suite, args, selected, descriptions=None):
                 return None
             run_id = token + f"-{iteration + 1}-{test}"
             workspace = directory / "artifacts" / f"{iteration + 1}-{test}"
+            description, version, section = test_info.get(test, ("", "", ""))
             outcome = {"run_id": run_id, "test": test, "iteration": iteration + 1,
-                       "workspace": str(workspace), "tests": {}, "status": 2}
+                       "workspace": str(workspace), "tests": {}, "status": 2,
+                       "description": description,
+                       "spec_version": version, "spec_section": section}
             armed = False
             control_ready = control_command is None
             proc = None
@@ -507,7 +548,10 @@ def parse_args(suite, argv):
     parser = argparse.ArgumentParser(description=f"{suite.name} appliance suite",
                                      allow_abbrev=False)
     parser.add_argument("tests", nargs="*", help="Test IDs in any letter case. Defaults to all.")
-    parser.add_argument("--list", action="store_true")
+    listing = parser.add_mutually_exclusive_group()
+    listing.add_argument("--list", action="store_true", help="Show the padded test listing")
+    listing.add_argument("--list-tsv", action="store_true",
+                         help="Show the complete tab separated test catalog")
     parser.add_argument("--build", action="store_true",
                         help="Build the suite executable and initramfs before execution")
     parser.add_argument("--build-dir", type=Path,
@@ -527,8 +571,10 @@ def parse_args(suite, argv):
                         help="New directory for diagnostics and runtime artifacts")
     suite.add_arguments(parser)
     args = parser.parse_args(argv)
+    args.list = args.list or args.list_tsv
+    list_option = "--list-tsv" if args.list_tsv else "--list"
     if args.list and args.build:
-        parser.error("--list cannot be combined with --build")
+        parser.error(f"{list_option} cannot be combined with --build")
     provided = {option.split("=", 1)[0] for option in argv}
     if suite.build_spec is not None or args.build or args.build_dir is not None:
         if args.build and provided & {"--binary", "--initramfs"}:
@@ -545,7 +591,7 @@ def parse_args(suite, argv):
     if args.jobs < 1:
         parser.error("--jobs must be a positive integer")
     if args.list and args.tests:
-        parser.error("--list cannot be combined with test selection")
+        parser.error(f"{list_option} cannot be combined with test selection")
     if not args.list:
         if not args.kernel:
             if suite.build_spec is not None and suite.build_spec.kernel is not None:
@@ -580,13 +626,18 @@ def main(argv=None):
         suite = load_suite(argv[1])
         args = parse_args(suite, argv[2:])
         if args.list:
-            tests = suite.list_tests(args.binary)
-            for name, description in tests.items():
-                print(f"{name}\t{description}")
+            tests = _catalog_info(suite.list_tests(args.binary))
+            if args.list_tsv:
+                for name, info in tests.items():
+                    print("\t".join((name, *info)))
+            else:
+                for line in reporting.format_test_list(
+                        tests, reporting.terminal_width(sys.stderr)):
+                    print(line)
             return 0
         if args.build:
             suite.build_spec.context(args.build_dir).build(["initramfs"])
-        tests = catalog(args.binary)
+        tests = catalog(args.binary, metadata=True)
         args.tests, unknown = canonicalize_tests(args.tests, tests)
         if unknown or len(set(args.tests)) != len(args.tests):
             raise RuntimeError("Unknown or duplicate test selection; use --list")

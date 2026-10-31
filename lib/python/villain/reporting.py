@@ -29,6 +29,21 @@ def desc_column_width(cols, longest_desc, fixed):
     return max(10, min(cols - fixed, longest_desc))
 
 
+def format_test_list(tests, cols=80):
+    name_width = max(4, max(map(len, tests), default=0))
+    version_width = max(4, max((len(info[1]) for info in tests.values()), default=0))
+    section_width = max(7, max((len(info[2]) for info in tests.values()), default=0))
+    width = max(20, cols - name_width - version_width - section_width - 3)
+    lines = []
+    for name, (description, version, section) in tests.items():
+        if len(description) > width:
+            description = description[:width - 1] + "~"
+        lines.append(
+            f"{name:<{name_width}} {description:<{width}} "
+            f"{version:<{version_width}} {section:<{section_width}}")
+    return lines
+
+
 def format_test_line(name, status, info, longest_desc, cols=80, color=False):
     tag = f"[{status}]".ljust(8)
     if color:
