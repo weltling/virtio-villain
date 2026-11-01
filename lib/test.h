@@ -48,14 +48,21 @@ struct vv_test_entry {
     test_result_t (*fn)(void *context);
     const char *spec_version;
     const char *spec_section;
+    int expected_failure;
 };
 
-#define VV_REGISTER_TEST_SPEC(registry, name, function, description, specver, sect) \
+#define VV_REGISTER_TEST_SPEC_FLAGS(registry, name, function, description, specver, sect, xfail) \
     static test_result_t _vv_call_##name(void *context) { return function(context); } \
     __attribute__((section(#registry), used, aligned(sizeof(void *)))) \
     static const struct vv_test_entry _vv_test_##name = { \
-        #name, description, _vv_call_##name, specver, sect \
+        #name, description, _vv_call_##name, specver, sect, xfail \
     }
+
+#define VV_REGISTER_TEST_SPEC(registry, name, function, description, specver, sect) \
+    VV_REGISTER_TEST_SPEC_FLAGS(registry, name, function, description, specver, sect, 0)
+
+#define VV_REGISTER_TEST_SPEC_XFAIL(registry, name, function, description, specver, sect) \
+    VV_REGISTER_TEST_SPEC_FLAGS(registry, name, function, description, specver, sect, 1)
 
 #define VV_REGISTER_TEST(registry, name, function, description) \
     VV_REGISTER_TEST_SPEC(registry, name, function, description, "", "")

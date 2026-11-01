@@ -27,6 +27,7 @@ int vv_run_suite(const struct vv_test_suite *suite, const char *selection,
     unsigned char *enabled = NULL;
     char *names = NULL;
     unsigned passed = 0, failed = 0, skipped = 0, infra = 0;
+    unsigned xfailed = 0, xpassed = 0;
     int status = 2;
     const char *prefix = suite->protocol_prefix;
     printf("%s-BEGIN %s %s\n", prefix, run_id, suite->contract);
@@ -105,6 +106,12 @@ int vv_run_suite(const struct vv_test_suite *suite, const char *selection,
             printf("vv-spec %s %s %s\n", tests[i]->name,
                    tests[i]->spec_version, tests[i]->spec_section);
         test_result_t result = tests[i]->fn(context);
+        if (tests[i]->expected_failure) {
+            if (result == TEST_FAIL)
+                result = TEST_XFAIL;
+            else if (result == TEST_PASS)
+                result = TEST_XPASS;
+        }
         if (suite->cleanup && suite->cleanup(context) != TEST_PASS)
             result = TEST_FAIL;
         free(context);
@@ -115,18 +122,28 @@ int vv_run_suite(const struct vv_test_suite *suite, const char *selection,
         } else if (result == TEST_SKIP) {
             verdict = "SKIP";
             ++skipped;
+        } else if (result == TEST_XFAIL) {
+            verdict = "XFAIL";
+            ++xfailed;
+        } else if (result == TEST_XPASS) {
+            verdict = "XPASS";
+            ++xpassed;
         } else {
             ++failed;
         }
         printf("%s-RESULT %s %s %s\n", prefix, run_id, tests[i]->name, verdict);
     }
-    if (!passed && !failed) {
+    if (!passed && !failed && !xfailed && !xpassed) {
         printf("vv-infra no assertions executed\n");
         infra = 1;
     }
-    status = infra ? 2 : failed ? 1 : 0;
+    status = infra ? 2 : (failed || xpassed) ? 1 : 0;
 summary:
-    printf("%s-SUMMARY %s %u %u %u %u\n", prefix, run_id, passed, failed, skipped, infra);
+    if (xfailed || xpassed)
+        printf("%s-SUMMARY %s %u %u %u %u %u %u\n",
+               prefix, run_id, passed, failed, skipped, infra, xfailed, xpassed);
+    else
+        printf("%s-SUMMARY %s %u %u %u %u\n", prefix, run_id, passed, failed, skipped, infra);
     printf("%s-END %s %d\n", prefix, run_id, status);
     free(names);
     free(enabled);

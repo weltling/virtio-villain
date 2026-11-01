@@ -156,7 +156,7 @@ def source_catalog(paths, macro="VV_REGISTER_TEST", *, metadata=False, definitio
     """Read registrations with literal or declared specification versions."""
     identifier = r"[A-Za-z_][A-Za-z0-9_]*"
     literal = r'"(?:[^"\\\r\n]|\\[^\r\n])*"'
-    start = rf"^[ \t]*{re.escape(macro)}\s*\("
+    start = rf"^[ \t]*{re.escape(macro)}(?:_XFAIL)?\s*\("
     registration = re.compile(
         start + rf"\s*(?:{identifier}\s*,\s*)?({identifier})\s*,\s*"
         + rf"{identifier}\s*,\s*({literal})"
@@ -236,16 +236,18 @@ def parse_results(text, selected, token, contract, prefix="VV"):
             running = name
         elif kind == prefix + "-RESULT" and len(fields) == 4 and summary is None:
             name, verdict = fields[2:]
-            if name != running or verdict not in ("PASS", "FAIL", "SKIP"):
+            if name != running or verdict not in ("PASS", "FAIL", "SKIP", "XFAIL", "XPASS"):
                 raise RuntimeError(f"Unexpected test result: {fields}")
             verdicts[name] = verdict
             running = None
-        elif kind == prefix + "-SUMMARY" and len(fields) == 6 and summary is None:
+        elif kind == prefix + "-SUMMARY" and len(fields) in (6, 8) and summary is None:
             if running or any(not re.fullmatch(r"[0-9]+", value) for value in fields[2:]):
                 raise RuntimeError("Incomplete test or invalid summary counts")
-            summary = dict(zip(("pass", "fail", "skip", "infra"), map(int, fields[2:])))
+            summary = dict(zip(("pass", "fail", "skip", "infra", "xfail", "xpass"),
+                               map(int, fields[2:])))
         elif kind == prefix + "-END" and len(fields) == 3 and summary is not None:
-            expected = 2 if summary["infra"] else 1 if summary["fail"] else 0
+            expected = 2 if summary["infra"] else 1 if (
+                summary["fail"] or summary.get("xpass", 0)) else 0
             if fields[2] != str(expected):
                 raise RuntimeError("END disagrees with summary")
             status = expected
@@ -254,12 +256,12 @@ def parse_results(text, selected, token, contract, prefix="VV"):
             raise RuntimeError(f"Malformed or out-of-order suite record: {fields}")
     if not ended:
         raise RuntimeError("Appliance did not report a complete END record")
-    for verdict in ("PASS", "FAIL", "SKIP"):
-        if summary[verdict.lower()] != list(verdicts.values()).count(verdict):
+    for verdict in ("PASS", "FAIL", "SKIP", "XFAIL", "XPASS"):
+        if summary.get(verdict.lower(), 0) != list(verdicts.values()).count(verdict):
             raise RuntimeError("Summary disagrees with individual test results")
     if not summary["infra"] and set(verdicts) != set(selected):
         raise RuntimeError("Selected tests were not all executed")
-    if not summary["pass"] and not summary["fail"] and not summary["infra"]:
+    if not any(summary.get(key, 0) for key in ("pass", "fail", "infra", "xfail", "xpass")):
         raise RuntimeError("Entirely unexecuted/unsupported suite cannot pass")
     return {"status": status, "summary": summary, "tests": verdicts}
 
@@ -387,7 +389,7 @@ def launch(suite, args, selected, descriptions=None):
                 print(reporting.format_test_line(
                     name, status, info, longest_desc, reporting.terminal_width(sys.stdout),
                     color), flush=True)
-            if status in ("FAIL", "INFRA"):
+            if status in ("FAIL", "XPASS", "INFRA"):
                 for field in ("error", "termination_error", "console_error",
                               "recovery_error", "disarm_error"):
                     if field in outcome:
@@ -536,7 +538,7 @@ def launch(suite, args, selected, descriptions=None):
         if not counts["INFRA"]:
             counts["INFRA"] = 1
     print(reporting.format_summary(counts, len(human_results), color))
-    for status in ("FAIL", "INFRA"):
+    for status in ("FAIL", "XPASS", "INFRA"):
         entries = [(name, info[0]) for name, verdict, info in human_results if verdict == status]
         if entries:
             print(reporting.format_failure_list(entries, status, color))
