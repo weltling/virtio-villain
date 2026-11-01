@@ -23,7 +23,7 @@ static test_result_t cleanup(void *pointer)
     assert(context->resource == 42);
     context->resource = 0;
     ++released;
-    if (!strcmp(mode, "cleanup"))
+    if (!strcmp(mode, "cleanup") || !strcmp(mode, "xfail-cleanup"))
         TFAIL("injected cleanup failure");
     return TEST_PASS;
 }
@@ -31,10 +31,12 @@ static test_result_t cleanup(void *pointer)
 static test_result_t first(struct context *context)
 {
     assert(context->resource == 42);
-    if (!strcmp(mode, "fail"))
+    if (!strcmp(mode, "fail") || !strcmp(mode, "xfail") || !strcmp(mode, "xfail-cleanup"))
         TFAIL("injected assertion failure");
-    if (!strcmp(mode, "skip"))
+    if (!strcmp(mode, "skip") || !strcmp(mode, "xfail-skip"))
         TSKIP("optional capability unavailable");
+    if (!strcmp(mode, "xfail-wedged"))
+        TWEDGED("injected execution failure");
     return TEST_PASS;
 }
 
@@ -48,9 +50,12 @@ static test_result_t second(struct context *context)
 
 VV_REGISTER_TEST_SPEC(example_registry, EX001, first, "first example test", "Example 1.0", "2.3");
 VV_REGISTER_TEST(example_registry, EX002, second, "second example test");
+VV_REGISTER_TEST_SPEC_XFAIL(xfail_registry, EX003, first, "expected failure", "Example 1.0", "2.3");
 
 extern const struct vv_test_entry __start_example_registry[];
 extern const struct vv_test_entry __stop_example_registry[];
+extern const struct vv_test_entry __start_xfail_registry[];
+extern const struct vv_test_entry __stop_xfail_registry[];
 
 static int preflight(void)
 {
@@ -59,7 +64,7 @@ static int preflight(void)
 
 int main(int argc, char **argv)
 {
-    const struct vv_test_suite suite = {
+    struct vv_test_suite suite = {
         .contract = "example-v1", .protocol_prefix = "VV",
         .begin = __start_example_registry, .end = __stop_example_registry,
         .context_size = sizeof(struct context), .preflight = preflight,
@@ -71,6 +76,10 @@ int main(int argc, char **argv)
     }
     int offset = argc > 1 && !strcmp(argv[1], "--launcher") ? 2 : 1;
     mode = argc > offset ? argv[offset] : "pass";
+    if (!strncmp(mode, "xfail", 5)) {
+        suite.begin = __start_xfail_registry;
+        suite.end = __stop_xfail_registry;
+    }
     const char *selection = argc > offset + 1 ? argv[offset + 1] : NULL;
     const char *token = argc > offset + 2 ? argv[offset + 2] : "token";
     int result = vv_run_suite(&suite, selection, token, 1);

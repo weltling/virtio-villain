@@ -25,8 +25,9 @@ from villain import appliance, execution, initramfs, reporting  # noqa: E402
 
 
 def output(verdict="PASS"):
-    counts = {"PASS": "1 0 0 0", "FAIL": "0 1 0 0", "SKIP": "0 0 1 1"}
-    code = {"PASS": 0, "FAIL": 1, "SKIP": 2}[verdict]
+    counts = {"PASS": "1 0 0 0", "FAIL": "0 1 0 0", "SKIP": "0 0 1 1",
+              "XFAIL": "0 0 0 0 1 0", "XPASS": "0 0 0 0 0 1"}
+    code = {"PASS": 0, "FAIL": 1, "SKIP": 2, "XFAIL": 0, "XPASS": 1}[verdict]
     return ("VV-BEGIN token example-v1\nVV-RUN token EX001\n"
             f"VV-RESULT token EX001 {verdict}\n"
             f"VV-SUMMARY token {counts[verdict]}\nVV-END token {code}\n")
@@ -54,7 +55,8 @@ class ResultTests(unittest.TestCase):
             appliance.parse_args(suite, ["--list", "--list-tsv"])
 
     def test_pass_fail_and_unsupported(self):
-        for verdict, status in (("PASS", 0), ("FAIL", 1), ("SKIP", 2)):
+        for verdict, status in (("PASS", 0), ("FAIL", 1), ("SKIP", 2),
+                                ("XFAIL", 0), ("XPASS", 1)):
             with self.subTest(verdict=verdict):
                 self.assertEqual(parse(output(verdict))["status"], status)
 
@@ -77,6 +79,9 @@ class ResultTests(unittest.TestCase):
             valid.replace("VV-RESULT token EX001 PASS",
                           "VV-RESULT token EX001 PASS\nVV-RESULT token EX001 PASS"),
             output("SKIP").replace("0 0 1 1", "0 0 1 0").replace("token 2\n", "token 0\n"),
+            output("XFAIL").replace("0 0 0 0 1 0", "0 0 0 0"),
+            output("XPASS").replace("0 0 0 0 0 1", "0 0 0 0"),
+            output("XPASS").replace("VV-END token 1", "VV-END token 0"),
         ]
         for text in broken:
             with self.subTest(text=text), self.assertRaises(RuntimeError):
@@ -594,6 +599,16 @@ class WorkspaceTests(unittest.TestCase):
 
 
 class SourceCatalogTests(unittest.TestCase):
+    def test_expected_failure_registration_preserves_source_metadata(self):
+        with tempfile.TemporaryDirectory() as work:
+            source = Path(work) / "expected.c"
+            source.write_text(
+                'VV_REGISTER_TEST_SPEC_XFAIL(registry, EX003, first, '
+                '"expected failure", "Example 1.0", "2.3");\n')
+            self.assertEqual(appliance.source_catalog(
+                [source], "VV_REGISTER_TEST_SPEC", metadata=True),
+                {"EX003": ("expected failure", "Example 1.0", "2.3")})
+
     def test_source_listing_is_padded_and_tsv_preserves_complete_fields(self):
         tests = {
             "TL0001": ("x" * 150, "6.0b", "7.8"),
@@ -1637,7 +1652,8 @@ class HumanOutputTests(unittest.TestCase):
 
     def test_specification_fields_survive_repetitions_and_failed_runs(self):
         info = ("register values", "6.0b", "7.8")
-        for verdict, status in (("PASS", 0), ("FAIL", 1), ("INFRA", 2)):
+        for verdict, status in (("PASS", 0), ("FAIL", 1), ("INFRA", 2),
+                                ("XFAIL", 0), ("XPASS", 1)):
             with self.subTest(verdict=verdict), tempfile.TemporaryDirectory() as work:
                 root = Path(work)
                 image = root / "image"
@@ -1898,6 +1914,43 @@ class IntegrationTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.work.cleanup()
+
+    def test_expected_failure_verdicts_and_cleanup_precedence(self):
+        for mode, verdict, status in (
+                ("xfail", "XFAIL", 0), ("xfail-pass", "XPASS", 1),
+                ("xfail-cleanup", "FAIL", 1), ("xfail-skip", "SKIP", 2),
+                ("xfail-wedged", "FAIL", 1)):
+            with self.subTest(mode=mode):
+                result = subprocess.run(
+                    [str(self.binary), mode, "EX003"], capture_output=True, text=True)
+                self.assertEqual(result.returncode, status, result.stderr + result.stdout)
+                parsed = parse(result.stdout, ("EX003",))
+                self.assertEqual(parsed["status"], status)
+                self.assertEqual(parsed["tests"], {"EX003": verdict})
+                self.assertEqual(parsed["summary"][verdict.lower()], 1)
+
+    def test_expected_failures_reach_host_reports_and_exit_status(self):
+        for mode, verdict, status in (("xfail", "XFAIL", 0), ("xfail-pass", "XPASS", 1)):
+            with self.subTest(mode=mode), tempfile.TemporaryDirectory() as work:
+                root = Path(work)
+                binary = self.binary
+
+                class ExampleSuite(appliance.Suite):
+                    def build_command(self, args, selected, token):
+                        return [str(binary), "--launcher", mode, ",".join(selected), token]
+
+                suite = ExampleSuite("example", "example-v1", binary,
+                                     self.build / "initramfs.cpio.gz")
+                args = appliance.parse_args(suite, [
+                    "--kernel", str(binary), "--output", str(root / "results")])
+                with contextlib.redirect_stdout(io.StringIO()) as captured:
+                    self.assertEqual(appliance.launch(suite, args, ["EX003"]), status)
+                self.assertIn(f"[{verdict}]", captured.getvalue())
+                self.assertIn(f"1 {verdict.lower()}", captured.getvalue())
+                report = json.loads((root / "results/results.json").read_text())
+                self.assertEqual(report["status"], status)
+                self.assertEqual(report["runs"][0]["tests"], {"EX003": verdict})
+                self.assertEqual(report["runs"][0]["summary"][verdict.lower()], 1)
 
     def test_binary_catalog_carries_reference_fields_for_every_entry(self):
         listed = subprocess.run([str(self.binary), "--list"], check=True,
