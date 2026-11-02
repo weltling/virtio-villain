@@ -105,6 +105,57 @@ class ResultTests(unittest.TestCase):
                     self.assertIn("CONFIG_GCC_PLUGINS=y -> n", text)
                 self.assertTrue((root / "output/images/bzImage-x86_64").is_file())
 
+    def test_strict_policy_changes_reuse_unchanged_kernel_inputs(self):
+        for missing_required in (False, True):
+            with self.subTest(missing_required=missing_required), \
+                    tempfile.TemporaryDirectory() as work:
+                root = Path(work)
+                source = root / "source"
+                source.mkdir()
+                makefile = FIXTURE_MAKEFILE
+                if missing_required:
+                    makefile = makefile.replace(
+                        '\tcp "$(KCONFIG_ALLCONFIG)" "$(O)/.config"\n',
+                        '\tcp "$(KCONFIG_ALLCONFIG)" "$(O)/.config"\n'
+                        '\tsed -i \'s/CONFIG_DMIID=y/# CONFIG_DMIID is not set/\' "$(O)/.config"\n')
+                (source / "Makefile").write_text(makefile)
+                base = root / "base.config"
+                base.write_text("CONFIG_FIXTURE=y\nCONFIG_DMI=y\nCONFIG_DMIID=y\n")
+                required = root / "required.config"
+                required.write_text("CONFIG_FIXTURE=y\n")
+                output = root / "output"
+                args = BUILD.parse_args([
+                    "--source", str(source), "--base-config", str(base),
+                    "--config", str(required), "--output", str(output),
+                    "--cache-dir", str(root / "cache"), "--offline", "--arch", "x86_64"])
+                with contextlib.redirect_stderr(io.StringIO()):
+                    BUILD.build(args)
+                inputs = output / "x86_64/inputs.json"
+                original = json.loads(inputs.read_text())
+                object_file = output / "x86_64/existing.o"
+                object_file.write_bytes(b"preserved build object")
+                required.write_text("CONFIG_FIXTURE=y\nCONFIG_DMI=y\nCONFIG_DMIID=y\n")
+                with mock.patch.object(BUILD.subprocess, "run", wraps=subprocess.run) as run, \
+                        contextlib.redirect_stderr(io.StringIO()):
+                    if missing_required:
+                        with self.assertRaisesRegex(RuntimeError, "CONFIG_DMIID=y -> n"):
+                            BUILD.build(args)
+                    else:
+                        BUILD.build(args)
+                self.assertEqual(run.call_count, 1 if missing_required else 2)
+                self.assertEqual(run.call_args_list[0].args[0][-1], "allnoconfig")
+                current = json.loads(inputs.read_text())
+                self.assertEqual(original["requested_sha256"], current["requested_sha256"])
+                self.assertNotEqual(original["strict_sha256"], current["strict_sha256"])
+                self.assertEqual(object_file.read_bytes(), b"preserved build object")
+                if not missing_required:
+                    required.write_text("CONFIG_FIXTURE=y\nCONFIG_DMI=n\nCONFIG_DMIID=y\n")
+                    with mock.patch.object(BUILD.subprocess, "run") as run:
+                        with self.assertRaisesRegex(RuntimeError, "Build inputs changed"):
+                            BUILD.build(args)
+                    run.assert_not_called()
+                    self.assertEqual(json.loads(inputs.read_text()), current)
+
     def test_result_reports_actual_images_for_both_supported_architectures(self):
         for arch, boot_image, names in (
                 ("x86_64", "bzImage", {"vmlinux", "bzImage"}),
