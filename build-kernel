@@ -294,11 +294,16 @@ def build(args):
         identity = {"source": str(source), "arch": args.arch,
                     "cross_compile": args.cross_compile,
                     "requested_sha256": hashlib.sha256(requested.encode()).hexdigest()}
+        identity_path = output / "inputs.json"
+        if identity_path.exists():
+            previous = json.loads(identity_path.read_text())
+            if isinstance(previous, dict):
+                # Strictness affects validation, not the requested kernel configuration.
+                previous.pop("strict_sha256", None)
+            if previous != identity:
+                raise RuntimeError(f"Build inputs changed. Use a different --output: {root}")
         if args.base_config:
             identity["strict_sha256"] = hashlib.sha256(strict.encode()).hexdigest()
-        identity_path = output / "inputs.json"
-        if identity_path.exists() and json.loads(identity_path.read_text()) != identity:
-            raise RuntimeError(f"Build inputs changed. Use a different --output: {root}")
         identity_path.write_text(json.dumps(identity, indent=2) + "\n")
         fragment = output / "requested.config"
         fragment.write_text(requested)

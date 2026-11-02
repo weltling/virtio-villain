@@ -99,7 +99,7 @@ class ResultTests(unittest.TestCase):
                 if required_root:
                     self.assertNotIn("CONFIG_GCC_PLUGINS", text)
                     required.write_text("# CONFIG_GCC_PLUGINS is not set\n")
-                    with self.assertRaisesRegex(RuntimeError, "Build inputs changed"):
+                    with contextlib.redirect_stderr(errors):
                         BUILD.build(args)
                 else:
                     self.assertIn("CONFIG_GCC_PLUGINS=y -> n", text)
