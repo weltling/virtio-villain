@@ -6,7 +6,7 @@
  * 0 (enable), 1 (disable), 2 (desc). Value 3 is undefined and could
  * cause the device to misinterpret notification suppression state.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_event_flags_reserved(struct virtio_dev *dev,
                                                       struct vring_packed *vr)

@@ -5,7 +5,7 @@
  * After DRIVER_OK is set, the driver should not reconfigure queues.
  * This test tries to change queue parameters after the device is live.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

@@ -9,7 +9,7 @@
  * the data matches the pattern. Catches devices that fan out per
  * queue caches without coherence.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static int wait_used(struct vring *vr)
 {

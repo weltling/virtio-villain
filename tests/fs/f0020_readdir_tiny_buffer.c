@@ -9,7 +9,7 @@
  * The device must not write past the descriptor length.
  * Adapted from QEMU virtio-9p-test readdir_split patterns.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_readdir_tiny_buffer(struct virtio_dev *dev,

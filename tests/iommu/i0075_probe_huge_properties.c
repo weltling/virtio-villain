@@ -7,7 +7,7 @@
  * output to a sane value. The host must perform the bounds check
  * without integer overflow and must not panic.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_probe_huge(struct virtio_dev *dev,

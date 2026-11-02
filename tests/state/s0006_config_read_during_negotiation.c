@@ -11,7 +11,7 @@
  * should either return zeros/defaults or fault on accesses to
  * feature-gated config fields prior to feature acceptance.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_config_read_during_negotiation(struct virtio_dev *dev,

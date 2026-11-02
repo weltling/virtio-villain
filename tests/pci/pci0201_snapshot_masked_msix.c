@@ -10,7 +10,7 @@
  * the driver restores the prior vectors. The device must not
  * raise FAILED or NEEDS_RESET across the window.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_snapshot_masked_msix(struct virtio_dev *dev)
 {

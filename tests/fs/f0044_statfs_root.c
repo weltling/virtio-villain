@@ -8,7 +8,7 @@
  * and name length are non-zero for a real filesystem. Exercises a
  * functional FUSE query path not covered elsewhere.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_statfs_root(struct virtio_dev *dev,

@@ -6,7 +6,7 @@
  * contain at least one non zero byte. Tests that the RNG device
  * refills its entropy pool between consecutive requests.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rng_two_verify(struct virtio_dev *dev,
                                          struct vring *vr)

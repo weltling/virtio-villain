@@ -8,7 +8,7 @@
  * is distinct from VIRTIO_NET_F_NOTF_COAL (bit 53) that gates the
  * TX_SET and RX_SET commands.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_notf_coal_vq(struct virtio_dev *dev,
                                            struct vring *vr)

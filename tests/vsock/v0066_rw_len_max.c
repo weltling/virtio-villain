@@ -9,7 +9,7 @@
  * more payload than the chain actually supplies rather than
  * trusting len and reading past the buffer.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_rw_len_max(struct virtio_dev *dev,
                                            struct vring *vr)

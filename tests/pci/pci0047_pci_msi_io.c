@@ -6,7 +6,7 @@
  * submit a block read and verify completion. This exercises the VMM's
  * MSI interrupt delivery path end-to-end.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_pci_msi_io(struct virtio_dev *dev,

@@ -7,7 +7,7 @@
  * scatter-gather chain?
  * Spec 2.8.19: a descriptor MUST NOT have both INDIRECT and NEXT set.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_indirect_mixed(struct virtio_dev *dev,
                                                 struct vring_packed *vr)

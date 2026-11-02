@@ -6,7 +6,7 @@
  * (type 8). Verify that if present, it has valid BAR/offset/length
  * fields. If not present, simply pass (not all devices expose SHM).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_shared_memory_cap(struct virtio_dev *dev,

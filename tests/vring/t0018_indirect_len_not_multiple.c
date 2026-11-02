@@ -6,7 +6,7 @@
  * of sizeof(struct vring_desc) (16 bytes). The spec says the length
  * must refer to a valid descriptor table.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_indirect_len_not_multiple(struct virtio_dev *dev,
                                                     struct vring *vr)

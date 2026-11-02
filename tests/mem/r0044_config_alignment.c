@@ -8,7 +8,7 @@
  * usable_region_size. R0041 covers the region_size constraints; this
  * covers the alignment and plugged/usable relationship.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_config_alignment(struct virtio_dev *dev)
 {

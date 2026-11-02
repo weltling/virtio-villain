@@ -6,7 +6,7 @@
  * block address in the same avail ring batch. The device must
  * handle concurrent conflicting operations gracefully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_plug_unplug_batch(struct virtio_dev *dev,
                                                 struct vring *vr)

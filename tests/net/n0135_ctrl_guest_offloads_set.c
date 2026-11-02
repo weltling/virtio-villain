@@ -7,7 +7,7 @@
  * the active offload features. Send the command with offloads=0
  * (disable all) and verify the device acks with VIRTIO_NET_OK.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_offloads(struct virtio_dev *dev,
                                             struct vring *vr)

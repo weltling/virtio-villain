@@ -7,7 +7,7 @@
  * the configured region. The device must report a real state
  * rather than treating the last block as out of range.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_state_last_block(struct virtio_dev *dev,
                                                struct vring *vr)

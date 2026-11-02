@@ -6,7 +6,7 @@
  * Spec 5.1.6.5.2: If VIRTIO_NET_F_CTRL_MAC_ADDR is negotiated, the
  * driver can set the primary MAC address via control virtqueue.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_mac_addr_set(struct virtio_dev *dev,
                                                 struct vring *vr)

@@ -7,7 +7,7 @@
  * input arrives. On a quiet console the expected outcome is
  * REJECT (no completion observed within the timeout).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_rx_zero_len(struct virtio_dev *dev,
                                               struct vring *vr)

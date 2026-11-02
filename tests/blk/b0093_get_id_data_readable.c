@@ -5,7 +5,7 @@
  * Spec 5.2.6: For VIRTIO_BLK_T_GET_ID, the data buffer should be
  * device-writable so the device can write the serial. Mark it readable.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_get_id_data_readable(struct virtio_dev *dev,
                                                    struct vring *vr)

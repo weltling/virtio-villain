@@ -7,7 +7,7 @@
  * dropping any. Tests the device handles burst notifications under
  * load where no inter-ping delay exists.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define BURST_COUNT 8
 

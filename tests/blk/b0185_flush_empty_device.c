@@ -6,7 +6,7 @@
  * have occurred, the flush should succeed trivially. The device
  * must not fail or hang on an empty flush.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_flush_empty(struct virtio_dev *dev,
                                           struct vring *vr)

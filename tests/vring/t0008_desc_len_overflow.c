@@ -11,7 +11,7 @@
  * Correct behavior: detect the overflow and reject the descriptor with
  * an I/O error or NEEDS_RESET.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 /* virtio-blk request header */
 static test_result_t test_desc_len_overflow(struct virtio_dev *dev, struct vring *vr)

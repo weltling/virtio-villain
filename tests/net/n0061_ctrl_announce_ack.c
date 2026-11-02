@@ -6,7 +6,7 @@
  * being negotiated, the device should reject or ignore.
  * Tests that the device handles the announce protocol gracefully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_ctrl_announce_ack(struct virtio_dev *dev,
                                             struct vring *vr)

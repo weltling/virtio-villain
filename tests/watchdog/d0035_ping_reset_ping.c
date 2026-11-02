@@ -6,7 +6,7 @@
  * Tests that the watchdog correctly restarts its timer state after
  * a full device reset cycle.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_watchdog_reset_ping(struct virtio_dev *dev,
                                               struct vring *vr)

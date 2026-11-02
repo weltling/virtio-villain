@@ -7,7 +7,7 @@
  * device must clamp writes to the real buffer size or refuse the
  * descriptor; it must not write past the page.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_huge_resp(struct virtio_dev *dev,

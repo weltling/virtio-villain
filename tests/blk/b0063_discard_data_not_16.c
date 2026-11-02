@@ -7,7 +7,7 @@
  *
  * Submit DISCARD with data length = 17 (not a multiple of 16).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_discard_bad_data_len(struct virtio_dev *dev,
                                                    struct vring *vr)

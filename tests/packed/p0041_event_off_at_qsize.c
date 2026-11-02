@@ -8,7 +8,7 @@
  * slot or panic; it should treat the suppression hint as
  * disabled.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_event_off_qsize(struct virtio_dev *dev,
                                                  struct vring_packed *vr)

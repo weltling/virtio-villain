@@ -7,7 +7,7 @@
  * handles the read only permission flag correctly rather than
  * requiring both READ and WRITE.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_map_ro(struct virtio_dev *dev,

@@ -7,7 +7,7 @@
  * proceeding to feature negotiation. Skipping the step is a
  * protocol violation the device must tolerate.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_status_skip_driver(struct virtio_dev *dev)
 {

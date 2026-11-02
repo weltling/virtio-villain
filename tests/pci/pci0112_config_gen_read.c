@@ -6,7 +6,7 @@
  * for device config reads. Read it and verify it does not cause
  * a device fault. The value itself is opaque.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_config_gen(struct virtio_dev *dev)
 {

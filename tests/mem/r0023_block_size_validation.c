@@ -7,7 +7,7 @@
  * at addr = region_addr + block_size - 1 (misaligned) to confirm
  * the device enforces alignment based on its advertised block_size.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_block_size_validation(struct virtio_dev *dev,
                                                     struct vring *vr)

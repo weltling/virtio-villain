@@ -7,7 +7,7 @@
  * a VIRTIO_NET_CTRL_MQ_RSS_CONFIG (class 4 cmd 1) and verify
  * the device rejects.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

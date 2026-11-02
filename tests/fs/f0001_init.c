@@ -8,7 +8,7 @@
  * writable fuse_out_header + fuse_init_out. The device must
  * forward the message and the daemon must respond.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_init(struct virtio_dev *dev,

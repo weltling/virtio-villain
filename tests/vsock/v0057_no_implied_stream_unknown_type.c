@@ -6,7 +6,7 @@
  * (e.g. 0xFFFF). With or without NO_IMPLIED_STREAM, the device
  * must not crash on unrecognized type values.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_unknown_type(struct virtio_dev *dev,
                                              struct vring *vr)

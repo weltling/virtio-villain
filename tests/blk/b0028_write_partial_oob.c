@@ -10,7 +10,7 @@
  * Spec 5.2.6.1: driver MUST NOT submit a request which would cause a
  * read or write beyond capacity.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_blk_write_partial_oob(struct virtio_dev *dev,

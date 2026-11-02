@@ -6,7 +6,7 @@
  * Spec 5.1.6.5.6.1: the device expects a valid number of queue pairs
  * (1 <= pairs <= max). Zero is invalid and must not crash the device.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_mq_zero(struct virtio_dev *dev,
                                            struct vring *vr)

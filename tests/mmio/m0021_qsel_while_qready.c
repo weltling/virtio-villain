@@ -8,7 +8,7 @@
  * device must keep the live queue intact and must not switch
  * the configuration of the previously enabled queue.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

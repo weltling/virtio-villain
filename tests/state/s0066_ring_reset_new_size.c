@@ -7,7 +7,7 @@
  * that may have been changed by the driver, like the maximum
  * queue size.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_ring_reset_new_size(struct virtio_dev *dev,
                                               struct vring *vr)

@@ -6,7 +6,7 @@
  * response descriptor has length 0. The device must not write
  * past the descriptor boundary.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_zero_resp_len(struct virtio_dev *dev,
                                             struct vring *vr)

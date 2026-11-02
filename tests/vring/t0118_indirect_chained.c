@@ -7,7 +7,7 @@
  * indirect descriptor itself chains header, data, and status via
  * nested NEXT. Verify the request completes.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 struct idesc {
     uint64_t addr;

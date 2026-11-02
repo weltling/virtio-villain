@@ -9,7 +9,7 @@
  * command rather than installing a broadcast as its station
  * address.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_mac_set_broadcast(struct virtio_dev *dev,
                                                 struct vring *vr)

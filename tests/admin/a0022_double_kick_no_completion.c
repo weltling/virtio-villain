@@ -7,7 +7,7 @@
  * the second kick is a no op when no new descriptors are
  * available. The command must complete exactly once.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_admin_double_kick(struct virtio_dev *dev,
                                             struct vring *vr)

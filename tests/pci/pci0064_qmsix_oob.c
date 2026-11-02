@@ -6,7 +6,7 @@
  * 0xFFFF means no vector. Setting it to a value larger than the
  * table size must be rejected (read back as 0xFFFF).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_qmsix_oob(struct virtio_dev *dev)
 {

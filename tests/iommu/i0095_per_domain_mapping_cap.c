@@ -6,7 +6,7 @@
  * MAP a single page at input_range.start of an attached
  * domain; this must succeed.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)

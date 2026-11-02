@@ -7,7 +7,7 @@
  * config that the driver can flip at runtime. Verify a
  * config region is present whenever the bit is offered.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)

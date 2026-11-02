@@ -6,7 +6,7 @@
  * has an in-flight request. Tests device handling of interrupt
  * routing changes during active I/O processing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_msix_change_inflight(struct virtio_dev *dev,
                                                    struct vring *vr)

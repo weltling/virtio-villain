@@ -8,7 +8,7 @@
  * device must neither dereference the null address nor mishandle the
  * empty segment, and must stay healthy.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "tests/packed/packed_util.h"
 
 static test_result_t test_packed_desc_addr_len_zero(struct virtio_dev *dev,

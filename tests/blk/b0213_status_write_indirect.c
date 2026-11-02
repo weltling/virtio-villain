@@ -10,7 +10,7 @@
  * fails partway through. The device must decline the request and return
  * the head to the used ring without crashing or wedging the queue.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_status_write_indirect(struct virtio_dev *dev,
                                                     struct vring *vr)

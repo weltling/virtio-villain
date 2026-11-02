@@ -6,7 +6,7 @@
  * not aligned to the device's preferred block size. Tests whether the
  * VMM validates alignment constraints without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_wz_unaligned(struct virtio_dev *dev,
                                            struct vring *vr)

@@ -7,7 +7,7 @@
  * requestq (queue 0). Per spec the device fills num_clocks and
  * sets status=OK.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_basic(struct virtio_dev *dev,
                                     struct vring *vr)

@@ -7,7 +7,7 @@
  * HOST_USO. Spec 5.1.6.2 says the host must reject a USO TX
  * frame in this case without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_uso4_no_feature(struct virtio_dev *dev,
                                                  struct vring *vr)

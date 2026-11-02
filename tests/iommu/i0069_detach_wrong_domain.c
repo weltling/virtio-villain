@@ -9,7 +9,7 @@
  *
  * Spec 5.13.5.2.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_detach_wrong_domain(struct virtio_dev *dev,

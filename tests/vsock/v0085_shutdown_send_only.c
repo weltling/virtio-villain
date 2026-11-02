@@ -5,7 +5,7 @@
  * Spec 5.10.6.6: SHUTDOWN with only VIRTIO_VSOCK_SHUTDOWN_SEND set
  * closes the send direction while leaving receive open.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_shutdown_send(struct virtio_dev *dev,
                                              struct vring *vr)

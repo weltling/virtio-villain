@@ -6,7 +6,7 @@
  * may not handle zero-length transfers, leading to division by zero
  * or assertion failures when computing sector counts.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_desc_len_zero(struct virtio_dev *dev,
                                         struct vring *vr)

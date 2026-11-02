@@ -8,7 +8,7 @@
  * passing while B0345 fails isolates the bug to sparse queue
  * activation.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 #define MSIX_ENABLE        (1u << 31)

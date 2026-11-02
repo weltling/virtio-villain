@@ -11,7 +11,7 @@
  * this is the positive capability query. Skips when the device does
  * not offer RSS_CONTEXT, as CH does not.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_rss_ctx_cap_get(struct virtio_dev *dev,
                                               struct vring *vr)

@@ -8,7 +8,7 @@
  * the operation rather than writing past the zone boundary.
  * Here we use sector = 0xFFFFFFFF to approximate a full condition.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_zone_append_full(struct virtio_dev *dev,
                                                struct vring *vr)

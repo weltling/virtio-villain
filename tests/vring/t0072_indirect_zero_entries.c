@@ -6,7 +6,7 @@
  * but the first entry has addr=0 and len=0. The indirect table
  * technically exists but contains no useful data.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_indirect_zero_valid(struct virtio_dev *dev,
                                               struct vring *vr)

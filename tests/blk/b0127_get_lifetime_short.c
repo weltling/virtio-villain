@@ -5,7 +5,7 @@
  * Submit a GET_LIFETIME request with a data buffer smaller than the
  * expected lifetime response structure.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_get_lifetime_short(struct virtio_dev *dev,
                                                  struct vring *vr)

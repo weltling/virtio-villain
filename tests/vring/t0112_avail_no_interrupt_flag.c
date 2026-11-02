@@ -8,7 +8,7 @@
  * and the device remains healthy. The test cannot directly verify
  * interrupt suppression (no IRQ handler) but exercises the flag path.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define VRING_AVAIL_F_NO_INTERRUPT 1
 

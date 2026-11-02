@@ -6,7 +6,7 @@
  * supported protocol). The daemon must reject or negotiate down
  * rather than crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_init_bad_version(struct virtio_dev *dev,

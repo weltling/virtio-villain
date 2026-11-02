@@ -9,7 +9,7 @@
  * The device must reject the reversed range rather than walking
  * an astronomically large span and exhausting host memory.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_map_reversed_range(struct virtio_dev *dev,

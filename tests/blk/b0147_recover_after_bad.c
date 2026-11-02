@@ -9,7 +9,7 @@
  * status OK, proving reset and reinit are idempotent recovery
  * paths even after the device saw a bad request.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_recover_after_bad(struct virtio_dev *dev,
                                                 struct vring *vr)

@@ -6,7 +6,7 @@
  * undefined command ID. Tests that the device rejects unknown commands
  * within a valid class without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_rx_bad_cmd(struct virtio_dev *dev,
                                               struct vring *vr)

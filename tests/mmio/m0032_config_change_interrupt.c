@@ -8,7 +8,7 @@
  * the status register; if config change is signalled, ack it
  * and read again to ensure the bit clears.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

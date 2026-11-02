@@ -15,7 +15,7 @@
  * response, then waits for the alarmq used ring to advance and
  * verifies the notification message type and clock id.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_alarm_fire(struct virtio_dev *dev)
 {

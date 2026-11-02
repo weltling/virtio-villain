@@ -6,7 +6,7 @@
  * entries indicating pages to return to the guest. Submit one
  * valid PFN and verify the device consumes it.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_deflate_valid(struct virtio_dev *dev)
 {

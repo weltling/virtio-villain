@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-#include "msix_helpers.h"
+#include "lib/msix_helpers.h"
 
 static test_result_t check(struct msix_test *ctx)
 {

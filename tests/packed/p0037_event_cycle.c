@@ -9,7 +9,7 @@
  * batch regardless of suppression state since suppression only
  * affects whether a notification is raised, not whether work runs.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static int submit_one(struct virtio_dev *dev, struct vring_packed *vr,
                       uint64_t sector)

@@ -6,7 +6,7 @@
  * driver to a device notification. Sending one without a prior
  * notification is a protocol violation; the daemon must not crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_notify_reply_unsolicited(struct virtio_dev *dev,

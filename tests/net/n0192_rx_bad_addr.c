@@ -6,7 +6,7 @@
  * far outside guest RAM. Any write attempt must fail safely rather
  * than pass an unchecked address into the host translation path.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_rx_bad_addr(struct virtio_dev *dev,
                                           struct vring *vr)

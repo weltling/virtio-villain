@@ -7,7 +7,7 @@
  * without VRING_DESC_F_WRITE on the RX queue is malformed and
  * must be rejected or ignored.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_rx_readable(struct virtio_dev *dev,
                                               struct vring *vr)

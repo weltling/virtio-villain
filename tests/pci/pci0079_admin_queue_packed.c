@@ -6,7 +6,7 @@
  * Spec v1.3 4.1.4.3.1 + 2.8: packed virtqueues are allowed for
  * admin queues when VIRTIO_F_RING_PACKED is negotiated.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_admin_packed(struct virtio_dev *dev,
                                            struct vring *vr)

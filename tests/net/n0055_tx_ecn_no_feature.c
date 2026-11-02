@@ -5,7 +5,7 @@
  * Set gso_type to GSO_TCPV4_ECN (3) in the TX header without
  * negotiating VIRTIO_NET_F_HOST_ECN. The device should reject.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_ecn_no_feature(struct virtio_dev *dev,
                                                 struct vring *vr)

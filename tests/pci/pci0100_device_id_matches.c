@@ -6,7 +6,7 @@
  * Read the PCI device ID from config space and verify it matches
  * the expected value for a block device (0x1042).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_pci_device_id(struct virtio_dev *dev,

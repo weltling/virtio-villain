@@ -11,7 +11,7 @@
  * either OK (the zone is conventional and allows random writes) or the
  * reserved ZONE_UNALIGNED_WP code. Skips when the device is not zoned.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_zone_write_unaligned_wp(struct virtio_dev *dev,
                                                       struct vring *vr)

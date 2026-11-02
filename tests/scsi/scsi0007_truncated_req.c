@@ -6,7 +6,7 @@
  * a full virtio_scsi_cmd_req, so the device reads a truncated header.
  * The host must stay alive; the queue may reject or wedge.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_scsi_truncated_req(struct virtio_dev *dev,
                                              struct vring *vr)

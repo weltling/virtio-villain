@@ -6,7 +6,7 @@
  * The device must reject the invalid domain rather than creating an
  * unbounded mapping structure.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_attach_invalid_domain(struct virtio_dev *dev,

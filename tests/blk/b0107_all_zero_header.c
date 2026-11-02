@@ -5,7 +5,7 @@
  * Sanity check: a completely zeroed header is type=IN, sector 0.
  * This should succeed as a normal read of sector 0.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_all_zero_header(struct virtio_dev *dev,
                                               struct vring *vr)

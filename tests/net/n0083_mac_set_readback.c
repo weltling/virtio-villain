@@ -8,7 +8,7 @@
  * waits for the ack, then reads the mac field and verifies the
  * device updated config space accordingly.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_mac_set_readback(struct virtio_dev *dev,
                                                struct vring *vr)

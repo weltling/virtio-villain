@@ -7,7 +7,7 @@
  * generation twice; with no config update both reads should be
  * equal.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_config_gen(struct virtio_dev *dev)
 {

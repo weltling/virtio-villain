@@ -5,7 +5,7 @@
  * Submit two GET_ID requests as separate descriptor chains in one
  * avail ring update, testing batch processing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_get_id_batch(struct virtio_dev *dev,
                                            struct vring *vr)

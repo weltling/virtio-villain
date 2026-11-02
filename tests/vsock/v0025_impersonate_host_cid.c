@@ -6,7 +6,7 @@
  * guest CID (3). The device must detect the CID mismatch and not
  * forward the packet as if it came from the host.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_impersonate_host(struct virtio_dev *dev,
                                                  struct vring *vr)

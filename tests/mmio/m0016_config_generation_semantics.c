@@ -5,7 +5,7 @@
  * The ConfigGeneration register provides atomicity for config reads.
  * Verify it reads consistently and doesn't spuriously change.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

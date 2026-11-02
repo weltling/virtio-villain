@@ -6,7 +6,7 @@
  * The VMM must translate this GPA to read the indirect table; if it
  * doesn't bounds-check, it may read from arbitrary host memory.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_indirect_addr_oob(struct virtio_dev *dev,
                                             struct vring *vr)

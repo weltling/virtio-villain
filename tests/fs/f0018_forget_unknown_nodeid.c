@@ -14,7 +14,7 @@
  * completion is acceptable for fire and forget messages).
  * Adapted from QEMU virtio-9p-test flush/cancel patterns.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_forget_unknown(struct virtio_dev *dev,

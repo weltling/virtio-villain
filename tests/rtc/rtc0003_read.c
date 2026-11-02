@@ -5,7 +5,7 @@
  * VIRTIO_RTC_REQ_READ for clock id 0. The device fills
  * clock_reading in nanoseconds and sets status=OK.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_read(struct virtio_dev *dev,
                                    struct vring *vr)

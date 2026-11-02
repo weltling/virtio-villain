@@ -6,7 +6,7 @@
  * unaligned register access handling. Some VMMs may assume all
  * accesses are naturally aligned and crash on unaligned reads.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_pci_bar_unaligned(struct virtio_dev *dev,

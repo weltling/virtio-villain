@@ -7,7 +7,7 @@
  * single descriptor BLK_IN chains back to back and verify
  * both heads become used.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static int submit(struct virtio_dev *dev, struct vring_packed *vr,
                   uint64_t sector, uint16_t *head_out, uint8_t *wrap_out)

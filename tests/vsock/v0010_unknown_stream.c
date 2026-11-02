@@ -5,7 +5,7 @@
  * Send data on a stream that was never connected (no prior REQUEST/
  * RESPONSE handshake). The device should reject it.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_unknown_stream(struct virtio_dev *dev,
                                                struct vring *vr)

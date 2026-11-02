@@ -9,7 +9,7 @@
  * deviation from spec 5.3.5. Otherwise this test passes by
  * confirming the layout.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_ctrl_vq_no_multiport(struct virtio_dev *dev)
 {

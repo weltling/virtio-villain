@@ -6,7 +6,7 @@
  * alignment_offset, min_io_size, opt_io_size) if available.
  * Verify they are accessible and consistent.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 /* Offsets in virtio_blk_config for topology fields */
 #define CFG_CAPACITY_OFF       0   /* uint64 */

@@ -6,7 +6,7 @@
  * message address (APIC range) and message data. Verify the device
  * accepts the configuration.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_pci_msi_enable(struct virtio_dev *dev,

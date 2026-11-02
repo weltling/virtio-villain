@@ -8,7 +8,7 @@
  * The guest watches device_status and asserts the device does not
  * raise FAILED or NEEDS_RESET and that DRIVER_OK remains set.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "tests/mmio/mmio_helpers.h"
 
 static test_result_t test_admin_survives_snapshot(struct virtio_dev *dev,

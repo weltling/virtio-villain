@@ -10,7 +10,7 @@
  * consumed and completed with status OK. Skips when the device does
  * not offer the feature.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_any_layout_read_completes(struct virtio_dev *dev,
                                                     struct vring *vr)

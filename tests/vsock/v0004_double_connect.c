@@ -5,7 +5,7 @@
  * Send two CONNECT requests for the same (src_port, dst_port) pair.
  * The second must get an error rather than creating duplicate state.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_double_connect(struct virtio_dev *dev,
                                                struct vring *vr)

@@ -6,7 +6,7 @@
  * MAY use less than the entire buffer length per spec 5.4.6.2,
  * but must not write past the (non-existent) buffer or crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rng_zero_len(struct virtio_dev *dev,
                                        struct vring *vr)

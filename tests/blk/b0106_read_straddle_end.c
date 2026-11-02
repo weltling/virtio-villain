@@ -5,7 +5,7 @@
  * Spec 5.2.6.1: sector + data_len/512 must not exceed capacity.
  * Read at sector capacity-1 with 1024 bytes (2 sectors) of data.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_read_straddle_end(struct virtio_dev *dev,
                                                 struct vring *vr)

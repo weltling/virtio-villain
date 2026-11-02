@@ -5,7 +5,7 @@
  * Write 512 bytes of 0x00 then read back and verify. Tests the
  * device distinguishes written zeros from uninitialized storage.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_zeros(struct virtio_dev *dev, struct vring *vr)
 {

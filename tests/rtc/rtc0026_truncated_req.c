@@ -6,7 +6,7 @@
  * is smaller than sizeof(rtc_req_read). The device must detect the
  * short request and not read beyond the descriptor.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_truncated_req(struct virtio_dev *dev,
                                             struct vring *vr)

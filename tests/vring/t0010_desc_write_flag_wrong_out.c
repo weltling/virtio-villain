@@ -8,7 +8,7 @@
  * the mismatch may read from a buffer it was supposed to write, or
  * corrupt guest memory.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_desc_write_flag_wrong_out(struct virtio_dev *dev,
                                                     struct vring *vr)

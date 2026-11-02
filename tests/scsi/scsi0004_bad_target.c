@@ -6,7 +6,7 @@
  * device completes the request with a BAD_TARGET response rather than
  * stalling or faulting.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_scsi_bad_target(struct virtio_dev *dev,
                                           struct vring *vr)

@@ -5,7 +5,7 @@
  * Spec 5.2.6: ioprio is defined but typically must be 0
  * unless VIRTIO_BLK_F_RO etc. Submit with ioprio = UINT32_MAX.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_write_ioprio_max(struct virtio_dev *dev,
                                                struct vring *vr)

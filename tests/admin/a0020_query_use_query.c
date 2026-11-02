@@ -9,7 +9,7 @@
  * time. Submit the three requests as separate chains in one
  * batch and verify all three complete.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define ADMIN_OPCODE_LIST_QUERY 0x0001
 #define ADMIN_OPCODE_LIST_USE   0x0000

@@ -6,7 +6,7 @@
  * must follow F_NEXT and not reorder. Submit a 3 descriptor
  * BLK_IN chain; verify completion at the head id.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring_packed *vr)
 {

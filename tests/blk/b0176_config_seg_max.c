@@ -7,7 +7,7 @@
  * non zero (a device that advertises the feature must support at
  * least one segment per request).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 /* seg_max at offset 12 (after capacity[8]+size_max[4]) */
 #define BLK_CFG_SEG_MAX_OFFSET 12

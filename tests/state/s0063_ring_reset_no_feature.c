@@ -6,7 +6,7 @@
  * negotiated VIRTIO_F_RING_RESET. Spec 4.1.4.3.2: the driver MUST
  * NOT write 0 to queue_enable. The device should ignore or reject it.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_ring_reset_no_feature(struct virtio_dev *dev)
 {

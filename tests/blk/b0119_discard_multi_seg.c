@@ -6,7 +6,7 @@
  * Spec 5.2.6.2: max_discard_seg limits how many segments can appear.
  * Submit more than one segment to exercise batched discard parsing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_discard_max_segments(struct virtio_dev *dev,
                                                    struct vring *vr)

@@ -6,7 +6,7 @@
  * multiple queues) and kick both before waiting for completion.
  * Tests device handling of concurrent queue processing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_concurrent_kicks_two_queues(struct virtio_dev *dev,
                                                      struct vring *vr)

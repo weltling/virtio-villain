@@ -6,7 +6,7 @@
  * provide only a 64 byte data descriptor. The device must not read
  * beyond the actual descriptor length.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_tx_len_mismatch(struct virtio_dev *dev,
                                                 struct vring *vr)

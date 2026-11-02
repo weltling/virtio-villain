@@ -6,7 +6,7 @@
  * GUEST_USO6 or HOST_USO. Spec v1.3 5.1.6.2: the device must
  * reject USO frames when the feature is not negotiated.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_uso6_no_feature(struct virtio_dev *dev,
                                                  struct vring *vr)

@@ -6,7 +6,7 @@
  * driver after DRIVER_OK. Toggle it 0->1->0 anyway and verify
  * the device does not crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_qenable_toggle(struct virtio_dev *dev)
 {

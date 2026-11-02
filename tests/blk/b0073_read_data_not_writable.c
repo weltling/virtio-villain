@@ -5,7 +5,7 @@
  * For VIRTIO_BLK_T_IN (read), the data descriptor must be
  * device-writable. Submit a READ where the data lacks WRITE flag.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_read_data_not_writable(struct virtio_dev *dev,
                                                      struct vring *vr)

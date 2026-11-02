@@ -6,7 +6,7 @@
  * With a small queue_size, this tests wrap counter behavior across
  * several full rotations.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_multi_wrap(struct virtio_dev *dev,
                                             struct vring_packed *vr)

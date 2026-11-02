@@ -6,7 +6,7 @@
  * a read beyond capacity. If the device detects this, it should
  * return S_IOERR. Submit a read at sector = capacity (one past end).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_read_oob_status(struct virtio_dev *dev,
                                               struct vring *vr)

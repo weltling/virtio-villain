@@ -6,7 +6,7 @@
  * beyond the queue size. The device must refuse the out of range link
  * without harm to the host.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_oob_next(struct virtio_dev *dev,
                                           struct vring *vr)

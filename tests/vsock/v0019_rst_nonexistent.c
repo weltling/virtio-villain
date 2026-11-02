@@ -6,7 +6,7 @@
  * The device must handle this gracefully - it should not panic when
  * asked to tear down a connection that doesn't exist in its state table.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_rst_nonexistent(struct virtio_dev *dev,
                                                 struct vring *vr)

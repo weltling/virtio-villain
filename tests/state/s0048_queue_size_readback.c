@@ -7,7 +7,7 @@
  * a power of two within range the read must return that value. The
  * device must not silently rewrite the field to its preferred size.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_queue_size_readback(struct virtio_dev *dev)
 {

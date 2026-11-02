@@ -6,7 +6,7 @@
  *   le32 num_request_queues }. Confirm device_cfg_length is at
  * least 40 bytes.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

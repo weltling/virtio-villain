@@ -8,7 +8,7 @@
  * it may corrupt page zero or trigger a null-pointer dereference if the
  * host has mmap_min_addr protections.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_desc_addr_zero(struct virtio_dev *dev,
                                          struct vring *vr)

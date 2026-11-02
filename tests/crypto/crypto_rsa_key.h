@@ -8,7 +8,7 @@
 #ifndef VV_CRYPTO_RSA_KEY_H
 #define VV_CRYPTO_RSA_KEY_H
 
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define RSA_KEY_BYTES 128
 

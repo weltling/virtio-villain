@@ -6,7 +6,7 @@
  * Tests that config change notifications or reads don't corrupt
  * device state during concurrent reset.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_config_change_reset_race(struct virtio_dev *dev)
 {

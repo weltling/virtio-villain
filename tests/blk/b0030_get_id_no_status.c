@@ -6,7 +6,7 @@
  * no status descriptor. The device needs the status byte to report
  * success/failure; without it the chain is malformed.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_get_id_no_status(struct virtio_dev *dev,
                                                struct vring *vr)

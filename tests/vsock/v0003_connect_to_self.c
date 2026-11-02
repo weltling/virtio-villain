@@ -5,7 +5,7 @@
  * Submit a CONNECT where src_cid == dst_cid (connecting to self).
  * The device must reject this as an invalid connection.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_connect_self(struct virtio_dev *dev,
                                              struct vring *vr)

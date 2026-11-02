@@ -8,7 +8,7 @@
  * still bring it back to a clean state. This catches devices
  * that latch reserved bits or wedge on undefined values.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_status_set_all_bits(struct virtio_dev *dev)
 {

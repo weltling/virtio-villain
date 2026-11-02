@@ -5,7 +5,7 @@
  * Attempt to write to device-read-only configuration fields such as
  * capacity. Device must not change its capacity.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_write_ro_config(struct virtio_dev *dev)
 {

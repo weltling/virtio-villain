@@ -10,7 +10,7 @@
  * intended queue. Read every queue's notify_off and verify the
  * derived offset stays within the notification region.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_notify_off_in_range(struct virtio_dev *dev)
 {

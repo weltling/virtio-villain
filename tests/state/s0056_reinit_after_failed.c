@@ -9,7 +9,7 @@
  * then walk the device through ACKNOWLEDGE then DRIVER then
  * FEATURES_OK and verify each transition takes effect.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_reinit_after_failed(struct virtio_dev *dev)
 {

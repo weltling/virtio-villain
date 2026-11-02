@@ -8,7 +8,7 @@
  * Send RSS_CONFIG with all hash_types bits set (0xFFFFFFFF),
  * including those not in supported_hash_types.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rss_unsupported_hash(struct virtio_dev *dev)
 {

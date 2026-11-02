@@ -5,7 +5,7 @@
  * Send hash config with hash_key_length set to 0. The device
  * should reject or handle gracefully per spec v1.3 5.1.6.5.4.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_hash_bad_key(struct virtio_dev *dev,
                                            struct vring *vr)

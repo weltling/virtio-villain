@@ -6,7 +6,7 @@
  * the indirect flag but gives the table a zero length, so it holds no
  * entries. The device must handle the empty table without harm.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_indirect_zero_len(struct virtio_dev *dev,
                                                    struct vring *vr)

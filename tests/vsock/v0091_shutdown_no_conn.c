@@ -6,7 +6,7 @@
  * connected. The device should respond with RST or silently drop
  * it, but must not crash or corrupt state.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_shutdown_no_conn(struct virtio_dev *dev,
                                                 struct vring *vr)

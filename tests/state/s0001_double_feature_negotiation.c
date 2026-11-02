@@ -11,7 +11,7 @@
  * inconsistent internal state where it believes different features are
  * active than what was originally agreed upon.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_double_feature_negotiation(struct virtio_dev *dev,
                                                      struct vring *vr)

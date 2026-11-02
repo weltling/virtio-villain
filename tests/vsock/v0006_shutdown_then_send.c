@@ -5,7 +5,7 @@
  * Send a SHUTDOWN followed by more data on the same connection.
  * The device must reject post-shutdown data rather than processing it.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_shutdown_then_send(struct virtio_dev *dev,
                                                    struct vring *vr)

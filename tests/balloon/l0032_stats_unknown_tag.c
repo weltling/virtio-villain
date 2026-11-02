@@ -8,7 +8,7 @@
  * tag. The device must accept or drop the reply gracefully
  * without indexing past an internal tag table.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_stats_unknown_tag(struct virtio_dev *dev,
                                                     struct vring *vr)

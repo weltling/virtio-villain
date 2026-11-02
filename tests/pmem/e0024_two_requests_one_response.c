@@ -10,7 +10,7 @@
  * than picking one of the two requests or treating the second
  * descriptor as response storage.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pmem_two_requests_one_response(struct virtio_dev *dev,
                                                          struct vring *vr)

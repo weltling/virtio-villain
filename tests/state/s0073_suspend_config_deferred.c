@@ -7,7 +7,7 @@
  * Spec 3.2: if changes occur during suspended period, the device
  * MUST NOT send config change notifications until resume.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_suspend_cfg_deferred(struct virtio_dev *dev,
                                                struct vring *vr)

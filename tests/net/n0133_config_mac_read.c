@@ -6,7 +6,7 @@
  * bytes of device config contain the MAC address. Read all 6
  * bytes and verify not all zeros and not all ones (broadcast).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_config_mac(struct virtio_dev *dev)
 {

@@ -7,7 +7,7 @@
  * data_length against the actual descriptor. The device must
  * not allocate unbounded memory or crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_admin_max_data(struct virtio_dev *dev,
                                          struct vring *vr)

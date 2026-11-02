@@ -7,7 +7,7 @@
  * len to be a non-zero multiple of 16. The device must reject the
  * request.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_tx_indirect_zero_len(struct virtio_dev *dev,
                                                        struct vring *vr)

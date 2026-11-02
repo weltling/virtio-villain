@@ -7,7 +7,7 @@
  * Verify the reassembled data matches. Tests device write side
  * scatter across a descriptor chain.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_scatter_read(struct virtio_dev *dev,
                                            struct vring *vr)

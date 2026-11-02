@@ -10,7 +10,7 @@
  * and verifies the device consumes it and stays healthy.
  * Skips when the device does not offer free page hinting.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_free_page_hint_stop(struct virtio_dev *dev)
 {

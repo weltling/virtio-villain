@@ -7,7 +7,7 @@
  * descriptor is neither available nor used - an invalid state for
  * submission. The device must handle this gracefully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_both_clear(struct virtio_dev *dev,
                                             struct vring_packed *vr)

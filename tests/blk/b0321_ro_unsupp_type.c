@@ -9,7 +9,7 @@
  * can tell "not implemented" from "media error". The sidecar launches
  * the VM with a read only disk.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 /* A request type that the spec does not assign. */
 #define UNASSIGNED_TYPE 0x7fu

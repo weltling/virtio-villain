@@ -10,7 +10,7 @@
  * the wrap counter incorrectly across one rotation will eventually
  * stop seeing new descriptors.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_many_wraps(struct virtio_dev *dev,
                                             struct vring_packed *vr)

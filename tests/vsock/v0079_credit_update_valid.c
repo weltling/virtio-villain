@@ -7,7 +7,7 @@
  * buf_alloc and fwd_cnt on an established connection. The device must
  * consume the packet without error.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_credit_update(struct virtio_dev *dev,
                                               struct vring *vr)

@@ -7,7 +7,7 @@
  * access. This test performs 8-bit and 16-bit accesses to the
  * device configuration space area. The VMM must not crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

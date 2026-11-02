@@ -7,7 +7,7 @@
  * message with an undefined event type must not crash the device.
  * If MULTIPORT is not offered, skip.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_ctrl_unknown(struct virtio_dev *dev)
 {

@@ -7,7 +7,7 @@
  * descriptors as hints to the device about memory that is free but
  * not yet returned. The device consumes them via the used ring.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_free_page_hint(struct virtio_dev *dev)
 {

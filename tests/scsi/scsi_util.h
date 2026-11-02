@@ -6,7 +6,7 @@
 #ifndef VV_SCSI_UTIL_H
 #define VV_SCSI_UTIL_H
 
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "tests/mmio/mmio_helpers.h"
 
 #include <time.h>

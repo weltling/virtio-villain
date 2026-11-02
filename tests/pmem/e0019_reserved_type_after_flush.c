@@ -7,7 +7,7 @@
  * defines only TYPE_FLUSH (0); reserved types must yield EIO and
  * the next flush must still complete OK.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pmem_reserved_then_flush(struct virtio_dev *dev,
                                                    struct vring *vr)

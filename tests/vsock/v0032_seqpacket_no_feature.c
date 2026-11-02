@@ -6,7 +6,7 @@
  * VIRTIO_VSOCK_F_SEQPACKET. Tests device handling of unsupported
  * transport types.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_seqpacket_no_feature(struct virtio_dev *dev,
                                                      struct vring *vr)

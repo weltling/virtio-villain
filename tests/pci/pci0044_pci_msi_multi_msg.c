@@ -6,7 +6,7 @@
  * to request more vectors than available (exceeding Multiple
  * Message Capable). The device must clamp or reject gracefully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_pci_msi_multi_msg(struct virtio_dev *dev,

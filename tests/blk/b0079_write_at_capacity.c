@@ -9,7 +9,7 @@
  * valid sector). The write touches sector [capacity, capacity+1)
  * which is beyond the device.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_write_at_capacity(struct virtio_dev *dev,
                                                 struct vring *vr)

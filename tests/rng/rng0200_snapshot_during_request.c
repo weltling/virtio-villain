@@ -7,7 +7,7 @@
  * device does not raise FAILED or NEEDS_RESET and that DRIVER_OK
  * remains set on exit.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "tests/mmio/mmio_helpers.h"
 
 static test_result_t test_rng_survives_snapshot(struct virtio_dev *dev,

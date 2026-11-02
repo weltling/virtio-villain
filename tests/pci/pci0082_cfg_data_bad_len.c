@@ -6,7 +6,7 @@
  * accesses. Set length to 3 (invalid) and attempt a read/write.
  * The device must reject the malformed access.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_pci_cfg_bad_len(struct virtio_dev *dev,

@@ -10,7 +10,7 @@
  * corrupt its own registers. The device must reject or handle
  * the non RAM target cleanly.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pmem_resp_in_bar(struct virtio_dev *dev,
                                            struct vring *vr)

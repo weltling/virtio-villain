@@ -5,7 +5,7 @@
  * Submit a ZONE_REPORT command with report_size (nr_zones) set to 0.
  * Tests device handling of a zero-length zone report request.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_zone_report_zero(struct virtio_dev *dev,
                                                struct vring *vr)

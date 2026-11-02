@@ -8,7 +8,7 @@
  * READ_CROSS chain in the same batch and verify both complete
  * without confusion between message types.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_read_and_cross(struct virtio_dev *dev,
                                              struct vring *vr)

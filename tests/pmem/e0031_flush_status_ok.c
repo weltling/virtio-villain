@@ -6,7 +6,7 @@
  * with ret=0 on success. Issue a flush and assert the response
  * field is zero rather than just checking the used ring advanced.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pmem_flush_status(struct virtio_dev *dev,
                                             struct vring *vr)

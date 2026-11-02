@@ -6,7 +6,7 @@
  * device handles it safely. Spec v1.3 2.12: driver MUST handle a
  * command error with a reserved status code gracefully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 /* Completely invalid opcode in the reserved range */
 #define ADMIN_CMD_RESERVED 0xFFFF

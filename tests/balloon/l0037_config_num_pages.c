@@ -7,7 +7,7 @@
  * driver). Read both and verify num_pages is accessible. The actual
  * field starts at 0 before the driver inflates anything.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_config_read(struct virtio_dev *dev)
 {

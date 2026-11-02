@@ -11,7 +11,7 @@
  * submit another request, and verify the queue bit fires. If the
  * device does not support the feature, skip.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static int submit_one(struct virtio_dev *dev, struct vring *vr,
                       uint16_t base, uint16_t avail_slot)

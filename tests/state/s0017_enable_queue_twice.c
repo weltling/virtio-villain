@@ -6,7 +6,7 @@
  * The spec requires queue_enable transitions from 0 to 1 only once.
  * Writing 1 again after it's already enabled is a protocol violation.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_enable_queue_twice(struct virtio_dev *dev,
                                              struct vring *vr)

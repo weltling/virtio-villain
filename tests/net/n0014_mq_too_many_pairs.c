@@ -6,7 +6,7 @@
  * max_virtqueue_pairs. Spec 5.1.6.5.6.1: driver MUST NOT request
  * more queue pairs than max_virtqueue_pairs.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_mq_too_many_pairs(struct virtio_dev *dev,
                                                 struct vring *vr)

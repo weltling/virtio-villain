@@ -7,7 +7,7 @@
  * The device must accept the request and stop delivering
  * NOTIF_ALARM notifications for that clock.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_alarm_disable(struct virtio_dev *dev,
                                             struct vring *vr)

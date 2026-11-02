@@ -8,7 +8,7 @@
  * aligned prefix without dereferencing the trailing byte as a
  * new page.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_page_report_misaligned(struct virtio_dev *dev,
                                                          struct vring *vr)

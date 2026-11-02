@@ -11,7 +11,7 @@
  * stale split queue state (desc/avail/used pointers, size calculations)
  * may crash or misinterpret the packed descriptors.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_split_to_packed_reinit(struct virtio_dev *dev,
                                                  struct vring *vr)

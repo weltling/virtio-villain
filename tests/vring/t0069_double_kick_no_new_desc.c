@@ -6,7 +6,7 @@
  * posting anything new. The device must handle the duplicate notification
  * gracefully without crashing or re-processing old descriptors.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_double_kick(struct virtio_dev *dev,
                                       struct vring *vr)

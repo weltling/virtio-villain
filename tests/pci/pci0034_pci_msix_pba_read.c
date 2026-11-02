@@ -6,7 +6,7 @@
  * Submit multiple requests rapidly and read the ISR register
  * while completions are pending to exercise the interrupt path.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_msix_pba_read(struct virtio_dev *dev,
                                             struct vring *vr)

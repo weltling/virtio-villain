@@ -6,7 +6,7 @@
  * Spec v1.3 5.1.6.2: csum_start must not exceed the packet length.
  * Device should detect and reject this malformed packet.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_uso_csum_oob(struct virtio_dev *dev,
                                               struct vring *vr)

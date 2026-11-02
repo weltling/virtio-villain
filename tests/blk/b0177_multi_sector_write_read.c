@@ -6,7 +6,7 @@
  * 8 sectors back in one request and verify byte by byte. Tests
  * the device handles multi-sector I/O correctly.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_multi_sector(struct virtio_dev *dev,
                                            struct vring *vr)

@@ -5,7 +5,7 @@
  * Reset the device (status = 0) and then send a queue notification.
  * After reset, the device must not process any queue activity.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_kick_after_reset(struct virtio_dev *dev)
 {

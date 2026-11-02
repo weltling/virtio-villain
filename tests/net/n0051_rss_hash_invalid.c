@@ -6,7 +6,7 @@
  * virtio_net_hdr (if the device supports hash reporting). With
  * an invalid hash type value, the device should ignore or reject.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_rss_hash_invalid(struct virtio_dev *dev,
                                                struct vring *vr)

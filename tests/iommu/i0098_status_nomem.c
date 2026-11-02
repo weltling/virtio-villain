@@ -6,7 +6,7 @@
  * be rejected. Submit a 2 MB MAP at virt_start = 0 in a fresh
  * domain.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)

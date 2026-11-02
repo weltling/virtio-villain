@@ -6,7 +6,7 @@
  * 5.5.6.1. Submit one with VRING_DESC_F_WRITE set; device must
  * reject the violation.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_writable_flag(struct virtio_dev *dev,
                                                 struct vring *vr)

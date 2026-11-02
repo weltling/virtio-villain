@@ -10,7 +10,7 @@
  * test can still run. Most valuable under an ASan VMM. Skips on Cloud
  * Hypervisor and when the cipher service is not advertised.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define BOGUS_DATA_OPCODE 0xbeefu
 

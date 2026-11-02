@@ -11,7 +11,7 @@
  * and when the backend cannot perform the algorithm; passes under a QEMU
  * with a crypto library.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 /* AES-128-CBC known answer vector (single block, no padding). */
 static const uint8_t kat_key[16] = {

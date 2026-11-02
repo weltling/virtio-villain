@@ -5,7 +5,7 @@
  * Submit a DISCARD request with more segments than max_discard_seg.
  * The device must reject the oversized request.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_discard_too_many(struct virtio_dev *dev,
                                                struct vring *vr)

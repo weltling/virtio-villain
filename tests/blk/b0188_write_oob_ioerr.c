@@ -6,7 +6,7 @@
  * a write beyond capacity. Submit a write at sector = capacity.
  * The device must return S_IOERR.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_write_oob(struct virtio_dev *dev,
                                         struct vring *vr)

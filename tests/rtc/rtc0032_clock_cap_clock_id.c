@@ -7,7 +7,7 @@
  * clock table out of bounds. This probes the capability path (rather
  * than the time read path covered by RTC0022) with clock_id 0xFFFF.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_clock_cap_bad_id(struct virtio_dev *dev,
                                                struct vring *vr)

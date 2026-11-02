@@ -8,7 +8,7 @@
  * Submit two FLUSH requests simultaneously on the same queue to
  * stress flush ordering/completion logic.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_double_flush(struct virtio_dev *dev,
                                            struct vring *vr)

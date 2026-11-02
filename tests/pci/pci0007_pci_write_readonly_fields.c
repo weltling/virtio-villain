@@ -8,7 +8,7 @@
  * device-writable only), num_queues, config_generation.
  * Spec 4.1.4.8.1: these fields are read-only for the driver.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_write_readonly_fields(struct virtio_dev *dev,
                                                     struct vring *vr)

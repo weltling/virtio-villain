@@ -11,7 +11,7 @@
  * when retiring a descriptor. The device must reject the
  * impossible used ring base or stay safely idle on the kick.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_state_queue_device_in_bar(struct virtio_dev *dev,
                                                     struct vring *vr)

@@ -6,7 +6,7 @@
  * Set used.idx and used.ring[0] to bogus values before submitting a
  * request. A correct VMM ignores guest writes to device-owned memory.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_used_ring_guest_write(struct virtio_dev *dev,
                                                 struct vring *vr)

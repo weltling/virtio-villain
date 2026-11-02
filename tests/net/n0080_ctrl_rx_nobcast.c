@@ -6,7 +6,7 @@
  * Spec 5.1.6.5.1: If VIRTIO_NET_F_CTRL_RX is negotiated, the driver
  * can disable broadcast reception.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_rx_nobcast(struct virtio_dev *dev,
                                               struct vring *vr)

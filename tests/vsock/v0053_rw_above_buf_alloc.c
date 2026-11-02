@@ -7,7 +7,7 @@
  * device must apply back pressure or close the stream rather than
  * silently overrunning the receive buffer.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_rw_above_buf_alloc(struct virtio_dev *dev,
                                                    struct vring *vr)

@@ -7,7 +7,7 @@
  * not write past the 1 byte status descriptor. The sidecar launches the
  * VM with a read only disk.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define CANARY 0xA5u
 /* Bytes after the status byte that the device must leave untouched. */

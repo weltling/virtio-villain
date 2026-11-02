@@ -11,7 +11,7 @@
  * VMM with akcipher enabled. Skips on Cloud Hypervisor, when the
  * akcipher service is not advertised, and when RSA is not advertised.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define BOGUS_KEYTYPE 0xdeadu
 

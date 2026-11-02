@@ -6,7 +6,7 @@
  * targeting the same sectors. Tests device handling of conflicting
  * erase operations with different security guarantees.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_secure_erase_discard(struct virtio_dev *dev,
                                                    struct vring *vr)

@@ -6,7 +6,7 @@
  * format. The device must accept the descriptor and complete
  * without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_watchdog_packed_ping(struct virtio_dev *dev,
                                                struct vring_packed *vr)

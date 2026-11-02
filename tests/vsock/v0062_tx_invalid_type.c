@@ -6,7 +6,7 @@
  * (undefined transport operation). The device must reject the
  * packet rather than misinterpreting the control field.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_tx_invalid_type(struct virtio_dev *dev,
                                                 struct vring *vr)

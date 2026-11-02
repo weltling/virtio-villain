@@ -8,7 +8,7 @@
  * generally not supported (only full reset via writing 0).
  * This tests whether the device handles partial status regression.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_clear_driver_ok(struct virtio_dev *dev,
                                           struct vring *vr)

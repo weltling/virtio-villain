@@ -12,7 +12,7 @@
  * and the second is well formed. The device must reject the range or stay
  * alive.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_rw_wrap_stale(struct virtio_dev *dev,
                                               struct vring *vr)

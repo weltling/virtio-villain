@@ -10,7 +10,7 @@
  * intermediate state past a reset will misbehave on the second
  * init pass.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_reset_between_features_ok_driver_ok(
     struct virtio_dev *dev, struct vring *vr)

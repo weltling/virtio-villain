@@ -6,7 +6,7 @@
  * The device should reject it rather than treating it as a valid
  * group type.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_admin_list_use_bad_group(struct virtio_dev *dev,
                                                    struct vring *vr)

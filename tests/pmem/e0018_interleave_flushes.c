@@ -8,7 +8,7 @@
  * see every flush complete in order. This catches devices that
  * batch flushes incorrectly when other activity happens.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static int do_flush(struct virtio_dev *dev, struct vring *vr,
                     uint16_t base, uint16_t avail_slot)

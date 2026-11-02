@@ -7,7 +7,7 @@
  * A zero length buffer is a degenerate case that must not crash
  * or confuse the console output path.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_tx_zero(struct virtio_dev *dev,
                                           struct vring *vr)

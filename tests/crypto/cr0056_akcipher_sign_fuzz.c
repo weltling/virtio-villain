@@ -12,7 +12,7 @@
  * akcipher enabled. Skips on Cloud Hypervisor, when the akcipher service
  * is not advertised, and when RSA is not advertised.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_crypto_akcipher_sign_fuzz(struct virtio_dev *dev,
                                                     struct vring *vr)

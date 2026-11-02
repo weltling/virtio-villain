@@ -9,7 +9,7 @@
  * verify both read zero, then restore queue_select to 0 and read
  * queue_size to confirm the device still responds normally.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_qsel_past_num(struct virtio_dev *dev)
 {

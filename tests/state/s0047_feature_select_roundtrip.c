@@ -8,7 +8,7 @@
  * the driver wrote. Many VMMs implement the field as state on the
  * device side, so a write read cycle catches truncation or aliasing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_feature_select_roundtrip(struct virtio_dev *dev)
 {

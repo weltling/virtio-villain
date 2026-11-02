@@ -6,7 +6,7 @@
  * Tests that device behavior is consistent with link status -
  * TX should succeed if link is up.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_link_status(struct virtio_dev *dev)
 {

@@ -6,7 +6,7 @@
  * Spec v1.3 2.13: VIRTIO_ADMIN_CMD_LEGACY_DEV_CFG_READ accesses
  * the device specific legacy configuration space of a member.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_admin_legacy_dev_read(struct virtio_dev *dev,
                                                 struct vring *vr)

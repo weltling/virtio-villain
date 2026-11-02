@@ -5,7 +5,7 @@
  * Send a data packet with fwd_cnt set near UINT32_MAX, testing device
  * arithmetic on credit tracking near the wrap boundary.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_fwd_cnt_rollover(struct virtio_dev *dev,
                                                  struct vring *vr)

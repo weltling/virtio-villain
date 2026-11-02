@@ -6,7 +6,7 @@
  * much larger than sizeof(virtio_vsock_hdr). The extra bytes
  * could be interpreted as payload. Tests boundary handling.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_oversized_hdr(struct virtio_dev *dev,
                                               struct vring *vr)

@@ -6,7 +6,7 @@
  * needs to write received frames into this buffer; without WRITE it
  * must reject rather than writing into a read-only descriptor.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_rx_writable(struct virtio_dev *dev,
                                           struct vring *vr)

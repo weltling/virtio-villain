@@ -7,7 +7,7 @@
  * durable without explicit flush. This is a correctness probe -
  * we verify the device processes both requests without crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_write_no_flush(struct virtio_dev *dev,
                                              struct vring *vr)

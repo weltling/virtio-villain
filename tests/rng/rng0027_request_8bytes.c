@@ -5,7 +5,7 @@
  * Submit an 8 byte writable buffer. Tests the device handles
  * small requests correctly.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rng_8(struct virtio_dev *dev, struct vring *vr)
 {

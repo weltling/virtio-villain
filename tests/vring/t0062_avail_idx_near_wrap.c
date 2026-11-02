@@ -6,7 +6,7 @@
  * Submit a request at the wrap point. A VMM that uses signed arithmetic
  * or doesn't handle the 16-bit wrap correctly may reject the request.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_avail_idx_near_wrap(struct virtio_dev *dev,
                                               struct vring *vr)

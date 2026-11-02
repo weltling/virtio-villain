@@ -6,7 +6,7 @@
  * Tests whether the VMM can handle a discard spanning the full disk
  * without integer overflow in sector arithmetic.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_discard_full(struct virtio_dev *dev,
                                            struct vring *vr)

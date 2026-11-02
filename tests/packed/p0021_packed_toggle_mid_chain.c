@@ -7,7 +7,7 @@
  * should either reject this as a malformed chain or treat the second
  * descriptor as not yet available.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_toggle_mid_chain(struct virtio_dev *dev,
                                                   struct vring_packed *vr)

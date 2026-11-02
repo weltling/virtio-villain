@@ -10,7 +10,7 @@
  * when AES-CBC is not advertised, and when the backend cannot perform
  * the algorithm; passes under a QEMU with a crypto library.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static uint64_t make_cipher_session(struct virtio_dev *dev, struct vring *cvr,
                                     uint16_t slot, uint32_t op,

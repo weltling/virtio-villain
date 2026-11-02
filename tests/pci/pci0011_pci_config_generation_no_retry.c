@@ -9,7 +9,7 @@
  *
  * We trigger a config generation change by resetting mid-read.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_pci_config_gen_no_retry(struct virtio_dev *dev,

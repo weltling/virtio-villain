@@ -10,7 +10,7 @@
  * notify address, and verify queue 1 used ring advances while
  * queue 0 used ring stays at zero.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_notify_targets_one_q(struct virtio_dev *dev,
                                                    struct vring *vr)

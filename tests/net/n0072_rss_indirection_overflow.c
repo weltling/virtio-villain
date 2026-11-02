@@ -5,7 +5,7 @@
  * Submit RSS config with indirection_table_mask pointing beyond table
  * size. Tests that the device rejects invalid RSS configuration.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_rss_overflow(struct virtio_dev *dev)
 {

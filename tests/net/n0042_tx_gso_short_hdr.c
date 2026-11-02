@@ -6,7 +6,7 @@
  * the minimum TCP+IP header size (40 bytes). The device must validate
  * that hdr_len covers the transport headers when GSO is in use.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_gso_short_hdr(struct virtio_dev *dev,
                                                struct vring *vr)

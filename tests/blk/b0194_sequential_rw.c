@@ -6,7 +6,7 @@
  * then read all four back and verify each has its own pattern.
  * Tests sequential I/O correctness across a small range.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_seq_rw(struct virtio_dev *dev, struct vring *vr)
 {

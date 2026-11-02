@@ -6,7 +6,7 @@
  * the config register at offset 12 may not exist. Writing to it
  * anyway must not crash the device.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_emerg_no_feat(struct virtio_dev *dev)
 {

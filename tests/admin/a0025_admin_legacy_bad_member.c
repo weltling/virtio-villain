@@ -6,7 +6,7 @@
  * The device must reject the command with an error status rather
  * than crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_admin_legacy_bad_member(struct virtio_dev *dev,
                                                   struct vring *vr)

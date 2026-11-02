@@ -8,7 +8,7 @@
  * accept the write or treat it as a noop, but never wedge. A
  * reset afterwards must return the device to a usable state.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_status_failed_alone(struct virtio_dev *dev)
 {

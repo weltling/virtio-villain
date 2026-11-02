@@ -7,7 +7,7 @@
  * back the same way, and verify all 8192 bytes. Tests multi
  * descriptor data assembly with content verification.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_8k(struct virtio_dev *dev, struct vring *vr)
 {

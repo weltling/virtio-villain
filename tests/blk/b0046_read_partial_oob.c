@@ -6,7 +6,7 @@
  * for 2 sectors (1024 bytes). The request starts in-bounds but extends
  * past the end. Tests device boundary checking for partial OOB reads.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_read_partial_oob(struct virtio_dev *dev,
                                                struct vring *vr)

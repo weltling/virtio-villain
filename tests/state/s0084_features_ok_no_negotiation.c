@@ -9,7 +9,7 @@
  * acked_features stays at zero. The device must accept or reject
  * FEATURES_OK but not crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_features_ok_no_negotiation(struct virtio_dev *dev)
 {

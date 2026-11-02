@@ -8,7 +8,7 @@
  * that reads only the first descriptor will see truncated
  * fields.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

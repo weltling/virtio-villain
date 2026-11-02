@@ -7,7 +7,7 @@
  * daemon must return a zero length response cleanly rather than
  * treating the zero as "unlimited" or as a malformed request.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_read_zero_size(struct virtio_dev *dev,

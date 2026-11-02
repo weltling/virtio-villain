@@ -5,7 +5,7 @@
  * Submit a request where the header descriptor has len < 16 bytes
  * (sizeof virtio_blk_outhdr). The device cannot parse a truncated header.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_header_too_short(struct virtio_dev *dev,
                                                struct vring *vr)

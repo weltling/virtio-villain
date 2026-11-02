@@ -7,7 +7,7 @@
  * features are in word 0). Read device_feature with select=0
  * and verify non zero.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_feat_nonzero(struct virtio_dev *dev)
 {

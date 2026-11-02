@@ -6,7 +6,7 @@
  * VIRTIO_NET_F_HASH_TUNNEL. Spec v1.3 5.1.6.5: driver MUST have
  * negotiated the feature when issuing this command.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_hash_tunnel_no_feature(struct virtio_dev *dev,
                                                      struct vring *vr)

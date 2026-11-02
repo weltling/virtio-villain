@@ -5,7 +5,7 @@
  * Spec 4.1.2.1: Non-transitional virtio PCI devices have revision
  * ID 0x01 in PCI config space at offset 0x08. Verify it.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_pci_revision(struct virtio_dev *dev,

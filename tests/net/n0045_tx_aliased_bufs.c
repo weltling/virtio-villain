@@ -7,7 +7,7 @@
  * whether the device handles aliased buffers (where reading the frame
  * would also see header bytes and vice versa).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_aliased_bufs(struct virtio_dev *dev,
                                               struct vring *vr)

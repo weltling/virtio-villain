@@ -8,7 +8,7 @@
  * a reset, so that the driver knows it has to program addresses
  * again before reenabling the queue.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_queue_addr_reset_clears(struct virtio_dev *dev)
 {

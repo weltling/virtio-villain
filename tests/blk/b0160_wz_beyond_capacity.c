@@ -7,7 +7,7 @@
  * must reject the request and return an error status without
  * writing to unallocated regions.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_wz_beyond(struct virtio_dev *dev,
                                         struct vring *vr)

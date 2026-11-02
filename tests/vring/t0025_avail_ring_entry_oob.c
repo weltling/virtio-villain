@@ -11,7 +11,7 @@
  * memory. In Rust this panics; in C this is a heap/stack buffer
  * overread.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_avail_ring_entry_oob(struct virtio_dev *dev,
                                                struct vring *vr)

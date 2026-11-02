@@ -7,7 +7,7 @@
  * reporting more bytes written than the buffer can hold indicates a
  * bounds error.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_used_ring_len_overflow(struct virtio_dev *dev,
                                                  struct vring *vr)

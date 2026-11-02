@@ -7,7 +7,7 @@
  * NEXT flags linking descriptors in sequence. The data is split
  * across 6 separate 512-byte buffers for scatter/gather.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define NUM_DATA_BUFS 6
 

@@ -7,7 +7,7 @@
  * for nodeid 1 with no preceding FUSE_INIT. The daemon must
  * reject the request without acting on it.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_getattr_before_init(struct virtio_dev *dev,

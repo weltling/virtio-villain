@@ -6,7 +6,7 @@
  * The device must read those bytes as opaque frame data rather than
  * confuse them with descriptor state.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_addr_self_vring(struct virtio_dev *dev,
                                                  struct vring *vr)

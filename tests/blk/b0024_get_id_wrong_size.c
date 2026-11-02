@@ -6,7 +6,7 @@
  * VIRTIO_BLK_ID_BYTES). Use a 1-byte buffer instead.
  * Spec 5.2.6.1: device uses 20 bytes for serial number.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_get_id_wrong_size(struct virtio_dev *dev,
                                                 struct vring *vr)

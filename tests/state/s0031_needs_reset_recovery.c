@@ -7,7 +7,7 @@
  * and reinitialize. This test provokes an error (invalid desc), waits
  * to see if NEEDS_RESET appears, then resets and verifies recovery.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_needs_reset_recovery(struct virtio_dev *dev,
                                                struct vring *vr)

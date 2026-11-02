@@ -5,7 +5,7 @@
  * Set the active number of queue pairs via CTRL_MQ. Attempt to
  * set it to a value beyond the device maximum to test validation.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_ctrl_mq_steering(struct virtio_dev *dev,
                                            struct vring *vr)

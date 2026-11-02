@@ -5,7 +5,7 @@
  * Submit WRITE_ZEROES for exactly one sector (num_sectors=1).
  * Tests the minimum write zeroes size.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_wz_one(struct virtio_dev *dev, struct vring *vr)
 {

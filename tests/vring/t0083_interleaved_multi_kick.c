@@ -6,7 +6,7 @@
  * fashion without waiting for completions. Tests device handling
  * of rapid multi-queue stimulus.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_interleaved_multi_kick(struct virtio_dev *dev,
                                                  struct vring *vr)

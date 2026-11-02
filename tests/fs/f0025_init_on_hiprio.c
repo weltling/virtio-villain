@@ -6,7 +6,7 @@
  * only. Submitting a FUSE_INIT on it is a protocol violation.
  * The device must not crash or corrupt state.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_init_on_hiprio(struct virtio_dev *dev,

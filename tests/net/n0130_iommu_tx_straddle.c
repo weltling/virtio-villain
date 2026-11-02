@@ -27,7 +27,7 @@
  *            (translation split per granule, or a graceful drop).
  *   WEDGED - device set NEEDS_RESET, the bug is present.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 /* Domain used to hold the two adjacent mappings for the net endpoint. */

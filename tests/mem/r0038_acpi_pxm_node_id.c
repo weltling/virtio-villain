@@ -8,7 +8,7 @@
  * config region and verify node_id is non zero only when the
  * feature is offered.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_acpi_pxm(struct virtio_dev *dev)
 {

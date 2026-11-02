@@ -8,7 +8,7 @@
  * "open" or reject the message; it must not crash or interpret
  * the high bits as an internal state field.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_port_open_bad_value(struct virtio_dev *dev)
 {

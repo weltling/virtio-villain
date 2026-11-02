@@ -6,7 +6,7 @@
  * is reserved. The VMM must mask reserved bits or ignore them
  * without breaking state.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_status_reserved(struct virtio_dev *dev)
 {

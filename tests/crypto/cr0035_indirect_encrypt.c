@@ -12,7 +12,7 @@
  * when the cipher service is not advertised, and when indirect
  * descriptors are not negotiated.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_crypto_indirect_encrypt(struct virtio_dev *dev,
                                                   struct vring *vr)

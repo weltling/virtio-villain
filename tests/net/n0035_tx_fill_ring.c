@@ -6,7 +6,7 @@
  * that the device processes a full ring without stalling or
  * corrupting the used ring index.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_fill_ring(struct virtio_dev *dev,
                                            struct vring *vr)

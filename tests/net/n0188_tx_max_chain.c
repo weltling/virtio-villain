@@ -6,7 +6,7 @@
  * header followed by many small readable fragments. The device must
  * gather the whole chain without overrunning the ring.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define CHAIN 16
 

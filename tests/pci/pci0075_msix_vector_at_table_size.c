@@ -9,7 +9,7 @@
  * crash and the readback must reflect either NO_VECTOR or the
  * prior value.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_msix_vec_at_size(struct virtio_dev *dev)
 {

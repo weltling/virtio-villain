@@ -6,7 +6,7 @@
  * control queue and confirm the device answers with a function
  * rejected response instead of stalling or faulting.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_scsi_tmf_bad_subtype(struct virtio_dev *dev,
                                                struct vring *vr)

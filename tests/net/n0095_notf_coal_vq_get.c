@@ -5,7 +5,7 @@
  * Send VIRTIO_NET_CTRL_NOTF_COAL_VQ_GET to read back per virtqueue
  * coalescing parameters. Spec v1.3 5.1.6.5.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_notf_coal_vq_get(struct virtio_dev *dev,
                                                struct vring *vr)

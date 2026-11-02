@@ -5,7 +5,7 @@
  * Issue a legacy common cfg read with group_type=0 (invalid).
  * Spec v1.3 2.13: only valid group types should be accepted.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_admin_legacy_wrong_group(struct virtio_dev *dev,
                                                    struct vring *vr)

@@ -7,7 +7,7 @@
  * would later corrupt its own queue. Spec 5.5.6.1 leaves PFN
  * validity to the device, but it must not wedge or panic.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_inflate_alias(struct virtio_dev *dev,
                                                 struct vring *vr)

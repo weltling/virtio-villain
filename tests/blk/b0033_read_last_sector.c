@@ -6,7 +6,7 @@
  * boundary test: the request is valid but any off-by-one error in the
  * VMM's capacity check would reject it.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_read_last_sector(struct virtio_dev *dev,
                                                struct vring *vr)

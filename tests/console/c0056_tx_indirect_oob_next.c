@@ -6,7 +6,7 @@
  * indirect table links to a next index beyond the entries the table
  * holds. The device must refuse the out of range link without harm.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_tx_indirect_oob_next(struct virtio_dev *dev,
                                                        struct vring *vr)

@@ -8,7 +8,7 @@
  * the same two pages on the deflate vq (idx 1). The device
  * must complete both requests.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_deflate_on_oom(struct virtio_dev *dev,
                                                  struct vring *vr)

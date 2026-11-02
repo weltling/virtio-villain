@@ -6,7 +6,7 @@
  * Setting sel to large values (2, 0xFFFFFFFF) is out of range.
  * The device must handle this gracefully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

@@ -6,7 +6,7 @@
  * be in [0, queue_size-1]. An out-of-range ID can cause the device to
  * index out of bounds in its internal buffer tracking array.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_invalid_buffer_id(struct virtio_dev *dev,
                                                    struct vring_packed *vr)

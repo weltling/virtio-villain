@@ -9,7 +9,7 @@
  * special VIRTIO_MSI_NO_VECTOR sentinel. Any other value is a
  * spec violation.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_msix_config_roundtrip(struct virtio_dev *dev,
                                                     struct vring *vr)

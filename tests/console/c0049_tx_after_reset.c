@@ -7,7 +7,7 @@
  * status to 0 and not interact with queues until DRIVER_OK. This
  * tests the full re-init path followed by immediate I/O.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_tx_after_reset(struct virtio_dev *dev)
 {

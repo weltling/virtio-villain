@@ -6,7 +6,7 @@
  * ring update with one kick. All three must complete with S_OK.
  * Tests deeper batch write processing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_three_writes(struct virtio_dev *dev,
                                            struct vring *vr)

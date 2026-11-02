@@ -7,7 +7,7 @@
  * (descriptor size).
  * Spec 2.8.11: descriptor table MUST be aligned.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_unaligned(struct virtio_dev *dev,
                                            struct vring_packed *vr)

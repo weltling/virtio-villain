@@ -8,7 +8,7 @@
  * a driver that skips the readback confirmation.
  * Spec 4.1.4.3.2: driver SHOULD confirm queue is enabled.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_skip_enable_readback(struct virtio_dev *dev,
                                                    struct vring *vr)

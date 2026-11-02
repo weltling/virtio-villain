@@ -7,7 +7,7 @@
  * the driver must not set it on TX. A VMM that trusts this field on TX
  * may misinterpret the packet boundaries.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_num_buffers(struct virtio_dev *dev,
                                              struct vring *vr)

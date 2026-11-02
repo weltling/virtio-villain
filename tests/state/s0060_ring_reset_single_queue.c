@@ -7,7 +7,7 @@
  * a queue individually when VIRTIO_F_RING_RESET is negotiated.
  * After reset, queue state must return to the default.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_ring_reset_single(struct virtio_dev *dev)
 {

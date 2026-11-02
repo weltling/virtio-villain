@@ -9,7 +9,7 @@
  * Skips on Cloud Hypervisor and when the cipher service is not offered;
  * passes under QEMU. This path needs no crypto library.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_crypto_destroy_unknown(struct virtio_dev *dev)
 {

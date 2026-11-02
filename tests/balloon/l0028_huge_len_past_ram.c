@@ -7,7 +7,7 @@
  * System RAM. The device must not access memory outside the
  * guest's mapping or crash the VMM.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_huge_len_past_ram(struct virtio_dev *dev,
                                                     struct vring *vr)

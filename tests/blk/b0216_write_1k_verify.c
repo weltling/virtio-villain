@@ -5,7 +5,7 @@
  * Write 1024 bytes starting at sector 0 in a single request, read
  * both sectors back, verify all 1024 bytes match.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_1k_rw(struct virtio_dev *dev, struct vring *vr)
 {

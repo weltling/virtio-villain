@@ -12,7 +12,7 @@
  * all acceptable, as long as the host survives and the next test
  * can still run.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_huge_len(struct virtio_dev *dev)
 {

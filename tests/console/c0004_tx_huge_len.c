@@ -7,7 +7,7 @@
  * device must validate the length against guest memory bounds and
  * must not read past the end of the buffer.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_tx_huge_len(struct virtio_dev *dev,
                                               struct vring *vr)

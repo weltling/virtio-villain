@@ -6,7 +6,7 @@
  * Spec says these are best effort; zero values should disable
  * coalescing or be accepted gracefully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_notf_coal_zero(struct virtio_dev *dev,
                                              struct vring *vr)

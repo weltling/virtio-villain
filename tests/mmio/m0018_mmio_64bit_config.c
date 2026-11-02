@@ -7,7 +7,7 @@
  * a consistent view of config space. This test intentionally skips
  * that check to exercise device behavior when config may be torn.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

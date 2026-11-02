@@ -8,7 +8,7 @@
  * beyond the available bytes. The device must reject or drop
  * the frame rather than reading past the descriptor.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_csum_start_past_payload(struct virtio_dev *dev,
                                                       struct vring *vr)

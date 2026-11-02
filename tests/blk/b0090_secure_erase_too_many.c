@@ -8,7 +8,7 @@
  * Submit SECURE_ERASE with 256 segments (16*256=4096 bytes of data),
  * which should exceed any reasonable max_secure_erase_seg.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_secure_erase_too_many(struct virtio_dev *dev,
                                                     struct vring *vr)

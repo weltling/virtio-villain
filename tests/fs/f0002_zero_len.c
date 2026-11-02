@@ -6,7 +6,7 @@
  * queue. There is no fuse_in_header at all, the device must reject
  * or absorb the entry without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_fs_zero_len(struct virtio_dev *dev,
                                       struct vring *vr)

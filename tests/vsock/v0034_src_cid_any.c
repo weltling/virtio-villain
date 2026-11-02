@@ -6,7 +6,7 @@
  * This is a wildcard CID that has special meaning in the vsock
  * address family. The device must reject or handle it appropriately.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define VMADDR_CID_ANY           0xFFFFFFFF
 

@@ -8,7 +8,7 @@
  * serialise the two requests and leave the range fully unplugged,
  * without leaking state or wedging on the back to back ops.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_plug_unplug_same_range(struct virtio_dev *dev,
                                                      struct vring *vr)

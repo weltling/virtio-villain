@@ -6,7 +6,7 @@
  * queues simultaneously. Tests race between discard and write to the
  * same region.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_concurrent_discard_write(struct virtio_dev *dev,
                                                        struct vring *vr)

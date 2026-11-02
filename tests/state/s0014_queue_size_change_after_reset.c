@@ -9,7 +9,7 @@
  * on reset will use the wrong ring dimensions, potentially reading
  * out-of-bounds on the descriptor/avail/used arrays.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_queue_size_change(struct virtio_dev *dev,
                                             struct vring *vr)

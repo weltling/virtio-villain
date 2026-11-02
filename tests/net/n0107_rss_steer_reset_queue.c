@@ -6,7 +6,7 @@
  * Spec v1.3 5.1.6.5.4 + 2.6.1: the device must handle steering
  * to a reset queue gracefully (drop or redirect).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_rss_reset_queue(struct virtio_dev *dev,
                                               struct vring *vr)

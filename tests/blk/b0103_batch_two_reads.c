@@ -5,7 +5,7 @@
  * Submit two independent READ requests at once by placing two
  * descriptor chains in the avail ring before a single kick.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_batch_two_reads(struct virtio_dev *dev,
                                               struct vring *vr)

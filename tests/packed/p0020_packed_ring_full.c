@@ -6,7 +6,7 @@
  * simultaneously. Tests the device's handling of maximum ring
  * occupancy without overflow or wrap-counter confusion.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_ring_full(struct virtio_dev *dev,
                                            struct vring_packed *vr)

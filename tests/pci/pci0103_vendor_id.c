@@ -5,7 +5,7 @@
  * Spec 4.1.2: All virtio PCI devices have vendor ID 0x1AF4 (Red Hat).
  * Read vendor ID from PCI config offset 0 and verify.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_pci_vendor_id(struct virtio_dev *dev,

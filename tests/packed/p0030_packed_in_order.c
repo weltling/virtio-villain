@@ -5,7 +5,7 @@
  * Submit multiple descriptors sequentially in packed mode and verify
  * the device marks them used in descriptor-ring order.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_in_order_packed(struct virtio_dev *dev,
                                           struct vring_packed *vr)

@@ -7,7 +7,7 @@
  * accept the minimal buffer and complete the ping without
  * underrunning or rounding the length up to a larger size.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_watchdog_one_byte(struct virtio_dev *dev,
                                             struct vring *vr)

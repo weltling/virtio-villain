@@ -4,7 +4,7 @@
  *
  * Set queue_size larger than the maximum reported by the device.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_queue_size_too_large(struct virtio_dev *dev)
 {

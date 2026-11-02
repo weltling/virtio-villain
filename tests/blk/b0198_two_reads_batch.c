@@ -5,7 +5,7 @@
  * Submit two READ requests for sectors 0 and 1 in one avail batch.
  * Verify both complete with S_OK status.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_two_reads(struct virtio_dev *dev,
                                         struct vring *vr)

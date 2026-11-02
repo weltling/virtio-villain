@@ -7,7 +7,7 @@
  * for DMA; if it skips bounds validation, the translated pointer is
  * invalid and any access through it causes a SIGSEGV in the VMM process.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_desc_addr_beyond_ram(struct virtio_dev *dev,
                                                struct vring *vr)

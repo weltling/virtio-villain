@@ -9,7 +9,7 @@
  * discard handler already guards with a checked add, the write
  * zeroes path was the one missing the overflow check.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_write_zeroes_overflow(struct virtio_dev *dev,
                                                     struct vring *vr)

@@ -7,7 +7,7 @@
  * buffer may cause an underflow in size calculations or an attempt
  * to write to zero bytes of memory.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_rx_zero_length(struct virtio_dev *dev,
                                              struct vring *vr)

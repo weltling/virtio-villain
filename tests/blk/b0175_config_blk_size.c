@@ -6,7 +6,7 @@
  * config contains blk_size at offset 20. Read it and verify it is
  * a power of two between 512 and 65536 (typical sector sizes).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 /* blk_size is at config offset 20 (after capacity[8]+size_max[4]+seg_max[4]+geometry[4]) */
 #define BLK_CFG_BLK_SIZE_OFFSET 20

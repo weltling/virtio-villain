@@ -8,7 +8,7 @@
  * Spec 5.5.6.1: The driver constructs an array of 4-byte PFN values
  * and sends them on the inflate queue.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_inflate(struct virtio_dev *dev,
                                           struct vring *vr)

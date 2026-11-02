@@ -6,7 +6,7 @@
  * Tests that the device handles control virtqueue operations
  * concurrently with data path traffic.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_concurrent(struct virtio_dev *dev,
                                               struct vring *vr)

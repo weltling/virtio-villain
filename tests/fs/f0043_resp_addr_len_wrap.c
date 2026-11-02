@@ -12,7 +12,7 @@
  *
  * Spec 5.11.6.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_resp_addr_len_wrap(struct virtio_dev *dev,

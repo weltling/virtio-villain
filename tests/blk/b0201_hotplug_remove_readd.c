@@ -12,8 +12,8 @@
  * and queue_enable on queue 0 reads zero. Guest markers coordinate
  * discovery and removal so the final check runs only after readd.
  */
-#include "tests/test.h"
-#include "tests/hotplug.h"
+#include "lib/virtio_test.h"
+#include "lib/pci_hotplug.h"
 #include "lib/pci.h"
 
 static test_result_t test_blk_hotplug_remove_readd(struct virtio_dev *dev,

@@ -9,7 +9,7 @@
  * queue accepts a single buffer worth of placeholder stats data
  * without wedging the device.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_stats_vq(struct virtio_dev *dev,
                                            struct vring *vr)

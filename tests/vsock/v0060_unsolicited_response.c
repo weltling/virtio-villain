@@ -7,7 +7,7 @@
  * the device. An unsolicited RESPONSE must be silently ignored
  * without crashing the host.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_unsolicited_response(struct virtio_dev *dev,
                                                      struct vring *vr)

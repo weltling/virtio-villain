@@ -6,7 +6,7 @@
  * VRING_DESC_F_NEXT|WRITE and points back at itself. The device
  * must detect the cycle rather than walk the chain forever.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rng_self_loop(struct virtio_dev *dev,
                                         struct vring *vr)

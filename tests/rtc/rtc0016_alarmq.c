@@ -7,7 +7,7 @@
  * it to deliver an alarm notification. Without F_ALARM queue 1
  * does not exist and the test will be skipped by the harness.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_alarmq(struct virtio_dev *dev,
                                      struct vring *vr)

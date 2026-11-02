@@ -9,7 +9,7 @@
  * protocol violation. The device must not crash or enter an
  * inconsistent state.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_reinit_without_reset(struct virtio_dev *dev)
 {

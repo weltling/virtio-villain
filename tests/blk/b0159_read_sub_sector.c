@@ -7,7 +7,7 @@
  * data length must be a multiple of 512. The device must reject
  * or stay silent without partial completion or crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_read_sub_sector(struct virtio_dev *dev,
                                               struct vring *vr)

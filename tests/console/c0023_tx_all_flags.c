@@ -6,7 +6,7 @@
  * flags simultaneously. Spec 2.7.5.3.1 says NEXT and INDIRECT are
  * mutually exclusive. The device must reject this combination.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_tx_all_flags(struct virtio_dev *dev,
                                                struct vring *vr)

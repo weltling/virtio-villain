@@ -6,7 +6,7 @@
  * a credit update arriving for a connection in CLOSING state). Tests
  * device handling of credit updates for non-existent connections.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_credit_closing(struct virtio_dev *dev,
                                                struct vring *vr)

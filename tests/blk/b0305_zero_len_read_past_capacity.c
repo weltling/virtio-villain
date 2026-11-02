@@ -13,7 +13,7 @@
  * fails if the device does not write either status, if the two get
  * different status codes, or if either is S_OK.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t zero_len_read(struct virtio_dev *dev, struct vring *vr,
                                    uint64_t sector, uint8_t *st_out)

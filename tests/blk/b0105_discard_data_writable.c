@@ -5,7 +5,7 @@
  * Spec 5.2.6: Discard/write-zeroes segment data is device-readable
  * (driver provides it). Mark the segment descriptor as WRITE (writable).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_discard_data_writable(struct virtio_dev *dev,
                                                     struct vring *vr)

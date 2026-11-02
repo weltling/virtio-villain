@@ -6,7 +6,7 @@
  * Tests that the device handles the maximum valid sector offset
  * correctly at the boundary edge.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_last_sector_rw(struct virtio_dev *dev,
                                              struct vring *vr)

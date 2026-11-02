@@ -7,7 +7,7 @@
  * subsystem fields carry no MUST-level requirement per 4.1.2.1 and are
  * not checked here.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #include <errno.h>
 

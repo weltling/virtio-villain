@@ -6,7 +6,7 @@
  * that uses hdr_len for buffer splitting may divide by zero or
  * miscalculate segment boundaries.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_hdr_len_zero(struct virtio_dev *dev,
                                               struct vring *vr)

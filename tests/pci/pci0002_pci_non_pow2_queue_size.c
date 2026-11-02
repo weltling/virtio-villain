@@ -6,7 +6,7 @@
  * Spec 4.1.4.3.2: driver MUST use a power of 2 for queue_size.
  * Different from T41 which uses 17 - this uses a smaller odd value.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_non_pow2_queue_size(struct virtio_dev *dev)
 {

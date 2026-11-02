@@ -7,7 +7,7 @@
  * zero features, this tests the baseline: submit sequential
  * descriptors and verify used ring entries come back ordered.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_in_order_split(struct virtio_dev *dev,
                                          struct vring *vr)

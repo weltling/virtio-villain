@@ -5,7 +5,7 @@
  * Submit a 512 byte Ethernet frame (14 header + 498 payload).
  * Tests a medium sized frame between minimum and MTU.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_512(struct virtio_dev *dev, struct vring *vr)
 {

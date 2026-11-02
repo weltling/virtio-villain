@@ -10,7 +10,7 @@
  * device must accept the negotiation (FEATURES_OK then DRIVER_OK) and
  * must not flag NEEDS_RESET.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_standby_accept(struct virtio_dev *dev,
                                              struct vring *vr)

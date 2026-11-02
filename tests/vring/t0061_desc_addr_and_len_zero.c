@@ -6,7 +6,7 @@
  * case - the descriptor contributes nothing to the chain but a VMM
  * that dereferences addr without checking len may fault.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_desc_addr_and_len_zero(struct virtio_dev *dev,
                                                  struct vring *vr)

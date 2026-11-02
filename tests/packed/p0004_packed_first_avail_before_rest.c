@@ -8,7 +8,7 @@
  * Spec 2.8.17: driver MUST make the first descriptor available only
  * after all subsequent descriptors have been written.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_first_avail_before_rest(struct virtio_dev *dev,
                                                          struct vring_packed *vr)

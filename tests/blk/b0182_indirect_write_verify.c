@@ -6,7 +6,7 @@
  * may use an indirect descriptor table. Write 512 bytes to sector 0
  * using an indirect table, then read back normally and verify data.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 struct indirect_desc {
     uint64_t addr;

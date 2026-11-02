@@ -8,7 +8,7 @@
  * 5.10.6.6.2: without the feature, only stream connections should
  * be accepted. Device must handle or reject gracefully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_no_implied_connect(struct virtio_dev *dev,
                                                    struct vring *vr)

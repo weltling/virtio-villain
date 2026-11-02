@@ -11,7 +11,7 @@
  * field, then read the sector back and verify the write completed and
  * the data persisted, proving the device did not misread the field.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_req_flags_ignored(struct virtio_dev *dev,
                                                 struct vring *vr)

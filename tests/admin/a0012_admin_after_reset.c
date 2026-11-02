@@ -5,7 +5,7 @@
  * Reset the device, reinitialize, then submit an admin command.
  * Tests whether the admin virtqueue is usable after a reset cycle.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_admin_after_reset(struct virtio_dev *dev)
 {

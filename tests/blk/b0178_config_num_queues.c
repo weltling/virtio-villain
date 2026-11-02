@@ -6,7 +6,7 @@
  * num_queues at offset 34. It must match the device's actual queue
  * count (>= 1) and agree with common_cfg.num_queues.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 /* num_queues at offset 34 in blk device config */
 #define BLK_CFG_NUM_QUEUES_OFFSET 34

@@ -8,7 +8,7 @@
  * the first block; query STATE for both blocks. The state
  * code must indicate mixed.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t one(struct virtio_dev *dev, struct vring *vr,
                          uint16_t slot, struct virtio_mem_req *req,

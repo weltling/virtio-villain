@@ -10,7 +10,7 @@
  * In Rust VMMs this typically triggers an index-out-of-bounds panic
  * crashing the virtio worker thread (or the entire VMM process).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 /* virtio-blk request header */
 static test_result_t test_desc_next_oob(struct virtio_dev *dev, struct vring *vr)

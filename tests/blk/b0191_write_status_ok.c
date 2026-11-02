@@ -6,7 +6,7 @@
  * status byte is VIRTIO_BLK_S_OK (0). Fundamental positive path
  * test for write operations.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_write_status_ok(struct virtio_dev *dev,
                                               struct vring *vr)

@@ -6,7 +6,7 @@
  * update with one kick. Both must complete. Tests that the device
  * processes multiple TX buffers per notification.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_batch(struct virtio_dev *dev,
                                        struct vring *vr)

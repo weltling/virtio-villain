@@ -8,7 +8,7 @@
  * the memory slot. The device must complete or reject cleanly without
  * reading one byte past the slot.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "tests/packed/packed_util.h"
 
 /* Assume 512 MiB RAM, matching the split ring twin. */

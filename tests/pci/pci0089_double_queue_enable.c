@@ -7,7 +7,7 @@
  * The device must handle this protocol violation without
  * corrupting state or crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_double_queue_enable(struct virtio_dev *dev)
 {

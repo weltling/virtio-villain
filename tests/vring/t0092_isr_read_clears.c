@@ -7,7 +7,7 @@
  * confirm the bit is set, then read ISR a second time and confirm
  * the queue bit is now clear with no new activity in between.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_isr_read_clears(struct virtio_dev *dev,
                                           struct vring *vr)

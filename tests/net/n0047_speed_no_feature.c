@@ -6,7 +6,7 @@
  * negotiated VIRTIO_NET_F_SPEED_DUPLEX. Tests whether the device
  * provides sensible defaults or traps on unfeature-gated config reads.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_speed_no_feature(struct virtio_dev *dev,
                                                struct vring *vr)

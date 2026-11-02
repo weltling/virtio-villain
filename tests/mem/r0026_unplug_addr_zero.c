@@ -6,7 +6,7 @@
  * outside the usable region. The device must reject the invalid
  * address rather than corrupting internal state.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_unplug_addr_zero(struct virtio_dev *dev,
                                                struct vring *vr)

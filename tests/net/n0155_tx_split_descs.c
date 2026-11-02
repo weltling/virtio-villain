@@ -6,7 +6,7 @@
  * and the Ethernet data is in descriptor 1 (chained via NEXT).
  * This is the standard two-descriptor TX layout.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_split(struct virtio_dev *dev, struct vring *vr)
 {

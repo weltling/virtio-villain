@@ -12,7 +12,7 @@
  * on reset. A VMM that retains stale feature flags may misparse requests
  * or apply wrong semantics.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_feature_downgrade(struct virtio_dev *dev)
 {

@@ -5,7 +5,7 @@
  * Submit a READ with sector set to the maximum 64-bit value.
  * The device should reject this as beyond capacity.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_read_sector_max(struct virtio_dev *dev,
                                               struct vring *vr)

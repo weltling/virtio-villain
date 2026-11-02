@@ -6,7 +6,7 @@
  * exceeding any reasonable buf_alloc). Tests that the device enforces
  * credit limits without buffer overflows.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_data_over_credit(struct virtio_dev *dev,
                                                  struct vring *vr)

@@ -5,7 +5,7 @@
  * Send a packet with src_cid different from the guest's assigned CID.
  * Spec 5.10.6: src_cid MUST be the guest's CID.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_wrong_src_cid(struct virtio_dev *dev,
                                               struct vring *vr)

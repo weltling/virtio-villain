@@ -7,7 +7,7 @@
  *
  * Spec 5.5.6.1: Full inflate/deflate cycle.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_inflate_deflate(struct virtio_dev *dev,
                                                   struct vring *vr)

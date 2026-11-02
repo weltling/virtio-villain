@@ -5,7 +5,7 @@
  * Spec 5.3.6.1: A control message is 8 bytes. Send only 2 bytes.
  * The device must detect the short descriptor and not read beyond.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_ctrl_short(struct virtio_dev *dev)
 {

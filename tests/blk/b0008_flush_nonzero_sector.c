@@ -5,7 +5,7 @@
  * Submit a FLUSH with sector != 0. The spec says the driver MUST set
  * sector to 0 for FLUSH.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_flush_nonzero_sector(struct virtio_dev *dev,
                                                    struct vring *vr)

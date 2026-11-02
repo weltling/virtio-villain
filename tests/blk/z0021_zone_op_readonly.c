@@ -6,7 +6,7 @@
  * configured as read only. Spec v1.3 5.2.6: write zone operations
  * must be rejected on RO devices.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_zone_op_ro(struct virtio_dev *dev,
                                          struct vring *vr)

@@ -7,7 +7,7 @@
  * The gated fields live in the device config region, so read every
  * mapped byte of it. Must not crash the VMM.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_read_config_no_feature(struct virtio_dev *dev)
 {

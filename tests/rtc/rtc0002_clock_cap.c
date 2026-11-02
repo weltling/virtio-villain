@@ -5,7 +5,7 @@
  * Probe capabilities of clock id 0. Spec: device fills type,
  * leap_second_smearing, flags, status=OK if the clock exists.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_clock_cap(struct virtio_dev *dev,
                                         struct vring *vr)

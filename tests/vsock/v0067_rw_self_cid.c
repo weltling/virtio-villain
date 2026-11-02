@@ -8,7 +8,7 @@
  * rather than looping it back as if the host were talking to
  * itself and corrupting per connection bookkeeping.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_rw_self_cid(struct virtio_dev *dev,
                                             struct vring *vr)

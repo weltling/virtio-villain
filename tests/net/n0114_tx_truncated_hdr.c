@@ -6,7 +6,7 @@
  * is only 4 bytes (less than sizeof(virtio_net_hdr)). The device
  * must not read past the descriptor boundary.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_truncated_hdr(struct virtio_dev *dev,
                                                struct vring *vr)

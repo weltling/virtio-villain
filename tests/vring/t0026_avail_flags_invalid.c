@@ -6,7 +6,7 @@
  * The only defined bit is VRING_AVAIL_F_NO_INTERRUPT (bit 0). A VMM
  * must ignore unknown flag bits.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_avail_flags_invalid(struct virtio_dev *dev,
                                               struct vring *vr)

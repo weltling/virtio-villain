@@ -9,7 +9,7 @@
  * device tolerates them, then verifies it still serves an aligned
  * read of num_queues.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_byte_access(struct virtio_dev *dev)
 {

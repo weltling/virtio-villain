@@ -7,7 +7,7 @@
  * then reset and run the standard init sequence; the second
  * round must reach DRIVER_OK.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

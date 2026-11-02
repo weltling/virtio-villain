@@ -6,7 +6,7 @@
  * advertised mem region. Per spec 5.15.6.2 the device must
  * respond with VIRTIO_MEM_RESP_INVALID_REQUEST or _ERROR.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_plug_zero(struct virtio_dev *dev,
                                         struct vring *vr)

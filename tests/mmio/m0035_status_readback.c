@@ -5,7 +5,7 @@
  * Spec 4.2.2.2: Write ACKNOWLEDGE to the Status register and read
  * it back. The value must reflect the written bits.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

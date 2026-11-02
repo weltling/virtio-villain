@@ -27,6 +27,7 @@ Q = $(if $(filter 1,$(V)),,@)
 SRCS = bin/init.c \
        lib/pci.c \
        lib/irq.c \
+       lib/msix_helpers.c \
        lib/virtio_pci.c \
        lib/virtio_mmio.c \
        lib/vring.c \
@@ -179,7 +180,7 @@ selftest/test_lib: selftest/test_lib.c \
 		   lib/perf_engine.c lib/perf_engine.h \
 		   lib/vring.c lib/vring.h \
 		   lib/vring_packed.c lib/vring_packed.h \
-		   tests/test.h lib/test.h
+		   lib/virtio_test.h lib/test.h
 	$(CC) -O2 -Wall -Wextra -I. -o $@ selftest/test_lib.c \
 	  lib/perf_engine.c lib/vring.c lib/vring_packed.c
 

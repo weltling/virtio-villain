@@ -10,7 +10,7 @@
  * packet followed by a CREDIT_REQUEST without wedging. Catches
  * devices that stop draining once they decide a flow is dead.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static void fill(struct virtio_vsock_hdr *h, uint16_t op, uint32_t len)
 {

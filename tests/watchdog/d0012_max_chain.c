@@ -6,7 +6,7 @@
  * the queue using NEXT links, ending at the last slot. The device
  * must walk the chain bounded by ring size and respond once.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_watchdog_max_chain(struct virtio_dev *dev,
                                              struct vring *vr)

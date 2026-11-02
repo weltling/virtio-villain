@@ -12,7 +12,7 @@
  * non zero code means the device signalled the resource limit with the
  * wrong status. Skips when the device is not zoned.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define ZONE_SIZE_SECTORS 524288  /* 256 MiB zone at 512 bytes/sector */
 #define NUM_OPENS 64

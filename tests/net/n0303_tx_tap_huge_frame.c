@@ -15,7 +15,7 @@
  * that holds the largest frame. TX only reads it, and the content is
  * irrelevant.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 /* The probe uses the last two descriptor slots, the test the rest. */
 #define PROBE_SLOT(vr) ((uint16_t)((vr)->size - 2))

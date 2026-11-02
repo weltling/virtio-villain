@@ -7,7 +7,7 @@
  * status = 3, but we provide 10 chained data descriptors.
  * Spec 2.8.19: chain MUST NOT exceed what device allows.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_chain_exceeds_limit(struct virtio_dev *dev,
                                                      struct vring_packed *vr)

@@ -7,7 +7,7 @@
  * Spec 5.2.6.2 says unmap is only valid when DISCARD is negotiated.
  * The device must reject or stay silent without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_wz_unmap_no_feature(struct virtio_dev *dev,
                                                   struct vring *vr)

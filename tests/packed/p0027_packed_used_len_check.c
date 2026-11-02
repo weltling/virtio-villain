@@ -5,7 +5,7 @@
  * Submit a valid request, then verify the device sets the used
  * len field. This tests device compliance on used ring writeback.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_used_len(struct virtio_dev *dev,
                                           struct vring_packed *vr)

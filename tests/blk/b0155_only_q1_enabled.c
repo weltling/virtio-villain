@@ -9,7 +9,7 @@
  * a read on queue 1 and verify the used ring advances and the
  * status byte reads OK.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_only_q1_enabled(struct virtio_dev *dev,
                                               struct vring *vr)

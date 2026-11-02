@@ -6,7 +6,7 @@
  * virtio_net_hdr). This is below minimum Ethernet frame size.
  * The device must either pad or reject, but not crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_one_byte(struct virtio_dev *dev)
 {

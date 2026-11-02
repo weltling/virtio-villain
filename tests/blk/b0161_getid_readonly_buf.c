@@ -7,7 +7,7 @@
  * GET_ID must be writable by the device. The device must reject
  * the malformed request.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_getid_readonly(struct virtio_dev *dev,
                                              struct vring *vr)

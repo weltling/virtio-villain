@@ -7,7 +7,7 @@
  * device behavior under backpressure when the used ring fills up
  * but the driver never advances the used_event/last_used.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_notif_suppress_backpressure(struct virtio_dev *dev,
                                                       struct vring *vr)

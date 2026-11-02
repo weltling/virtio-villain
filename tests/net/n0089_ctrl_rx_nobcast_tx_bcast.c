@@ -7,7 +7,7 @@
  * affect only the RX filter, so the TX path must continue to
  * accept the broadcast frame without rejecting it.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_nobcast_then_bcast(struct virtio_dev *dev,
                                                  struct vring *vr)

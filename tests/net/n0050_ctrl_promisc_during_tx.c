@@ -6,7 +6,7 @@
  * request is in-flight on the data queue. Tests device handling
  * of concurrent control and data path operations.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_promisc_during_tx(struct virtio_dev *dev,
                                                      struct vring *vr)

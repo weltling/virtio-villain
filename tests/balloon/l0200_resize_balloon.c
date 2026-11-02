@@ -9,7 +9,7 @@
  * config_generation, sleeps to let the resize land, then asserts
  * num_pages changed and config_generation incremented.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_resize(struct virtio_dev *dev,
                                          struct vring *vr)

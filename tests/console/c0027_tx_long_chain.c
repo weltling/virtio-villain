@@ -10,7 +10,7 @@
  * with len 1 MiB, all backed by the same 4 KiB page. The host
  * must survive the kick and remain responsive for the next test.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define CHAIN_LEN 8
 #define DESC_LEN  (1u << 20)

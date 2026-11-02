@@ -7,7 +7,7 @@
  * 0xFF). A device that completes the used ring but never writes status
  * leaves the driver unable to determine success/failure.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_status_byte(struct virtio_dev *dev,
                                           struct vring *vr)

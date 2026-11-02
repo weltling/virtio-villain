@@ -6,7 +6,7 @@
  * VIRTIO_RTC_COUNTER_X86_TSC (id 1). Device returns
  * clock_reading + counter_cycles.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_read_cross(struct virtio_dev *dev,
                                          struct vring *vr)

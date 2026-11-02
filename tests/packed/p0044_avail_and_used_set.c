@@ -8,7 +8,7 @@
  * set from the driver side is ambiguous. The device must not
  * enter an infinite loop or crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_avail_used(struct virtio_dev *dev,
                                             struct vring_packed *vr)

@@ -6,7 +6,7 @@
  * FEATURES_OK and re-read status to confirm the bit stuck. This
  * tests the fundamental feature negotiation acceptance path.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_features_ok(struct virtio_dev *dev)
 {

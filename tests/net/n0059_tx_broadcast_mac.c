@@ -6,7 +6,7 @@
  * This is a valid broadcast frame. The device should process
  * it normally (not filter/drop it).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_broadcast(struct virtio_dev *dev)
 {

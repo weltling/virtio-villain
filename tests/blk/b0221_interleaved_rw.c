@@ -6,7 +6,7 @@
  * read sector 1 first and sector 0 second. Verify each sector
  * retained its own pattern regardless of read order.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_interleave(struct virtio_dev *dev,
                                          struct vring *vr)

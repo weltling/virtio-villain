@@ -10,7 +10,7 @@
  * backing page and corrupt unrelated memory. The device must
  * cap its write at the actual properties size.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_probe_huge_out(struct virtio_dev *dev,

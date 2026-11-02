@@ -6,7 +6,7 @@
  * parsed common_length. Verify that accesses within bounds succeed
  * and the device remains stable.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_common_cfg_bounds(struct virtio_dev *dev,
                                                 struct vring *vr)

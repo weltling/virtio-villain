@@ -5,7 +5,7 @@
  * Spec 2.8.4: Present a packed descriptor with len=0xFFFFFFFF.
  * The device must not overflow internal length calculations.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_max_len(struct virtio_dev *dev,
                                          struct vring_packed *vr)

@@ -7,7 +7,7 @@
  * device must accept FEATURES_OK only if the driver did not set
  * any unsupported required feature bits.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_forward_unknown_features(struct virtio_dev *dev)
 {

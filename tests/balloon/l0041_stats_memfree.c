@@ -7,7 +7,7 @@
  * entries as (tag, val) pairs. Submit one MEMFREE stat entry
  * on the stats queue (queue 1) and verify the device consumes it.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_stat_memfree(struct virtio_dev *dev)
 {

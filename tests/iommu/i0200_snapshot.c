@@ -8,7 +8,7 @@
  * Hypervisor configuration so this test typically reports SKIP at
  * register time when the device is absent.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_iommu_survives_snapshot(struct virtio_dev *dev)
 {

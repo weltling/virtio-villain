@@ -7,8 +7,8 @@
  * on the new function and asserts a fresh device_status of zero
  * per spec 4.1.4.3.1.
  */
-#include "tests/test.h"
-#include "tests/hotplug.h"
+#include "lib/virtio_test.h"
+#include "lib/pci_hotplug.h"
 #include "lib/pci.h"
 
 static test_result_t test_vsock_hotplug_add(struct virtio_dev *dev)

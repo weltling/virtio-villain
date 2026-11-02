@@ -6,7 +6,7 @@
  * allowed by the device config (max_discard_seg). Tests device
  * handling of full-capacity discard batches.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 /* max_discard_seg offset in virtio_blk_config: byte 44 (uint32) */
 #define CFG_MAX_DISCARD_SEG_OFF  44

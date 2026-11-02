@@ -6,7 +6,7 @@
  * CID 0 is reserved, 1 is reserved, 2 is host, 0xFFFFFFFF is any.
  * Sending to these may confuse VMM routing logic.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_reserved_cid(struct virtio_dev *dev,
                                              struct vring *vr)

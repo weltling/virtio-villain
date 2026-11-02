@@ -6,7 +6,7 @@
  * data buffer of 65536 bytes (64KB) which may exceed size_max
  * if the device configured a smaller limit.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_write_exceeds_size_max(struct virtio_dev *dev,
                                                      struct vring *vr)

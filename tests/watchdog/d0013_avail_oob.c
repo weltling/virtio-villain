@@ -7,7 +7,7 @@
  * the descriptor table; the device must reject the entry rather
  * than dereference an out of bounds slot.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_watchdog_avail_oob(struct virtio_dev *dev,
                                              struct vring *vr)

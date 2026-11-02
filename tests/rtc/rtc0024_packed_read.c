@@ -5,7 +5,7 @@
  * Spec 2.8/5.23.6: Submit a READ_TIME request using the packed ring
  * format. Basic positive path for packed vring support.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_packed_read(struct virtio_dev *dev,
                                           struct vring_packed *vr)

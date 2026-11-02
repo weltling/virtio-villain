@@ -9,7 +9,7 @@
  * the header and the data buffer. The device must reject without
  * confusing status with data or scribbling on the data buffer.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_write_status_before_data(struct virtio_dev *dev,
                                                        struct vring *vr)

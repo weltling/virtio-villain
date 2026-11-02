@@ -7,7 +7,7 @@
  * descriptor or fault gracefully rather than crashing when it walks
  * past the page boundary into invalid memory.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_indirect_cross_page(struct virtio_dev *dev,
                                               struct vring *vr)

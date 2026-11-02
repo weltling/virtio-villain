@@ -11,7 +11,7 @@
  * "MUST NOT consume buffers or send any used buffer notifications to
  * the driver before DRIVER_OK."
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_kick_before_driver_ok(struct virtio_dev *dev)
 {

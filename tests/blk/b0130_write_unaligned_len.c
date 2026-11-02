@@ -5,7 +5,7 @@
  * Submit a write with a data buffer of 1025 bytes (not a multiple of
  * 512). The device must reject or handle this misalignment.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_write_unaligned_len(struct virtio_dev *dev,
                                                   struct vring *vr)

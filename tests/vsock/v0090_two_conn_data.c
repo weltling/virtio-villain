@@ -6,7 +6,7 @@
  * on each. The device must route data to the correct connection
  * context. Tests independent per-connection data handling.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static void mkconn(struct virtio_vsock_hdr *h, uint32_t port, uint16_t op)
 {

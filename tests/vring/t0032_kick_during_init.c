@@ -5,7 +5,7 @@
  * Send a queue notification while the device is only in ACKNOWLEDGE
  * state (no DRIVER, no DRIVER_OK). The device must ignore it.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_kick_during_init(struct virtio_dev *dev)
 {

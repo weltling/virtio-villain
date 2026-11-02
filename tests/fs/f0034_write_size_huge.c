@@ -9,7 +9,7 @@
  * past the end of the request buffer. The device must bound the
  * read at the available data.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_write_size_huge(struct virtio_dev *dev,

@@ -6,7 +6,7 @@
  * the device should return an error status. Tests device handling
  * of append operations without ZONED feature negotiation.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_zone_append_full(struct virtio_dev *dev,
                                                struct vring *vr)

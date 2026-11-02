@@ -7,7 +7,7 @@
 #ifndef VV_PACKED_UTIL_H
 #define VV_PACKED_UTIL_H
 
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 /*
  * Append one descriptor at the next available slot, stamping the

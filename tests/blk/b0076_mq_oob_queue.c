@@ -8,7 +8,7 @@
  * Try to use a request queue beyond the device's num_queues. If
  * the device only has 1 request queue, attempt queue index 1.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_mq_oob_queue(struct virtio_dev *dev)
 {

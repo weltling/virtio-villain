@@ -6,7 +6,7 @@
  * Spec 5.1.6.5: The device MUST return VIRTIO_NET_ERR for
  * unrecognized class values rather than crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_invalid_class(struct virtio_dev *dev,
                                                  struct vring *vr)

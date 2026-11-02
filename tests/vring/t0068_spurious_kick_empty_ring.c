@@ -7,7 +7,7 @@
  * nothing new, and return to waiting without crashing or advancing
  * the used ring.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_spurious_kick(struct virtio_dev *dev,
                                         struct vring *vr)

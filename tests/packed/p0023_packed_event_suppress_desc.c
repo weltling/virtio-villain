@@ -7,7 +7,7 @@
  * used. Submit multiple requests and verify the device respects the
  * event suppression threshold.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_event_suppress_desc(struct virtio_dev *dev,
                                                      struct vring_packed *vr)

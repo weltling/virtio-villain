@@ -9,7 +9,7 @@
  * used index advances by three. A VMM that only processes one ctrl
  * command per kick will time out.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_three_inflight(struct virtio_dev *dev,
                                                   struct vring *vr)

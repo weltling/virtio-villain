@@ -8,7 +8,7 @@
  * lets the guest forge ring state on a queue it is not driving. The
  * device must not honor an address that lands on another queue's ring.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "tests/packed/packed_util.h"
 
 static test_result_t test_packed_desc_addr_other_queue(struct virtio_dev *dev,

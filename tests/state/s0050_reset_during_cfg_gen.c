@@ -8,7 +8,7 @@
  * after the reset, and a follow up reinit must succeed. This
  * catches devices that race the reset path with config reads.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_reset_during_cfg_gen(struct virtio_dev *dev)
 {

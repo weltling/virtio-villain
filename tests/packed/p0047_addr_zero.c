@@ -6,7 +6,7 @@
  * a nonzero length. Address zero is typically unmapped guest
  * memory. The device must not dereference it or crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_addr_zero(struct virtio_dev *dev,
                                            struct vring_packed *vr)

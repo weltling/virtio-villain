@@ -6,7 +6,7 @@
  * 0xFFFF. The device must clamp or reject the oversized range
  * without integer overflow.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_state_max_blocks(struct virtio_dev *dev,
                                                struct vring *vr)

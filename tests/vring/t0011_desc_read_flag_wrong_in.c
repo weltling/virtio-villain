@@ -7,7 +7,7 @@
  * to write data into the buffer, so it must be writable. This is
  * the same class of bug as T09 but explicitly tests the data segment.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_desc_read_flag_wrong_in(struct virtio_dev *dev,
                                                   struct vring *vr)

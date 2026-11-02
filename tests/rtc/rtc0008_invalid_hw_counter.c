@@ -7,7 +7,7 @@
  * device sets status=VIRTIO_RTC_S_EOPNOTSUPP for unknown counter
  * ids.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_invalid_hw(struct virtio_dev *dev,
                                          struct vring *vr)

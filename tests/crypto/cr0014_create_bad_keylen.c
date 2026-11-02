@@ -9,7 +9,7 @@
  * Skips on Cloud Hypervisor and when the cipher service is not offered;
  * passes under QEMU.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define BAD_KEYLEN 7u
 

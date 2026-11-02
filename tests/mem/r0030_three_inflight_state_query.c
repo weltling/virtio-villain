@@ -6,7 +6,7 @@
  * The device must produce three independent responses without
  * mixing buffers or duplicating completions.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_three_state(struct virtio_dev *dev,
                                           struct vring *vr)

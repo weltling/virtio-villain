@@ -6,7 +6,7 @@
  * has no members in a simple device. Verify the device returns an
  * empty or minimal response without errors.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_admin_list_empty_group(struct virtio_dev *dev,
                                                  struct vring *vr)

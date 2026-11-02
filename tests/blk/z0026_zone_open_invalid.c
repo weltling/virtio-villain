@@ -6,7 +6,7 @@
  * not the start of any zone. The device must reject it rather than
  * corrupting zone metadata.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_zone_open_invalid(struct virtio_dev *dev,
                                                 struct vring *vr)

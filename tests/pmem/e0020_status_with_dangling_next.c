@@ -7,7 +7,7 @@
  * forbids dangling NEXT chains. The device must reject the
  * request without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pmem_status_dangling(struct virtio_dev *dev,
                                                struct vring *vr)

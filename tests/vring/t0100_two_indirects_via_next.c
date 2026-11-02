@@ -7,7 +7,7 @@
  * combined with NEXT in the main descriptor. The device must
  * reject the chain.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vring_two_indirects(struct virtio_dev *dev,
                                               struct vring *vr)

@@ -6,7 +6,7 @@
  * avail batch and a single kick. The device must process them
  * without descriptor cross talk or duplicate completions.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_admin_three_inflight(struct virtio_dev *dev)
 {

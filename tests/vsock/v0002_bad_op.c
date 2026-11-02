@@ -5,7 +5,7 @@
  * Submit a vsock packet with an unknown operation type.
  * The device must reject rather than crashing on unrecognized ops.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_bad_op(struct virtio_dev *dev,
                                        struct vring *vr)

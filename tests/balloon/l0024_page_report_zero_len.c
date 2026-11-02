@@ -6,7 +6,7 @@
  * reporting virtqueue. The device must handle the degenerate
  * case without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_report_zero_len(struct virtio_dev *dev,
                                                   struct vring *vr)

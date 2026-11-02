@@ -8,7 +8,7 @@
  * Submit WRITE_ZEROES with sector=0 and num_sectors=0xFFFFFFFF,
  * which almost certainly exceeds device capacity.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_wz_full_capacity(struct virtio_dev *dev,
                                                struct vring *vr)

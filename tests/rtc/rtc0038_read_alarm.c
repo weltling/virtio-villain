@@ -9,7 +9,7 @@
  * that the device fills the response status field and stays
  * alive, without asserting a particular alarm value.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 /* READ_ALARM request. Header followed by the clock id, matching
  * the layout used by the other clock selecting requests. */

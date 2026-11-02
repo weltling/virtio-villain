@@ -6,7 +6,7 @@
  * The only defined type is 1 (STREAM). An undefined type value may
  * cause the VMM to index into an invalid handler table or panic.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_undefined_type(struct virtio_dev *dev,
                                                struct vring *vr)

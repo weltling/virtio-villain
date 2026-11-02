@@ -5,7 +5,7 @@
  * Attempt to re-write driver feature bits after FEATURES_OK has been
  * set. The spec says features are frozen after FEATURES_OK.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_change_features_after_ok(struct virtio_dev *dev,
                                                    struct vring *vr)

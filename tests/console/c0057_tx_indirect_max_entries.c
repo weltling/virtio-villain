@@ -6,7 +6,7 @@
  * full indirect table of readable entries. The device must gather the
  * whole table without overrunning it.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define ENTRIES 16
 

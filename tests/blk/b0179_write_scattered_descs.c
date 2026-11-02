@@ -7,7 +7,7 @@
  * descriptors, then read the full 1024 bytes back in one descriptor
  * and verify every byte matches.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_write_scattered(struct virtio_dev *dev,
                                               struct vring *vr)

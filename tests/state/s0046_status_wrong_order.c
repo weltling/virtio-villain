@@ -7,7 +7,7 @@
  * without ACKNOWLEDGE skips a step. The device must not crash on
  * this. A clean reset and proper reinit must still work.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_status_wrong_order(struct virtio_dev *dev)
 {

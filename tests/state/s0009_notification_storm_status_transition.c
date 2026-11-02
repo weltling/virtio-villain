@@ -12,7 +12,7 @@
  * handling path - a race between the MMIO/PIO write handler for kicks
  * and the status transition logic.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_notification_storm(struct virtio_dev *dev)
 {

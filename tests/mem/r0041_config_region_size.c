@@ -7,7 +7,7 @@
  * non zero, a multiple of block_size, and at least as large as
  * usable_region_size.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_config_region_size(struct virtio_dev *dev)
 {

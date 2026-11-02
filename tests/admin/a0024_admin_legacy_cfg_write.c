@@ -6,7 +6,7 @@
  * Spec v1.3 2.13: VIRTIO_ADMIN_CMD_LEGACY_COMMON_CFG_WRITE allows
  * the owner to write legacy registers of a group member.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_admin_legacy_cfg_write(struct virtio_dev *dev,
                                                  struct vring *vr)

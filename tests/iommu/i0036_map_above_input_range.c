@@ -10,7 +10,7 @@
  *
  * Spec 5.13.4, 5.13.5.6.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_map_above_input_range(struct virtio_dev *dev,

@@ -8,7 +8,7 @@
  * Submit 32 reads, each with its own request and response buffer,
  * and verify both ordering and OK status on every reply.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static int do_one(struct virtio_dev *dev, struct vring *vr,
                   uint16_t base, uint16_t avail_slot, uint64_t *out)

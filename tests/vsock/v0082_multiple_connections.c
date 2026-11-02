@@ -6,7 +6,7 @@
  * The device must handle multiple independent connection contexts.
  * Spec 5.10.6.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_multi_conn(struct virtio_dev *dev,
                                            struct vring *vr)

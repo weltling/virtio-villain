@@ -8,7 +8,7 @@
  * Spec 2.8.16: driver MUST NOT write a descriptor before observing
  * the USED bit.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_write_before_used(struct virtio_dev *dev,
                                                    struct vring_packed *vr)

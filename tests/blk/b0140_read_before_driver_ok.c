@@ -12,7 +12,7 @@
  * does not crash. If the kick is honored we report TEST_REJECT
  * to record that the device chose to ignore the forbidden write.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_read_before_driver_ok(struct virtio_dev *dev,
                                                     struct vring *vr)

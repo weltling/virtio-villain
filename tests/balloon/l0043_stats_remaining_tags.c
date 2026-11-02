@@ -10,7 +10,7 @@
  * is covered, and verifies the device consumes the buffer.
  * Skips when the device does not offer the stats queue.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_stats_remaining_tags(struct virtio_dev *dev)
 {

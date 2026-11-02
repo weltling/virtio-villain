@@ -8,7 +8,7 @@
  * ignore the write (revealed by FEATURES_OK rejection later when
  * driver state is correct) or stay alive without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_driver_feature_before_driver(struct virtio_dev *dev,
                                                        struct vring *vr)

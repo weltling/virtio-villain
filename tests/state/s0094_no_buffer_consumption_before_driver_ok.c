@@ -7,7 +7,7 @@
  * FEATURES_OK (skip DRIVER_OK), program the queue, post a
  * descriptor and kick. The used ring must not advance.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

@@ -4,7 +4,7 @@
  *
  * Set queue_desc to an address far beyond guest RAM.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_queue_addr_outside_ram(struct virtio_dev *dev)
 {

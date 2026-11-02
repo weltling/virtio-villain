@@ -5,7 +5,7 @@
  * Submit a USO TX packet where hdr_len exceeds the total buffer
  * length. Spec v1.3 5.1.6.2: device must handle this gracefully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_uso_hdr_too_big(struct virtio_dev *dev,
                                                  struct vring *vr)

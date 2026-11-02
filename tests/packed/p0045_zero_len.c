@@ -6,7 +6,7 @@
  * WRITE flag set. The device must handle the zero length buffer
  * without crashing or infinite looping.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_zero_len(struct virtio_dev *dev,
                                           struct vring_packed *vr)

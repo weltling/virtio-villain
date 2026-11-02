@@ -6,7 +6,7 @@
  * configuration (new addresses, possibly new size). Spec 2.2.1:
  * re-enabling follows the same process as initial queue discovery.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_ring_reset_reenable(struct virtio_dev *dev,
                                               struct vring *vr)

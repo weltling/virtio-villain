@@ -12,7 +12,7 @@
  * not the attach. Skip if the device exposes no device cfg cap (the
  * region D0032 reads), so the two tests cover the same shape.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_watchdog_attach_only(
     struct virtio_dev *dev, struct vring *vr)

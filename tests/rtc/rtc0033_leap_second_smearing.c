@@ -8,7 +8,7 @@
  * reserved bytes of the CLOCK_CAP response. This sends a valid
  * CLOCK_CAP for clock_id 0 and inspects the reserved padding.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_clock_cap_smearing(struct virtio_dev *dev,
                                                  struct vring *vr)

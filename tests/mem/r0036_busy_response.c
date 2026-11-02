@@ -7,7 +7,7 @@
  * PLUG of zero blocks; if BUSY comes back the device must
  * still write a complete response header and not wedge.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_busy_response(struct virtio_dev *dev,
                                             struct vring *vr)

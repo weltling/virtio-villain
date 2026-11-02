@@ -6,7 +6,7 @@
  * Spec 5.10.6.6 allows setting both but the device must handle
  * the bidirectional close without crashing or leaking state.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_shutdown_both(struct virtio_dev *dev,
                                               struct vring *vr)

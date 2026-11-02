@@ -6,7 +6,7 @@
  * sending connection requests on the TX queue. Tests event queue
  * handling under load.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define NUM_EVENT_BUFS 32
 #define NUM_TX_PKTS 16

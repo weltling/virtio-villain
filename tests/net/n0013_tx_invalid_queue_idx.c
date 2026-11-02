@@ -6,7 +6,7 @@
  * number of queue pairs minus one. Spec 5.1.6.5.6.1: driver MUST NOT
  * queue packets on transmit queues greater than virtqueue_pairs.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_invalid_queue_idx(struct virtio_dev *dev,
                                                    struct vring *vr)

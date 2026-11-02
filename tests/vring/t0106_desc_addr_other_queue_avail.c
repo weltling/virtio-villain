@@ -9,7 +9,7 @@
  * neighbouring ring. Sibling of T0070 (own queue) for the cross queue
  * case.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_desc_addr_other_queue_avail(struct virtio_dev *dev,
                                                       struct vring *vr)

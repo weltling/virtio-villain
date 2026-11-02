@@ -6,7 +6,7 @@
  * Verify both return status 0 (S_OK). Tests the positive path
  * for the full MAP permission set.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_map_rw(struct virtio_dev *dev,

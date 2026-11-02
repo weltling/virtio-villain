@@ -8,7 +8,7 @@
  * per virtqueue coalescing parameters for vq 0, then read them
  * back with VQ_GET and verify the device returns the same values.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define COAL_MAX_PACKETS 16
 #define COAL_MAX_USECS   250

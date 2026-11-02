@@ -10,7 +10,7 @@
  * Sequence: MAP A [0x1000..0x2000), MAP B [0x2000..0x3000),
  * then UNMAP [0x1800..0x2800) which straddles A and B.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t submit_chain(struct virtio_dev *dev, struct vring *vr,

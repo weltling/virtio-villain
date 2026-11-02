@@ -7,7 +7,7 @@
  * on the same connection: the first without EOM, the second with
  * EOM set. The device must consume both as a single logical message.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_seqpacket_frag(struct virtio_dev *dev,
                                                struct vring *vr)

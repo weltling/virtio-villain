@@ -6,7 +6,7 @@
  * flush, then read both back and verify. Tests that flushes
  * interspersed with writes do not lose or reorder data.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t submit_write(struct virtio_dev *dev, struct vring *vr,
                                   uint16_t *ai, uint64_t sector, uint8_t pat)

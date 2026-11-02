@@ -7,7 +7,7 @@
  * should still process requests but may suppress notifications.
  * This tests the device's used_event parsing under edge values.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_event_idx_far_used_event(struct virtio_dev *dev,
                                                    struct vring *vr)

@@ -6,7 +6,7 @@
  * The device should reject or ignore unknown control classes rather
  * than crashing or executing arbitrary handler code.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_undefined_class(struct virtio_dev *dev,
                                                    struct vring *vr)

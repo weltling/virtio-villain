@@ -8,7 +8,7 @@
  * device must tolerate the write without crashing and must
  * accept a subsequent reset to a clean zero state.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_clear_features_ok(struct virtio_dev *dev)
 {

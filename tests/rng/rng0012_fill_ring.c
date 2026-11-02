@@ -6,7 +6,7 @@
  * advance avail->idx to queue_size. The device must consume the
  * full batch and fill all buffers without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rng_fill_ring(struct virtio_dev *dev,
                                         struct vring *vr)

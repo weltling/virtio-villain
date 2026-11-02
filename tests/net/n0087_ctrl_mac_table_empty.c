@@ -6,7 +6,7 @@
  * Spec 5.1.6.5 requires the device to atomically replace the filter
  * table. Empty arrays must clear it without use after free.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_mac_table_empty(struct virtio_dev *dev,
                                                    struct vring *vr)

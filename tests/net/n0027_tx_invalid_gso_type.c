@@ -5,7 +5,7 @@
  * Send a TX packet with an invalid GSO type value (not NONE, TCPv4,
  * UDP, TCPv6, or ECN). The device must not crash on undefined values.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_invalid_gso_type(struct virtio_dev *dev,
                                                   struct vring *vr)

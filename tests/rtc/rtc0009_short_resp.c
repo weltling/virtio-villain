@@ -7,7 +7,7 @@
  * MUST set status=VIRTIO_RTC_S_EINVAL when the response does not
  * fit, unless even status itself does not fit.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_short_resp(struct virtio_dev *dev,
                                          struct vring *vr)

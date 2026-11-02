@@ -9,7 +9,7 @@
  * then check ISR. The spec also says reading ISR clears it, so
  * read once into a local and assert.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_isr_queue_bit_after_used(struct virtio_dev *dev,
                                                    struct vring *vr)

@@ -7,7 +7,7 @@
  * EOR indicates end of record. The device must process the packet
  * without crashing when both boundary flags are set.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_seqpacket_eom_eor(struct virtio_dev *dev,
                                                   struct vring *vr)

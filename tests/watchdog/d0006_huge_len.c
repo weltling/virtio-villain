@@ -7,7 +7,7 @@
  * the write to the real buffer size or refuse the descriptor; it
  * must not write past the page.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_watchdog_huge_len(struct virtio_dev *dev,
                                             struct vring *vr)

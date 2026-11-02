@@ -7,7 +7,7 @@
  * device must reject with VIRTIO_NET_ERR rather than silently
  * coercing the value or asserting.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_rx_promisc_two(struct virtio_dev *dev,
                                                   struct vring *vr)

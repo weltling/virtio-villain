@@ -6,7 +6,7 @@
  * the same descriptor. This is a legal combination but tests device
  * handling of indirect writable buffers in the receive path.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_rx_indirect_write(struct virtio_dev *dev,
                                                 struct vring *vr)

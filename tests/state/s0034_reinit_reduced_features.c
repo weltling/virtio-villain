@@ -9,7 +9,7 @@
  * mandatory bit (VIRTIO_F_VERSION_1, bit 32) set, then drives a
  * valid block read to confirm the reinit took effect.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_reinit_reduced_features(struct virtio_dev *dev)
 {

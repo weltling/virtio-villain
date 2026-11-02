@@ -6,7 +6,7 @@
  * (which is required for MQ). This violates the spec dependency chain.
  * Tests whether the device detects the conflict and refuses FEATURES_OK.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_conflicting_features(struct virtio_dev *dev,
                                                struct vring *vr)

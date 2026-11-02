@@ -6,7 +6,7 @@
  * sector 0 when capacity is reported as nonzero. Baseline correctness
  * test for config space access and normal read path.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_config_capacity(struct virtio_dev *dev,
                                               struct vring *vr)

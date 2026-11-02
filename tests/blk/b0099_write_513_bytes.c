@@ -5,7 +5,7 @@
  * Spec 5.2.6.1: data length should be a multiple of 512 for
  * read/write. Submit a WRITE with 513 bytes of data.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_write_513_bytes(struct virtio_dev *dev,
                                               struct vring *vr)

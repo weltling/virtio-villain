@@ -6,7 +6,7 @@
  * (far larger than the 1-byte status field). The device should only
  * write 1 byte and not overflow into adjacent memory.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_oversized_status(struct virtio_dev *dev,
                                                struct vring *vr)

@@ -7,7 +7,7 @@
  * the negotiated maximum. The device must reject the command
  * without partial parse.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_admin_oversized(struct virtio_dev *dev,
                                           struct vring *vr)

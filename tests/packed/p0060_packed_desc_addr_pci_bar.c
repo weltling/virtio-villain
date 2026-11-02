@@ -10,7 +10,7 @@
  * Confirms whether the T0063 deadlock is reachable through the packed
  * pop path as well as the split path.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_desc_addr_pci_bar(struct virtio_dev *dev,
                                                    struct vring_packed *vr)

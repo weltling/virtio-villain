@@ -7,7 +7,7 @@
  * whether writing to sector 0 triggers any assertion failures or
  * different code paths compared to other sectors.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_write_sector_zero(struct virtio_dev *dev,
                                                 struct vring *vr)

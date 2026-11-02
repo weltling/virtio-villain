@@ -6,7 +6,7 @@
  * buffer's backing memory (simulating an unmap/free while DMA is
  * in-flight). Tests device resilience to early buffer reclamation.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_desc_unmap_after_submit(struct virtio_dev *dev,
                                                   struct vring *vr)

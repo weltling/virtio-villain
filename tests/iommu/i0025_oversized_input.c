@@ -9,7 +9,7 @@
  *
  * Spec 5.13.6.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_oversized_input(struct virtio_dev *dev,

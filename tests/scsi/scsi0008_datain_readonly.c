@@ -6,7 +6,7 @@
  * so the descriptor direction contradicts the command. The device must
  * not write past a read only descriptor; the host must stay alive.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_scsi_datain_readonly(struct virtio_dev *dev,
                                                struct vring *vr)

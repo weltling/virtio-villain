@@ -5,7 +5,7 @@
  * Spec 4.1.4.3: The num_queues field reports the total number of
  * virtqueues. It must be at least 1 for any functional device.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_num_queues(struct virtio_dev *dev)
 {

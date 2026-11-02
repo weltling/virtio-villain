@@ -9,7 +9,7 @@
  * another DMA to the same range, verifying the device handles the
  * sequence without wedging.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_map_dma_unmap(struct virtio_dev *dev,

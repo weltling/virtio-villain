@@ -5,7 +5,7 @@
  * Submit a read with data descriptor address set to 0. The device
  * must not write to physical address zero.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_data_addr_zero(struct virtio_dev *dev,
                                              struct vring *vr)

@@ -7,7 +7,7 @@
  * Tests device handling of non-contiguous physical backing for the
  * indirect table (identity-mapped here, but stresses page logic).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_indirect_cross_page_split(struct virtio_dev *dev,
                                                     struct vring *vr)

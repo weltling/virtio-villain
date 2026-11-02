@@ -6,7 +6,7 @@
  * contains mtu at offset 10 (after mac[6]+status[2]+max_vq_pairs[2]).
  * Read it and verify it is in a sane range (68..65535).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define NET_CFG_MTU_OFFSET 10
 

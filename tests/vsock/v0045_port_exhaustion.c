@@ -6,7 +6,7 @@
  * Tests that the device handles port exhaustion gracefully without
  * crashing or corrupting state.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define NUM_PORTS 64
 

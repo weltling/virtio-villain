@@ -6,7 +6,7 @@
  * Tests device handling of flush on a freshly initialized queue
  * with no prior writes to persist.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_flush_after_reset(struct virtio_dev *dev)
 {

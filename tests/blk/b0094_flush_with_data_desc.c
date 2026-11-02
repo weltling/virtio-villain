@@ -5,7 +5,7 @@
  * Spec 5.2.6.1: FLUSH requests should have no data segment.
  * Provide a 512-byte readable data descriptor between header and status.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_flush_with_data_desc(struct virtio_dev *dev,
                                                    struct vring *vr)

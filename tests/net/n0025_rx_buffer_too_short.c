@@ -6,7 +6,7 @@
  * the virtio_net_hdr size. The device should not write partial headers
  * or crash when there is insufficient buffer space.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_rx_buffer_too_short(struct virtio_dev *dev,
                                                   struct vring *vr)

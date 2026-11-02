@@ -6,7 +6,7 @@
  * might exist. This tells the peer we have no buffer space; the device
  * must handle zero-credit updates without division errors.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_credit_zero(struct virtio_dev *dev,
                                             struct vring *vr)

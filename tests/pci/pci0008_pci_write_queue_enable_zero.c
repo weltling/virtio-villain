@@ -7,7 +7,7 @@
  * attempts to "disable" a live queue, which may cause the VMM to
  * tear down queue state while I/O is in flight.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_write_queue_enable_zero(struct virtio_dev *dev,
                                                       struct vring *vr)

@@ -2,7 +2,7 @@
 #ifndef VV_PLAN9_UTIL_H
 #define VV_PLAN9_UTIL_H
 
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_9p.h"
 
 #define PLAN9_TEST_BUFFER_SIZE 8192

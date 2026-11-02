@@ -7,7 +7,7 @@
  * device correctly tracks the wrap counter phase independently of the
  * descriptor index.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_wrap_at_zero(struct virtio_dev *dev,
                                              struct vring_packed *vr)

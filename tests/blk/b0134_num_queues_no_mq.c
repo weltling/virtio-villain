@@ -5,7 +5,7 @@
  * Access the num_queues configuration field without negotiating
  * VIRTIO_BLK_F_MQ. The device may return 0 or 1.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_num_queues_no_mq(struct virtio_dev *dev)
 {

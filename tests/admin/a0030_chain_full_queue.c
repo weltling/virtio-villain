@@ -9,7 +9,7 @@
  * data segments. The device must walk the long chain to
  * completion rather than truncating at an arbitrary limit.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_admin_full_queue_chain(struct virtio_dev *dev)
 {

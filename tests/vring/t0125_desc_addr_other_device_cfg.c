@@ -12,7 +12,7 @@
  * hang or a sanitizer fault is a guest triggered host problem. Skips
  * when no second virtio device or its common config cap is found.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 #define PCI_CAP_ID_VNDR        0x09

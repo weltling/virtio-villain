@@ -6,7 +6,7 @@
  * capability (ID 0x05). Read Message Control to determine
  * 64-bit and per-vector masking support.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_pci_msi_cap_find(struct virtio_dev *dev,

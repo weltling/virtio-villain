@@ -7,7 +7,7 @@
  * must stop walking the chain at the queue_size boundary rather than
  * following it indefinitely.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 /* virtio-blk request header */
 static test_result_t test_desc_chain_too_long(struct virtio_dev *dev, struct vring *vr)

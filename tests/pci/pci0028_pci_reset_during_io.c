@@ -7,7 +7,7 @@
  * cleanly tear down in-flight I/O. We use virtio status=0 as the
  * closest userspace equivalent to FLR.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_reset_during_io(struct virtio_dev *dev,
                                               struct vring *vr)

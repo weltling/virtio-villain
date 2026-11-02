@@ -9,7 +9,7 @@
  * top of the address space with a length that makes addr plus len wrap
  * to a low value. The device must reject the range or stay alive.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_rw_addr_len_wrap(struct virtio_dev *dev,
                                                  struct vring *vr)

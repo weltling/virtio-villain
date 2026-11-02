@@ -9,7 +9,7 @@
  * before step 8 (DRIVER_OK). The device must not crash when
  * activation finds zero ready queues.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_driver_ok_no_queues(struct virtio_dev *dev)
 {

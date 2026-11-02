@@ -9,7 +9,7 @@
  * be visible as a config_generation change. This catches devices
  * that accept the write but never bump the counter.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_wce_config_generation(struct virtio_dev *dev,
                                                     struct vring *vr)

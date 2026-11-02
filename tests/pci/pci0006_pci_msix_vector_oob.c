@@ -6,7 +6,7 @@
  * Spec 4.1.5.1.2.2: driver SHOULD use valid MSI-X vector or NO_VECTOR.
  * Writing an invalid vector may cause VMM to index out of bounds.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_msix_vector_oob(struct virtio_dev *dev)
 {

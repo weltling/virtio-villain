@@ -6,7 +6,7 @@
  * The device must handle extreme port values without overflow
  * in any internal port-to-connection mapping structures.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_connect_max_port(struct virtio_dev *dev,
                                                  struct vring *vr)

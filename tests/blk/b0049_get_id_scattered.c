@@ -6,7 +6,7 @@
  * multiple chained descriptors (scattered). Tests device handling
  * of multi-descriptor writable buffers for identification.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_get_id_scattered(struct virtio_dev *dev,
                                                struct vring *vr)

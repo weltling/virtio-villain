@@ -6,7 +6,7 @@
  * too small even for the virtio_net_hdr. Tests that the device handles
  * undersized RX buffers without writing beyond the descriptor length.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_rx_one_byte(struct virtio_dev *dev,
                                           struct vring *vr)

@@ -12,7 +12,7 @@
  *
  * Spec 5.23.6.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_resp_addr_len_wrap(struct virtio_dev *dev,
                                                  struct vring *vr)

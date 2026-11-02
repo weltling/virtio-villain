@@ -9,7 +9,7 @@
  * non OK status. Skips on Cloud Hypervisor and when the cipher service
  * is not offered; passes under QEMU.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define BOGUS_CIPHER_ALGO 0x7fffffffu
 

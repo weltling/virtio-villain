@@ -6,7 +6,7 @@
  * (same sector range). Tests that the device handles duplicate/
  * overlapping ranges without crash or data corruption.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_discard_overlap_segments(struct virtio_dev *dev,
                                                        struct vring *vr)

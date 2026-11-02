@@ -10,7 +10,7 @@
  * confirm the SR-IOV capability (extended ID 0x0010) is present.
  * Skips when the device does not offer the feature.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 #define PCIE_EXT_CAP_START     0x100

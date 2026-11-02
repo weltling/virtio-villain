@@ -7,7 +7,7 @@
  * divided by 16 bytes per segment). This is a boundary test for
  * the segment count loop in the discard handler.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_discard_multi_segments(struct virtio_dev *dev,
                                                      struct vring *vr)

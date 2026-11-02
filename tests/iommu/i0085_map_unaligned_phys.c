@@ -9,7 +9,7 @@
  * physical address cleanly rather than truncating the low bits
  * and silently mapping a different physical page.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_map_unaligned_phys(struct virtio_dev *dev,

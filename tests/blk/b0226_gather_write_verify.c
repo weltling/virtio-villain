@@ -7,7 +7,7 @@
  * descriptor and verify the concatenated data. Tests the device
  * read side gather across a descriptor chain.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_gather_write(struct virtio_dev *dev,
                                            struct vring *vr)

@@ -5,7 +5,7 @@
  * Spec 5.13.6.7: UNMAP removes a previously mapped range.
  * Submit ATTACH, MAP, UNMAP and verify UNMAP returns status 0.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_unmap_ok(struct virtio_dev *dev,

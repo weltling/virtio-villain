@@ -7,7 +7,7 @@
  * A zero length unmap must not corrupt internal page tables
  * or crash the device.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_unmap_zero(struct virtio_dev *dev,

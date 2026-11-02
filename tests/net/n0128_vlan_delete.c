@@ -6,7 +6,7 @@
  * removes a VID from the filter. Removing a VID that was
  * never added must complete (ack OK) or fail gracefully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

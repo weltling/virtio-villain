@@ -7,7 +7,7 @@
  * does not match the actual notify register location. The device
  * must validate and reject or ignore the mismatch.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_notif_data_wrong_vq(struct virtio_dev *dev)
 {

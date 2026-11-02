@@ -6,7 +6,7 @@
  * Tests device resilience to rapid lifecycle recycling where
  * internal state teardown and setup may overlap.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rapid_reset_cycle(struct virtio_dev *dev)
 {

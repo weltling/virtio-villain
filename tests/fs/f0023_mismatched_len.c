@@ -6,7 +6,7 @@
  * field claims a size larger than the actual descriptor length.
  * The daemon must not read beyond the descriptor boundary.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_mismatched_len(struct virtio_dev *dev,

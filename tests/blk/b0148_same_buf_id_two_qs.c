@@ -10,7 +10,7 @@
  * each, kick both, and verify both used rings advance and both
  * status bytes report OK.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static int build_read(struct vring *vr, uint64_t sector, uint8_t **st_out)
 {

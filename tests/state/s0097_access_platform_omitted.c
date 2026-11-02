@@ -5,7 +5,7 @@
  * Spec 6.1 recommends accepting ACCESS_PLATFORM. Section 6.2 allows
  * the device to refuse operation if the driver declines it.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_access_platform_omitted(struct virtio_dev *dev)
 {

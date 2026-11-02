@@ -6,7 +6,7 @@
  * configured with different queue_size values (if the device allows).
  * Tests device handling of heterogeneous queue configurations.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_multiqueue_sizes(struct virtio_dev *dev,
                                                struct vring *vr)

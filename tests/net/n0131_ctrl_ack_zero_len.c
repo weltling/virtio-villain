@@ -7,7 +7,7 @@
  * With zero length the device has nowhere to write the ack. It must
  * not write beyond the descriptor length and must not crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_ack_zero_len(struct virtio_dev *dev,
                                                 struct vring *vr)

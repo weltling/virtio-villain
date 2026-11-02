@@ -6,7 +6,7 @@
  * 4.2.2.2: reading QueueReset returns 1 while the reset is in
  * progress, and 0 once complete.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

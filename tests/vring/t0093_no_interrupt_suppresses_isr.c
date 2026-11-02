@@ -9,7 +9,7 @@
  * suppression flag set, wait for completion, then check that ISR
  * queue bit is not set.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_no_interrupt_suppresses_isr(struct virtio_dev *dev,
                                                      struct vring *vr)

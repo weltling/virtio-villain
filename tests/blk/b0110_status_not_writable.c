@@ -5,7 +5,7 @@
  * Spec 5.2.6: The status byte must be device-writable.
  * Mark status descriptor as readable (no WRITE flag).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_status_not_writable(struct virtio_dev *dev,
                                                   struct vring *vr)

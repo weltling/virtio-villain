@@ -6,7 +6,7 @@
  * Spec 5.2.6.1: After flush completes, all prior writes MUST be
  * durable on the backing store.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_write_then_flush(struct virtio_dev *dev,
                                                struct vring *vr)

@@ -14,7 +14,7 @@
  * the device does offer DEVICE_STATS, since then the command is
  * valid.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_device_stats_no_feature(struct virtio_dev *dev,
                                                       struct vring *vr)

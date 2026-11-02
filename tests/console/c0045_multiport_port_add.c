@@ -7,7 +7,7 @@
  * posting a writable buffer on the control receive queue
  * (idx 3) so the device can deliver a PORT_ADD message.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

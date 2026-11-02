@@ -6,7 +6,7 @@
  * DRIVER, etc.) without first writing 0 to device_status. The spec says
  * the driver MUST reset before re-initializing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_reinit_without_reset(struct virtio_dev *dev)
 {

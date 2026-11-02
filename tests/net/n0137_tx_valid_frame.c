@@ -7,7 +7,7 @@
  * header + 46 byte padding = 60 bytes) with a clean virtio_net_hdr
  * (flags=0, gso_type=NONE). The device must consume it without error.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_valid(struct virtio_dev *dev,
                                        struct vring *vr)

@@ -7,7 +7,7 @@
  * device specific config). The device should output it immediately.
  * If the feature is not advertised the write should be harmless.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_emerg_write(struct virtio_dev *dev)
 {

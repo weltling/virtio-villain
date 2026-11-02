@@ -7,7 +7,7 @@
  * endpoint gracefully. It should return an appropriate status
  * without panicking.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_detach_none(struct virtio_dev *dev,

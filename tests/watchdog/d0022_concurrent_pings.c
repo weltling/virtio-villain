@@ -6,7 +6,7 @@
  * batch. The device must handle multiple in flight pings without
  * confusion or double completion.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_watchdog_concurrent_pings(struct virtio_dev *dev,
                                                     struct vring *vr)

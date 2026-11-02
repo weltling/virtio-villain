@@ -9,7 +9,7 @@
  * one virtual buffer. The device must walk the buffer linearly
  * without assuming page alignment.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_inflate_cross_page(struct virtio_dev *dev,
                                                      struct vring *vr)

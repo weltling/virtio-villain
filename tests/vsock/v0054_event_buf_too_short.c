@@ -7,7 +7,7 @@
  * says the device must not write past the buffer. The device must
  * either reject the entry or write at most the available bytes.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_event_short(struct virtio_dev *dev,
                                             struct vring *vr)

@@ -5,7 +5,7 @@
  * Spec 5.2.6: The header is exactly 16 bytes. Provide a header
  * descriptor with length 32, containing extra garbage bytes.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_header_oversized(struct virtio_dev *dev,
                                                struct vring *vr)

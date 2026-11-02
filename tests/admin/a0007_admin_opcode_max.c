@@ -6,7 +6,7 @@
  * value). Tests device handling of completely unknown admin commands
  * at the uint16 boundary.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_admin_opcode_max(struct virtio_dev *dev,
                                            struct vring *vr)

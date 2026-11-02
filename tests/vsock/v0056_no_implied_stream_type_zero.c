@@ -7,7 +7,7 @@
  * type=0 (invalid). Spec v1.3 5.10.6.6.2: without valid type the
  * packet must be rejected.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_type_zero(struct virtio_dev *dev,
                                           struct vring *vr)

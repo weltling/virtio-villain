@@ -8,7 +8,7 @@
  * Spec 2.8.16: driver MUST NOT modify a descriptor after making it
  * available.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_modify_after_avail(struct virtio_dev *dev,
                                                     struct vring_packed *vr)

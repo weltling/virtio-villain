@@ -6,7 +6,7 @@
  * every byte matches. Exercises the packed virtqueue data path for
  * correctness rather than just completion signaling.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring_packed *vr)
 {

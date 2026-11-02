@@ -5,7 +5,7 @@
  * Build a chain whose head sets NEXT and points back at itself.
  * The device must detect the cycle.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_self_loop(struct virtio_dev *dev,
                                         struct vring *vr)

@@ -10,7 +10,7 @@
  * wedging or crashing - the device may stop delivering further
  * interrupts but must remain functional.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

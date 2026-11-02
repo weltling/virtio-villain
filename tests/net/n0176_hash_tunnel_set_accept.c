@@ -11,7 +11,7 @@
  * path where the feature is absent; this is the positive command.
  * Skips when the device does not offer HASH_TUNNEL, as CH does not.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_hash_tunnel_set_accept(struct virtio_dev *dev,
                                                      struct vring *vr)

@@ -5,7 +5,7 @@
  * Submit two write commands to the same sector from two different
  * queues simultaneously. Tests device handling of write conflicts.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_concurrent_write_conflict(struct virtio_dev *dev,
                                                         struct vring *vr)

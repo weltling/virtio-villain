@@ -7,7 +7,7 @@
  * enough writable space; a compliant device must reject the
  * malformed chain rather than scribble somewhere.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_no_resp(struct virtio_dev *dev,
                                       struct vring *vr)

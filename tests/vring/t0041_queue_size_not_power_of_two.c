@@ -5,7 +5,7 @@
  * Set queue_size to 17 (not a power of two). The spec says queue_size
  * MUST be a power of 2 for split virtqueues.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_queue_size_not_power_of_two(struct virtio_dev *dev,
                                                      struct vring *vr)

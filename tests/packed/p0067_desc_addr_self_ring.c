@@ -8,7 +8,7 @@
  * loop. The device must not write into the descriptor ring it is
  * reading from.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "tests/packed/packed_util.h"
 
 static test_result_t test_packed_desc_addr_self_ring(struct virtio_dev *dev,

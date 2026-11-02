@@ -13,7 +13,7 @@
  * Spec 2.7.21: driver MUST NOT send any buffer available notifications
  * to the device before setting DRIVER_OK.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_avail_update_before_ok(struct virtio_dev *dev)
 {

@@ -7,7 +7,7 @@
  * with UNPLUGGED or reject rather than accessing memory beyond
  * the usable portion.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_state_beyond_usable(struct virtio_dev *dev,
                                                   struct vring *vr)

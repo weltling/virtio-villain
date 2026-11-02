@@ -9,7 +9,7 @@
  * or NEEDS_RESET. This catches host code that walks a global PCI
  * device list and corrupts the boot device on neighbour removal.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_remove_during_kick(struct virtio_dev *dev)
 {

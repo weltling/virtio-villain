@@ -6,7 +6,7 @@
  * The device writes the completion status byte into this descriptor;
  * without WRITE it should be rejected.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_desc_status_not_writable(struct virtio_dev *dev,
                                                    struct vring *vr)

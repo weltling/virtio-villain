@@ -10,7 +10,7 @@
  * large nb_blocks. The device must reject the request rather
  * than walking off the end of its plugged range bitmap.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_unplug_overflow(struct virtio_dev *dev,
                                               struct vring *vr)

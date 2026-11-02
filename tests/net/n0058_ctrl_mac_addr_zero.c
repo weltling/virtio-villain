@@ -6,7 +6,7 @@
  * Then write all-zeros MAC via CTRL_MAC if available - tests edge case
  * handling of broadcast/zero MAC addresses.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_mac_zero(struct virtio_dev *dev,
                                        struct vring *vr)

@@ -6,7 +6,7 @@
  * not use the device without full reinitialization. Submit a
  * descriptor to the queue after reset. The device must not crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_watchdog_ping_after_reset(struct virtio_dev *dev,
                                                     struct vring *vr)

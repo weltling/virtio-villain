@@ -8,7 +8,7 @@
  * the read back matches the original. Skip if the cached value
  * is zero (unusual layout).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_write_notify_mult(struct virtio_dev *dev)
 {

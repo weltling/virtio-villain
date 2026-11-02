@@ -6,7 +6,7 @@
  * interrupt bit. Submit a request, wait for completion, read ISR
  * (expect queue bit set), read again (expect cleared).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_isr_read_clear(struct virtio_dev *dev,
                                              struct vring *vr)

@@ -5,7 +5,7 @@
  * Submit a GET_ID request with a data buffer shorter than 20 bytes
  * (the spec defines VIRTIO_BLK_ID_BYTES = 20).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_get_id_short(struct virtio_dev *dev,
                                            struct vring *vr)

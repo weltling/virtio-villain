@@ -5,7 +5,7 @@
  * v1.4 5.11.4: cfg->num_request_queues plus the hiprio queue
  * must equal num_queues advertised by the common cfg.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

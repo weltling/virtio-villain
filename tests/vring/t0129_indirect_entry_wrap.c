@@ -12,7 +12,7 @@
  *
  * Spec 2.7.5.3.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 struct idesc {
     uint64_t addr;

@@ -6,7 +6,7 @@
  * multiple of sizeof(struct vring_desc)=16. Spec 2.7.7 requires
  * len to be a multiple of 16. The device must reject.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rng_indirect_unaligned(struct virtio_dev *dev,
                                                  struct vring *vr)

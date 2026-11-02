@@ -8,7 +8,7 @@
  * success, or VIRTIO_MSI_NO_VECTOR, signaling that the device
  * could not allocate the vector. Any other value is malformed.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_queue_msix_roundtrip(struct virtio_dev *dev)
 {

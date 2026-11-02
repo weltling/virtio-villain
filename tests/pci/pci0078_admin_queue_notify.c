@@ -7,7 +7,7 @@
  * 4.1.4.4: the admin queue uses the same notification mechanism
  * as data queues.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_admin_queue_notify(struct virtio_dev *dev,
                                                  struct vring *vr)

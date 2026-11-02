@@ -6,7 +6,7 @@
  * a gso_size of zero for USO is invalid and must not cause a
  * division by zero or infinite loop in the device.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_uso_gso_zero(struct virtio_dev *dev,
                                               struct vring *vr)

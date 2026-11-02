@@ -6,7 +6,7 @@
  * for both to complete. Tests that the VMM handles concurrent I/O
  * across multiple queues without corruption or deadlock.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_concurrent_mq(struct virtio_dev *dev)
 {

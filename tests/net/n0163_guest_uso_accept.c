@@ -12,7 +12,7 @@
  * gso_type without the feature; this is the positive acceptance.
  * Skips when the device does not offer GUEST_USO4.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_guest_uso_accept(struct virtio_dev *dev,
                                                struct vring *vr)

@@ -8,7 +8,7 @@
  * complete and the device must not register a timeout in
  * between.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t one_ping(struct virtio_dev *dev, struct vring *vr,
                               uint8_t *resp, uint16_t slot)

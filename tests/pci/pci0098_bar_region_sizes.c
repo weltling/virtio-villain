@@ -7,7 +7,7 @@
  * fields populated during capability walk must be non zero,
  * confirming the BARs are properly sized.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_bar_sizes(struct virtio_dev *dev)
 {

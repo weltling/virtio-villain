@@ -5,7 +5,7 @@
  * Device ID 9 defines feature bit 0 and a configuration payload containing
  * a little endian u16 tag length followed by the tag bytes.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_9p.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)

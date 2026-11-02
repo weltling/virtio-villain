@@ -7,7 +7,7 @@
  * it, then MAP the same range again with the same domain.
  * All three sub requests must complete OK.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)

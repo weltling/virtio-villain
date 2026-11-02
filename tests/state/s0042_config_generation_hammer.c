@@ -9,7 +9,7 @@
  * changes are happening must keep the value stable and the device
  * alive. This catches VMMs that touch device state on every read.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_config_generation_hammer(struct virtio_dev *dev)
 {

@@ -6,7 +6,7 @@
  * This is the boundary value - one more would be invalid (N14 tests that).
  * Tests that the device correctly accepts the maximum without off-by-one.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_mq_pairs_max(struct virtio_dev *dev,
                                                 struct vring *vr)

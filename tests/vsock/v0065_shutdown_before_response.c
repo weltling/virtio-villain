@@ -10,7 +10,7 @@
  * per connection state and without acknowledging a connection
  * that was never accepted.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static void fill(struct virtio_vsock_hdr *p, uint16_t op, uint32_t flags)
 {

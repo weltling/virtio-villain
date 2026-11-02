@@ -7,7 +7,7 @@
  * bits MUST be zero; the device must either ignore the unknown
  * bits or reject the descriptor cleanly.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_watchdog_all_flags(struct virtio_dev *dev,
                                              struct vring *vr)

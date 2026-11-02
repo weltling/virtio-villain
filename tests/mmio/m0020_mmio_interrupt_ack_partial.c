@@ -8,7 +8,7 @@
  * config-change (bit 1) are pending, clearing only one should leave
  * the other still asserted.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

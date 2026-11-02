@@ -11,7 +11,7 @@
  * that signals the vector of the wrong queue drops the notification,
  * and an interrupt driven driver waits forever.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 #define MSIX_ENABLE        (1u << 31)

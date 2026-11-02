@@ -10,7 +10,7 @@
  * the cipher service or AES-CBC is not advertised, and when the backend
  * cannot create the session; passes under a QEMU with a crypto library.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t destroy_session(struct virtio_dev *dev, struct vring *cvr,
                                      uint16_t slot, uint64_t session_id,

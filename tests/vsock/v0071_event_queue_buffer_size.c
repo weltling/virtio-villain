@@ -7,7 +7,7 @@
  * device pushes events into it on transport state changes.
  * Submit a buffer and check the device does not wedge.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

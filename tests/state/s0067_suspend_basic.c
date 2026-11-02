@@ -6,7 +6,7 @@
  * and verify the device clears DRIVER_OK. Spec 3.2: the device
  * sets DRIVER_OK to 0 once it has been suspended.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_suspend_basic(struct virtio_dev *dev)
 {

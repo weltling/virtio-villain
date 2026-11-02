@@ -7,7 +7,7 @@
  * caps during init; this test simply verifies the device has
  * a sensible device config region (tag is mandatory).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

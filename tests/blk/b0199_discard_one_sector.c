@@ -5,7 +5,7 @@
  * Submit DISCARD for exactly one sector (num_sectors=1) and verify
  * S_OK. Tests the minimum discard size.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_discard_one(struct virtio_dev *dev,
                                           struct vring *vr)

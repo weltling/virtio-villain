@@ -7,7 +7,7 @@
  * and change its length. Tests whether the device reads the descriptor
  * atomically or may see a partial update.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_modify_desc_after_avail(struct virtio_dev *dev,
                                                   struct vring *vr)

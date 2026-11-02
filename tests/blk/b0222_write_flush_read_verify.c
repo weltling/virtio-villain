@@ -7,7 +7,7 @@
  * persistence test: spec 5.2.6.2 says after flush completes all
  * prior writes are stable.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_wfr(struct virtio_dev *dev, struct vring *vr)
 {

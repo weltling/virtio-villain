@@ -5,7 +5,7 @@
  * Submit a writable descriptor with zero length to the watchdog.
  * The device must handle the edge case without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_watchdog_zero_len(struct virtio_dev *dev,
                                             struct vring *vr)

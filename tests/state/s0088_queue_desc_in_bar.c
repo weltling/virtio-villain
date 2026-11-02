@@ -12,7 +12,7 @@
  * device must reject the impossible descriptor table base or
  * stay safely idle.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_state_queue_desc_in_bar(struct virtio_dev *dev,
                                                   struct vring *vr)

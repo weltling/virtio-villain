@@ -5,7 +5,7 @@
  * Report buf_alloc/fwd_cnt values that cause integer overflow when
  * computing available credit. The device must handle this safely.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_credit_overflow(struct virtio_dev *dev,
                                                 struct vring *vr)

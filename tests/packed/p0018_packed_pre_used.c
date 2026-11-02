@@ -7,7 +7,7 @@
  * them available. Then make one available and kick. The device must
  * not be confused by pre-existing used flags on other slots.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_all_used_before_kick(struct virtio_dev *dev,
                                                      struct vring_packed *vr)

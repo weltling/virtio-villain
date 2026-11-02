@@ -5,7 +5,7 @@
  * Send CONNECT, then immediately SHUTDOWN, then CONNECT again on the
  * same port. Tests device connection state machine for rapid recycling.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_rapid_reopen(struct virtio_dev *dev,
                                              struct vring *vr)

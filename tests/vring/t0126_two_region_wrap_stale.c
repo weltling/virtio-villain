@@ -14,7 +14,7 @@
  * the chain or stay alive. A wrapping region followed by a valid one also
  * exercises the stale running boundary left by the first region.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_two_region_wrap_stale(struct virtio_dev *dev,
                                                 struct vring *vr)

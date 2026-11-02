@@ -6,7 +6,7 @@
  * Spec v1.3 4.1.4.3.1: if admin_queue_num > 0, selecting
  * admin_queue_index should expose a valid queue_size.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_admin_queue_select(struct virtio_dev *dev)
 {

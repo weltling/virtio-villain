@@ -9,7 +9,7 @@
  * This exercises the VMM's tolerance of a driver that skips
  * required checks. The VMM must not crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

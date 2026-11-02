@@ -6,7 +6,7 @@
  * byte payload = 1500 total). Tests that the device handles
  * standard MTU size frames.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_1500(struct virtio_dev *dev, struct vring *vr)
 {

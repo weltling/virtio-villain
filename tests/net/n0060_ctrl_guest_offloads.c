@@ -5,7 +5,7 @@
  * Issue a CTRL_GUEST_OFFLOADS_SET command without negotiating
  * VIRTIO_NET_F_CTRL_GUEST_OFFLOADS.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_ctrl_guest_offloads(struct virtio_dev *dev,
                                               struct vring *vr)

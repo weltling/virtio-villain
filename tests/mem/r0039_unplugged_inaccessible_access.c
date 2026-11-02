@@ -9,7 +9,7 @@
  * plugged. Reading the unplugged range is undefined and may
  * fault; we do not attempt to read it.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_unplugged_inacc(struct virtio_dev *dev,
                                               struct vring *vr)

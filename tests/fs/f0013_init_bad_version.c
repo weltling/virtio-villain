@@ -6,7 +6,7 @@
  * with major=0 (unsupported) should cause the daemon to reject
  * the handshake. The device must relay the error safely.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_init_bad_version(struct virtio_dev *dev,

@@ -7,7 +7,7 @@
  * data from sector 0. Write a pattern to sector 2, read it back,
  * and compare.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_read_sector_offset(struct virtio_dev *dev,
                                                  struct vring *vr)

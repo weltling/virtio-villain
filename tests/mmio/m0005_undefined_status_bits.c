@@ -7,7 +7,7 @@
  * Bits 4-5 (0x10, 0x20) and bits above 7 (in a 32-bit register) are
  * reserved. Writing undefined bits must not crash the VMM.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

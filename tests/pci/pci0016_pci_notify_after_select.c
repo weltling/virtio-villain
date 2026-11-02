@@ -7,7 +7,7 @@
  * dispatch correctly identifies the target queue from the BAR
  * offset rather than the queue_select register.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_notify_wrong_queue_after_select(struct virtio_dev *dev,
                                                          struct vring *vr)

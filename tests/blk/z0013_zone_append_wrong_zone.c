@@ -6,7 +6,7 @@
  * The device must reject the append since the zone has not
  * been explicitly opened.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_zone_append_wrong(struct virtio_dev *dev,
                                                 struct vring *vr)

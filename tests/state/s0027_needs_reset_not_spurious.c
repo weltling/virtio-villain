@@ -6,7 +6,7 @@
  * submit a potentially problematic request and verify the device
  * doesn't spuriously set NEEDS_RESET during normal operation.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_needs_reset_not_spurious(struct virtio_dev *dev,
                                                    struct vring *vr)

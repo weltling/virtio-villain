@@ -13,7 +13,7 @@
  * across the resize window and asserts every one completes with
  * status OK and the device stays alive.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 /* The harness allocates a 16 entry ring; 5 chains use 15 descriptors. */
 #define BATCH 5

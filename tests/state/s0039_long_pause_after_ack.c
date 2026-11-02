@@ -8,7 +8,7 @@
  * that times out partial init or assumes back to back status writes
  * will misbehave.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_long_pause_after_ack(struct virtio_dev *dev)
 {

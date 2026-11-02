@@ -9,7 +9,7 @@
  * A VMM that doesn't enforce this may allow a "failed" device to process
  * requests, breaking isolation guarantees.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_partial_reset_recovery(struct virtio_dev *dev,
                                                  struct vring *vr)

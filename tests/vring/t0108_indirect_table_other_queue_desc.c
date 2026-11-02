@@ -9,7 +9,7 @@
  * without treating the aliased page as that queue's descriptors or
  * corrupting it.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_indirect_table_other_queue_desc(struct virtio_dev *dev,
                                                           struct vring *vr)

@@ -6,7 +6,7 @@
  * that group type. Spec v1.3 2.12: driver MUST NOT use any commands
  * for a given group type before sending LIST_USE with the correct list.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 /* Use an arbitrary group-scoped opcode without prior LIST_USE */
 #define ADMIN_CMD_ARBITRARY 0x0010

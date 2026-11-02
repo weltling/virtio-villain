@@ -5,7 +5,7 @@
  * Spec 4.1.4.3: Writing device_feature_select selects the feature
  * word. Reading it back must return the written value.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_fsel_readback(struct virtio_dev *dev)
 {

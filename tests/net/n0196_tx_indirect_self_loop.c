@@ -6,7 +6,7 @@
  * indirect table chains its next field to itself. The device must
  * bound its walk of the table rather than loop forever.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_indirect_self_loop(struct virtio_dev *dev,
                                                     struct vring *vr)

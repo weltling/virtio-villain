@@ -6,7 +6,7 @@
  * This test sets SUSPEND and checks the device either suspends
  * successfully or sets NEEDS_RESET as the alternative outcome.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_suspend_needs_reset(struct virtio_dev *dev,
                                               struct vring *vr)

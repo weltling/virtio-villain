@@ -5,7 +5,7 @@
  * Suspend the device, then resume by setting DRIVER_OK. Spec 3.2:
  * the device sets SUSPEND to 0 once it resumes running.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_suspend_resume(struct virtio_dev *dev,
                                          struct vring *vr)

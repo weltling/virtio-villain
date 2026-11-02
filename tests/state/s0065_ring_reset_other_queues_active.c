@@ -6,7 +6,7 @@
  * Spec 2.2.1: resetting one queue must not affect other queues.
  * Uses a multiqueue blk device (num_queues > 1).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_ring_reset_other_active(struct virtio_dev *dev,
                                                   struct vring *vr)

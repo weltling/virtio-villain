@@ -7,7 +7,7 @@
  * alarm time in the past. The test passes if the device responds
  * (either fires or rejects) and stays alive across two repeats.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_alarm_zero(struct virtio_dev *dev)
 {

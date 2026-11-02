@@ -7,7 +7,7 @@
  * of looping forever following the next pointer when host input
  * arrives.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_rx_self_loop(struct virtio_dev *dev,
                                                struct vring *vr)

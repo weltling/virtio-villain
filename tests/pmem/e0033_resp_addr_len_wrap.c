@@ -12,7 +12,7 @@
  *
  * Spec 5.19.6.1.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pmem_resp_addr_len_wrap(struct virtio_dev *dev,
                                                   struct vring *vr)

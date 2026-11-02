@@ -6,7 +6,7 @@
  * send a TX frame larger than that buffer. If the device tries to
  * merge across buffers that don't exist, it must handle gracefully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_mrg_rxbuf_overflow(struct virtio_dev *dev,
                                                  struct vring *vr)

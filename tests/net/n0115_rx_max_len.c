@@ -6,7 +6,7 @@
  * The device must not overflow internal calculations when
  * confronted with a maximum size writable descriptor.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_rx_max_len(struct virtio_dev *dev,
                                          struct vring *vr)

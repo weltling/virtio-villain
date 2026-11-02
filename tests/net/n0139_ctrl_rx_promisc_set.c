@@ -6,7 +6,7 @@
  * may send VIRTIO_NET_CTRL_RX class with PROMISC command and a 1 byte
  * data value (1=enable, 0=disable). Send enable, verify ACK is OK.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_promisc(struct virtio_dev *dev,
                                            struct vring *vr)

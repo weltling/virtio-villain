@@ -6,7 +6,7 @@
  * device handles it. The event queue is used for transport events
  * like connection state changes.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_event_queue(struct virtio_dev *dev,
                                             struct vring *vr)

@@ -11,7 +11,7 @@
  * device must ignore the late write or reject it; it must
  * not crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_qsize_after_enable(struct virtio_dev *dev)
 {

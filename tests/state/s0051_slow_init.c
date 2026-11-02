@@ -7,7 +7,7 @@
  * status transition and feature step to catch devices that time
  * out internal state machines or assume the driver moves quickly.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_slow_init(struct virtio_dev *dev)
 {

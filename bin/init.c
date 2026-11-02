@@ -18,7 +18,7 @@
 #include "lib/virtio_mmio.h"
 #include "lib/vring.h"
 #include "lib/vring_packed.h"
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define QUEUE_SIZE 16
 

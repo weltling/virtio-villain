@@ -8,7 +8,7 @@
  *
  * Submit WRITE_ZEROES with flags = 0xFFFFFFFF (unmap + unknown bits).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_wz_unknown_flags_all(struct virtio_dev *dev,
                                                    struct vring *vr)

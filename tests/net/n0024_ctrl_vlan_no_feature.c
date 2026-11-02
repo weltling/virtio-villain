@@ -6,7 +6,7 @@
  * VIRTIO_NET_F_CTRL_VLAN. Spec 5.1.6.5.5: driver MUST NOT issue
  * CTRL_VLAN commands without the feature.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_vlan_no_feature(struct virtio_dev *dev,
                                                    struct vring *vr)

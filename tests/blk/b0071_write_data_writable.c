@@ -6,7 +6,7 @@
  * Submit a write where the data descriptor has VRING_DESC_F_WRITE
  * (device-writable), so the device cannot read the write payload.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_write_data_writable(struct virtio_dev *dev,
                                                   struct vring *vr)

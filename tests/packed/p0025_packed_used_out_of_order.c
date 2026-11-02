@@ -6,7 +6,7 @@
  * allows the device to complete them out of order with packed rings.
  * Verify both complete regardless of order.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_used_out_of_order(struct virtio_dev *dev,
                                                    struct vring_packed *vr)

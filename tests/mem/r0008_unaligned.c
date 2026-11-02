@@ -5,7 +5,7 @@
  * Per spec 5.15.6.2 addr must be aligned to block_size. Submit a
  * plug request with addr offset by 1 byte; device must reject.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_unaligned(struct virtio_dev *dev,
                                         struct vring *vr)

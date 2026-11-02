@@ -10,7 +10,7 @@
  * test sends an unreasonably large frame that exceeds any sane MTU to
  * exercise the device's size validation path.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_exceeds_mtu(struct virtio_dev *dev,
                                              struct vring *vr)

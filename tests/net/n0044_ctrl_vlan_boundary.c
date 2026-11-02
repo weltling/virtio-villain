@@ -6,7 +6,7 @@
  * vid=4096 (invalid, exceeds 12-bit range). Tests device VLAN ID
  * validation at boundaries.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_vlan_boundary(struct virtio_dev *dev,
                                                  struct vring *vr)

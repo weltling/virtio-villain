@@ -9,7 +9,7 @@
  * Note: the harness already wrote ACKNOWLEDGE by the time the test
  * runs, so we reset and check the zero state explicitly.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_status_init(struct virtio_dev *dev)
 {

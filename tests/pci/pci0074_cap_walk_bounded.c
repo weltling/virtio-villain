@@ -7,7 +7,7 @@
  * spinning. Spec 4.1.4 makes the list singly linked and
  * terminated by a zero pointer.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_pci_cap_walk_bounded(struct virtio_dev *dev,

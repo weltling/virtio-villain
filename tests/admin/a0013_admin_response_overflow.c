@@ -6,7 +6,7 @@
  * the expected result. The device must handle buffer truncation
  * without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_admin_response_overflow(struct virtio_dev *dev)
 {

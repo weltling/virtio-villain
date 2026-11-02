@@ -13,7 +13,7 @@
  * end lands at 0x100, and the second writable data region starts at 0x100
  * so it is GPA contiguous. The device must reject the chain or stay alive.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_contig_wrapped_region(struct virtio_dev *dev,
                                                 struct vring *vr)

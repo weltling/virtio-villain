@@ -9,7 +9,7 @@
  * its packed semantics and ignore the stray legacy bit rather
  * than misinterpreting the descriptor as a multi entry chain.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define PACKED_DESC_F_NEXT_LEGACY 0x0001u
 

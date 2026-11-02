@@ -8,7 +8,7 @@
  * then READ sector 8 and accept any data without asserting content.
  * The value is that the device survives the sequence.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_discard_then_read_safe(struct virtio_dev *dev,
                                                      struct vring *vr)

@@ -7,7 +7,7 @@
  * detect that the direction is wrong and not attempt to read from
  * a buffer the guest expects the device to write into.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_write_wrong_dir(struct virtio_dev *dev,
                                               struct vring *vr)

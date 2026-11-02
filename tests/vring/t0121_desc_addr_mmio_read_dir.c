@@ -10,7 +10,7 @@
  * own registers. A hang or timeout is a guest triggered host denial of
  * service.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_desc_addr_mmio_read_dir(struct virtio_dev *dev,
                                                   struct vring *vr)

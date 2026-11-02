@@ -6,7 +6,7 @@
  * the same avail ring batch. The daemon must handle concurrent
  * in flight requests without confusion or crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_concurrent_requests(struct virtio_dev *dev,

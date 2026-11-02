@@ -7,7 +7,7 @@
  * one readable then one writable; the device must not attempt
  * to read the writable buffer.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring_packed *vr)
 {

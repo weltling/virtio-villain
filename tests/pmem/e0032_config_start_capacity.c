@@ -5,7 +5,7 @@
  * Spec 5.19.4: The persistent memory range is exposed either through
  * the shared memory capability or the legacy start/capacity config.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pmem_config(struct virtio_dev *dev)
 {

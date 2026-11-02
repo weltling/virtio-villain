@@ -6,7 +6,7 @@
  * (still empty). Tests device handling of finishing a zone with
  * no data - should it succeed as a transition or fail?
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_zone_finish_empty(struct virtio_dev *dev,
                                                 struct vring *vr)

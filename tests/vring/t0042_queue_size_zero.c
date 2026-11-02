@@ -5,7 +5,7 @@
  * Set queue_size to 0 and try to enable the queue. A queue of size 0
  * has no descriptors and should be rejected.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_queue_size_zero(struct virtio_dev *dev)
 {

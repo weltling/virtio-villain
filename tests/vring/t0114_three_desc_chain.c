@@ -7,7 +7,7 @@
  * (header, data, status) and verify all three are consumed.
  * This is the fundamental three-desc chain correctness test.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_three_desc_chain(struct virtio_dev *dev,
                                            struct vring *vr)

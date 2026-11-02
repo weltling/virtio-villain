@@ -14,7 +14,7 @@
  * Note: VIRTIO_F_RING_RESET is needed for proper queue reset. We
  * attempt the operation regardless and observe behavior.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_queue_reenable_without_config(struct virtio_dev *dev,
                                                         struct vring *vr)

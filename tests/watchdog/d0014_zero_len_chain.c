@@ -7,7 +7,7 @@
  * descriptor per ping; this malformed chain must not be treated
  * as a ping nor reset the host.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_watchdog_zero_chain(struct virtio_dev *dev,
                                               struct vring *vr)

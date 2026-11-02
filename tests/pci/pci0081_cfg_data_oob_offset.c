@@ -6,7 +6,7 @@
  * BAR region size. The device must bounds check and not access
  * memory beyond the BAR mapping.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_pci_cfg_oob_offset(struct virtio_dev *dev,

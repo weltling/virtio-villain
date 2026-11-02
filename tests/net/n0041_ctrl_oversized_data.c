@@ -6,7 +6,7 @@
  * expected for the command type. Tests whether the device properly
  * bounds-checks the data length or blindly reads the full descriptor.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_oversized_data(struct virtio_dev *dev,
                                                   struct vring *vr)

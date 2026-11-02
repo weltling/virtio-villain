@@ -9,7 +9,7 @@
  * reject the request or return non zero status, but it must not
  * wedge or write past the end of the empty buffer.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_zero_data_seg(struct virtio_dev *dev,
                                             struct vring *vr)

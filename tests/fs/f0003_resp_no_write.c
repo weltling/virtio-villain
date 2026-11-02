@@ -6,7 +6,7 @@
  * flag. The device must reject the chain rather than write to
  * a read only buffer.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_resp_no_write(struct virtio_dev *dev,

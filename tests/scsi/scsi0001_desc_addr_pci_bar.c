@@ -8,7 +8,7 @@
  * registers when it completes the request. This mirrors the block
  * device case (T0063) for the virtio-scsi request path.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_scsi_desc_addr_pci_bar(struct virtio_dev *dev,
                                                  struct vring *vr)

@@ -7,7 +7,7 @@
  * process a full ring without off-by-one in the available/used
  * index wrap handling.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_fill_ring_completely(struct virtio_dev *dev,
                                               struct vring *vr)

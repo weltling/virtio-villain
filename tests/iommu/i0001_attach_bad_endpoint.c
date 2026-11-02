@@ -9,7 +9,7 @@
  * Spec 5.13.6.1: ATTACH requests with unknown endpoints should not
  * crash the device.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_attach_bad_endpoint(struct virtio_dev *dev,

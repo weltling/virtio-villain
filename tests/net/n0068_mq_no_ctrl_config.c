@@ -11,7 +11,7 @@
  * sending VQ_PAIRS_SET. The queue is attached/enabled but
  * multiqueue is never activated via the control path.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mq_no_ctrl_config(struct virtio_dev *dev)
 {

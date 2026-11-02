@@ -6,7 +6,7 @@
  * direction (device readable in status position). The device must
  * detect the protocol violation.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_zone_append_bad_dir(struct virtio_dev *dev,
                                                   struct vring *vr)

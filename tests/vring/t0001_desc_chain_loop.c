@@ -7,7 +7,7 @@
  * the chain without tracking visited indices will loop forever (hang or
  * 100% CPU in the virtio worker thread).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 /* virtio-blk request header */
 static test_result_t test_desc_chain_loop(struct virtio_dev *dev, struct vring *vr)

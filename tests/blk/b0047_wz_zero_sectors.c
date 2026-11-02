@@ -6,7 +6,7 @@
  * operation is a boundary case - the device should either complete
  * successfully (no-op) or reject it as invalid.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_wz_zero_sectors(struct virtio_dev *dev,
                                               struct vring *vr)

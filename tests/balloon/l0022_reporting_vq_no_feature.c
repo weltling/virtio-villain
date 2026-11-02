@@ -8,7 +8,7 @@
  * absent the test passes trivially; if present the device must
  * accept a kick on it without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_reporting_no_feature(struct virtio_dev *dev)
 {

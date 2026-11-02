@@ -10,7 +10,7 @@
  * perform it; passes under a QEMU with a crypto library, where the
  * builtin backend advertises SHA1.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_crypto_hash_sha1(struct virtio_dev *dev,
                                            struct vring *vr)

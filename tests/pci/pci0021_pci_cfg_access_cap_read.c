@@ -6,7 +6,7 @@
  * BAR read via PCI config space. Read the device_status field through
  * the cap and compare with a direct MMIO read.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_cfg_access_cap_read(struct virtio_dev *dev,
                                                   struct vring *vr)

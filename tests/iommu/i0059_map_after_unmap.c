@@ -10,7 +10,7 @@
  *
  * Spec 5.13.5.6, 5.13.5.7.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_map_after_unmap(struct virtio_dev *dev,

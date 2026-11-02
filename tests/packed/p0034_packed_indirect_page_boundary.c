@@ -6,7 +6,7 @@
  * Spec 2.8.7: The device must handle indirect tables that extend
  * beyond accessible memory without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_indirect_page_boundary(struct virtio_dev *dev,
                                                         struct vring_packed *vr)

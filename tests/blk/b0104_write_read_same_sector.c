@@ -5,7 +5,7 @@
  * Submit WRITE then READ to the same sector in one batch.
  * Tests whether device processes them in order.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_write_read_same_sector(struct virtio_dev *dev,
                                                      struct vring *vr)

@@ -7,7 +7,7 @@
  * into the queue. The device must reject the descriptor rather
  * than write into a read-only mapping.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rng_read_only(struct virtio_dev *dev,
                                         struct vring *vr)

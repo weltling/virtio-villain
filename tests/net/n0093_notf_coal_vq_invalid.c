@@ -5,7 +5,7 @@
  * Send VIRTIO_NET_CTRL_NOTF_COAL_VQ_SET with a vq_index that
  * exceeds the number of virtqueues. The device should reject it.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_notf_coal_vq_bad(struct virtio_dev *dev,
                                                struct vring *vr)

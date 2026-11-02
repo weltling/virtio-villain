@@ -6,7 +6,7 @@
  * notify on every submission. Place a chain and kick; verify
  * the device processes it.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring_packed *vr)
 {

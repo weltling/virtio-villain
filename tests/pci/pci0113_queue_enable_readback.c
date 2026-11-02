@@ -5,7 +5,7 @@
  * Spec 4.1.4.3.2: After writing 1 to queue_enable, reading it
  * back must return 1.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_qen_readback(struct virtio_dev *dev)
 {

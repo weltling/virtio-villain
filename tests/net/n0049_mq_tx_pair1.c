@@ -6,7 +6,7 @@
  * pairs are RX0/TX0=0/1, RX1/TX1=2/3, etc.). Tests device
  * multiqueue transmit path beyond the default pair.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_mq_tx_pair1(struct virtio_dev *dev)
 {

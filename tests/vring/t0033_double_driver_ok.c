@@ -5,7 +5,7 @@
  * Set DRIVER_OK twice. This should be idempotent; the device must not
  * re-process initialization or crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_double_driver_ok(struct virtio_dev *dev,
                                            struct vring *vr)

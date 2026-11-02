@@ -6,7 +6,7 @@
  * chain. The spec says INDIRECT must only appear on the first
  * descriptor and cannot be combined with other chain semantics.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_desc_write_indirect(struct virtio_dev *dev,
                                               struct vring *vr)

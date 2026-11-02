@@ -11,7 +11,7 @@
  * console bytes or wedge. The device must reject or handle the
  * non RAM source cleanly.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_tx_in_bar(struct virtio_dev *dev,
                                             struct vring *vr)

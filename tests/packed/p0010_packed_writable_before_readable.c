@@ -8,7 +8,7 @@
  * Spec 2.8.17: device-writable buffers MUST come after all
  * device-readable buffers.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_writable_before_readable(
     struct virtio_dev *dev, struct vring_packed *vr)

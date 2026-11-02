@@ -6,7 +6,7 @@
  * to configure message address/data and per-vector masking.
  * Exercise the MSI-X table directly through the BAR mapping.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 /* MSI-X table entry layout */

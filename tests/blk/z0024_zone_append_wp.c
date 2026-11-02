@@ -6,7 +6,7 @@
  * device should accept the write and advance the write pointer.
  * Basic positive path test per spec v1.3 5.2.6.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_zone_append_wp(struct virtio_dev *dev,
                                              struct vring *vr)

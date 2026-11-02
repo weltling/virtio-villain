@@ -10,7 +10,7 @@
  * ACK count in csum_offset. A report that sets the flag but claims
  * zero coalesced packets is invalid.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_rsc_ext_rx_header(struct virtio_dev *dev,
                                                 struct vring *vr)

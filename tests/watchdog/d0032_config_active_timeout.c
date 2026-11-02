@@ -8,7 +8,7 @@
  * wedge the device. If the device exposes no device cfg cap,
  * skip.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_watchdog_config_active_timeout(
     struct virtio_dev *dev, struct vring *vr)

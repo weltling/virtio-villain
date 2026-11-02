@@ -12,7 +12,7 @@
  * read/write bits are garbage. The device must reject or safely handle
  * the malformed table rather than follow a bogus next pointer or wedge.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_cross_format_indirect(struct virtio_dev *dev,
                                                 struct vring *vr)

@@ -6,7 +6,7 @@
  * the control virtqueue. Spec v1.3 5.1.6.5: configures coalescing
  * parameters for all transmit virtqueues.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_notf_coal_tx(struct virtio_dev *dev,
                                            struct vring *vr)

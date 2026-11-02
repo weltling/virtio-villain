@@ -6,7 +6,7 @@
  * no data buffer between them. Some commands require a data payload;
  * the device must handle a missing/empty data gracefully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_empty_data(struct virtio_dev *dev,
                                              struct vring *vr)

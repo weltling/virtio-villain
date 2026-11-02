@@ -6,7 +6,7 @@
  * region (computed from notify_length and notify_off_multiplier).
  * Tests device handling of boundary notify writes.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_notify_bar_bounds(struct virtio_dev *dev,
                                                 struct vring *vr)

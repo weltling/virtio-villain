@@ -13,7 +13,7 @@
  * when the akcipher service is not advertised, and when RSA is not
  * advertised.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_crypto_akcipher_malformed_key(struct virtio_dev *dev)
 {

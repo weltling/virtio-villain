@@ -6,7 +6,7 @@
  * has no receive buffer space. The device/host should still accept
  * the connection but not send data until credit is updated.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_zero_buf_alloc(struct virtio_dev *dev,
                                                struct vring *vr)

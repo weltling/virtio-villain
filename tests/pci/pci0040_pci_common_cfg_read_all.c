@@ -6,7 +6,7 @@
  * structure to exercise the device's config space read path and
  * verify all fields return plausible values.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_common_cfg_read_all(struct virtio_dev *dev)
 {

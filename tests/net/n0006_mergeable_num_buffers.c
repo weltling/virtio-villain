@@ -6,7 +6,7 @@
  * mergeable receive buffer header area. The device must handle
  * this safely without reading beyond allocated buffers.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_mergeable_abuse(struct virtio_dev *dev,
                                               struct vring *vr)

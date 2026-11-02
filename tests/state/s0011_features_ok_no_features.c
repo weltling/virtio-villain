@@ -11,7 +11,7 @@
  * Then proceed to set DRIVER_OK and do I/O, verifying the VMM doesn't
  * assume any features are active based on uninitialized register state.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_features_ok_no_features(struct virtio_dev *dev)
 {

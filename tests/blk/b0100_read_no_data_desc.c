@@ -5,7 +5,7 @@
  * Spec 5.2.6: A READ request should have a data segment.
  * Submit header + status only, no data descriptor in between.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_read_no_data_desc(struct virtio_dev *dev,
                                                 struct vring *vr)

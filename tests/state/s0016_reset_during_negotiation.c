@@ -6,7 +6,7 @@
  * but before FEATURES_OK). Tests that the device correctly abandons
  * the partial negotiation and returns to a clean initial state.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_reset_during_negotiation(struct virtio_dev *dev,
                                                    struct vring *vr)

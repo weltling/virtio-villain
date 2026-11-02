@@ -7,7 +7,7 @@
  * must be in 0..queue_size-1. An out of bounds ID must not cause
  * an array overflow in the device model.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_id_oob(struct virtio_dev *dev,
                                         struct vring_packed *vr)

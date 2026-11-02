@@ -6,7 +6,7 @@
  * a single kick. Both must complete. Tests batch entropy request
  * handling.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rng_batch(struct virtio_dev *dev, struct vring *vr)
 {

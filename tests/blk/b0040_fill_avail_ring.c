@@ -6,7 +6,7 @@
  * the VMM's used ring wrap-around handling and tests for off-by-one
  * errors when the ring is completely full.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_fill_avail(struct virtio_dev *dev,
                                          struct vring *vr)

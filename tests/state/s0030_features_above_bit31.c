@@ -7,7 +7,7 @@
  * and driver_feature. Test device handling of valid (VERSION_1) and
  * invalid (random) high feature bits.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_features_above_bit31(struct virtio_dev *dev)
 {

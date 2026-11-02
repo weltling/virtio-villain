@@ -7,7 +7,7 @@
  * device must reset or drop the connection request without
  * crashing the host.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_request_payload(struct virtio_dev *dev,
                                                 struct vring *vr)

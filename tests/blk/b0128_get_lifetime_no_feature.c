@@ -5,7 +5,7 @@
  * Submit a GET_LIFETIME request when VIRTIO_BLK_F_LIFETIME was not
  * offered or negotiated. Device must reject or handle gracefully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_get_lifetime_no_feature(struct virtio_dev *dev,
                                                       struct vring *vr)

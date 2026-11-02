@@ -6,7 +6,7 @@
  * it (at least some bytes are non zero). Tests that the RNG device
  * handles larger entropy requests beyond the minimum.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rng_4k(struct virtio_dev *dev, struct vring *vr)
 {

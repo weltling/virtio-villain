@@ -9,7 +9,7 @@
  * unless VIRTIO_NET_F_IPSEC is negotiated, so the SECURITY, SECURITY_ERR
  * and SA soft-expiry warning bits MUST stay clear here.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ipsec_security_rx_absent(struct virtio_dev *dev,
                                                        struct vring *vr)

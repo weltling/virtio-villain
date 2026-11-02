@@ -7,7 +7,7 @@
  * write the remaining bytes. Verify the resulting fixed buffer contains
  * only printable ASCII before the first NUL.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_get_id_format(struct virtio_dev *dev,
                                             struct vring *vr)

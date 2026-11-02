@@ -5,7 +5,7 @@
  * Acknowledge feature bits that the device did not offer. The device
  * should either fail FEATURES_OK or ignore the extra bits, not crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_accept_unoffered_feature(struct virtio_dev *dev)
 {

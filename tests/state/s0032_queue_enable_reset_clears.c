@@ -7,7 +7,7 @@
  * A VMM that leaves queue_enable=1 across a reset will allow the
  * driver to skip queue setup on reinit and operate on stale state.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_queue_enable_reset_clears(struct virtio_dev *dev)
 {

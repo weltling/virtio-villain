@@ -5,7 +5,7 @@
  * Submit a TX descriptor shorter than sizeof(struct virtio_net_hdr).
  * The device must reject or error rather than reading past the buffer.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_no_header(struct virtio_dev *dev,
                                            struct vring *vr)

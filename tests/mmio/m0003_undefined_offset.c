@@ -6,7 +6,7 @@
  * undefined/reserved offsets between or beyond defined registers
  * should return 0 or be ignored, but must not crash the VMM.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

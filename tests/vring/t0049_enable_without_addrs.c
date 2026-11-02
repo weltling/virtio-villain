@@ -5,7 +5,7 @@
  * Set queue_enable = 1 without first setting queue_desc/avail/used
  * addresses. The VMM may dereference NULL or uninitialized pointers.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_enable_without_addrs(struct virtio_dev *dev)
 {

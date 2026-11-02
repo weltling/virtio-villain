@@ -5,7 +5,7 @@
  * Submit multiple ping descriptors in sequence to verify the device
  * handles repeated keepalive operations.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_watchdog_multi_ping(struct virtio_dev *dev,
                                               struct vring *vr)

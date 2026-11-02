@@ -6,7 +6,7 @@
  * bytes of payload but the actual descriptor is only 64 bytes
  * (header size). Tests device handling of len/descriptor mismatch.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_data_len_huge(struct virtio_dev *dev,
                                               struct vring *vr)

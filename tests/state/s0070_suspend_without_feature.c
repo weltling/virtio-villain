@@ -6,7 +6,7 @@
  * The device should ignore the bit as it is undefined without
  * the feature.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_suspend_no_feature(struct virtio_dev *dev)
 {

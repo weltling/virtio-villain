@@ -6,7 +6,7 @@
  * CONSOLE_PORT event. Send the message for port id 0; device
  * must consume it.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

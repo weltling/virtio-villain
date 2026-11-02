@@ -6,7 +6,7 @@
  * Spec v1.3 5.1.6.5.5 + 2.6.1: the device must handle MQ config
  * changes while individual queues are in reset state.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_mq_during_reset(struct virtio_dev *dev,
                                               struct vring *vr)

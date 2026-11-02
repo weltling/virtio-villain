@@ -10,7 +10,7 @@
  * checksum fields. The device must either reject the request
  * or treat the header content as opaque bytes.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_hdr_in_ring(struct virtio_dev *dev,
                                              struct vring *vr)

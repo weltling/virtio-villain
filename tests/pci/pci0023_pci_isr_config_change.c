@@ -6,7 +6,7 @@
  * the ISR config-change bit is set. The device should signal
  * config changes through ISR bit 1.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_isr_config_change(struct virtio_dev *dev,
                                                 struct vring *vr)

@@ -4,7 +4,7 @@
  *
  * Submit 128 bytes on the TX queue. Tests moderate size transmit.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_tx_128(struct virtio_dev *dev,
                                          struct vring *vr)

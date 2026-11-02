@@ -8,7 +8,7 @@
  * selecting queue 0 and verify the original device assigned
  * value is preserved on readback and the device remains alive.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_write_queue_notify_off(struct virtio_dev *dev)
 {

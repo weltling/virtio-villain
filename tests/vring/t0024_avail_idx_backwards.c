@@ -8,7 +8,7 @@
  * using unsigned arithmetic will interpret a backwards move as a huge
  * forward jump and attempt to process 65535+ phantom entries.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_avail_idx_backwards(struct virtio_dev *dev,
                                               struct vring *vr)

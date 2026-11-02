@@ -6,7 +6,7 @@
  * Tests that the VMM handles rapid notification storms without race
  * condition crashes.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_simultaneous_kicks(struct virtio_dev *dev,
                                                  struct vring *vr)

@@ -6,7 +6,7 @@
  * sector 0 and read back. Tests the device preserves bit patterns
  * that exercise all data lines.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_alt(struct virtio_dev *dev, struct vring *vr)
 {

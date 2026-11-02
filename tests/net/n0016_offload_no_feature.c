@@ -6,7 +6,7 @@
  * Spec 5.1.6.5.8.2: driver MUST NOT enable an offload for which the
  * appropriate feature has not been negotiated.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_offload_no_feature(struct virtio_dev *dev,
                                                  struct vring *vr)

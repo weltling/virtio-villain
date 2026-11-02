@@ -6,7 +6,7 @@
  * reading its properties. Test whether device has a sane default
  * value for QueueNumMax when no queue has been explicitly selected.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

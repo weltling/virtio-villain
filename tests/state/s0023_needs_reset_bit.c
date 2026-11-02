@@ -6,7 +6,7 @@
  * invalid request and checking if NEEDS_RESET is signaled), or
  * verify the bit is not spuriously set during normal operation.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_needs_reset_detection(struct virtio_dev *dev,
                                                 struct vring *vr)

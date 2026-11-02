@@ -6,7 +6,7 @@
  * should return 0. Some implementations may have side effects (clearing
  * internal state) on ISR read regardless of pending status.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_isr_no_int(struct virtio_dev *dev,
                                          struct vring *vr)

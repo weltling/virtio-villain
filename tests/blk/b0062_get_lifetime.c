@@ -5,7 +5,7 @@
  * Issue a GET_LIFETIME request. If the feature is not supported,
  * the device should reject or return an error status.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_get_lifetime(struct virtio_dev *dev,
                                        struct vring *vr)

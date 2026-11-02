@@ -7,7 +7,7 @@
  * BAR index (6+). The device must ignore or reject the access
  * without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_pci_cfg_bad_bar(struct virtio_dev *dev,

@@ -10,7 +10,7 @@
  * RESV_MEM property, verify length is 20, the subtype is RESERVED or
  * MSI, the range is non-empty, and the entry fits in probe_size.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 #define PROBE_T_MASK          0x0fff

@@ -9,7 +9,7 @@
  * backend that only show up after many cycles. After the loop a
  * valid I/O confirms the device is still usable.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define REINIT_CYCLES 50
 

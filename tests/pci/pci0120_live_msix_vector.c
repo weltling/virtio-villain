@@ -7,7 +7,7 @@
  * its old pending bit. Remap to vector 1 and verify its pending bit.
  * Both vectors remain masked so no interrupt handler is needed.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 #include <errno.h>

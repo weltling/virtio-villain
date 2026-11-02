@@ -11,7 +11,7 @@
  * the feature, then notify with extra bits set in the high
  * word and verify the device still consumes the descriptor.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

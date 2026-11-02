@@ -4,7 +4,7 @@
  *
  * Set queue_desc to an address not aligned to 16 bytes.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_queue_desc_unaligned(struct virtio_dev *dev)
 {

@@ -6,7 +6,7 @@
  * used.flags is device-owned; the guest writing to it is a protocol
  * violation but some implementations may read it.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_used_flags_guest_write(struct virtio_dev *dev,
                                                  struct vring *vr)

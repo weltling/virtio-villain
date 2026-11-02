@@ -11,7 +11,7 @@
  * negotiated it MUST NOT set the VIRTIO_NET_HDR_F_UDP_TUNNEL_CSUM bit
  * in flags. Neither feature is negotiated here.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_udp_tunnel_gso_rx_absent(struct virtio_dev *dev,
                                                        struct vring *vr)

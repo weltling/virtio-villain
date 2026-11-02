@@ -6,7 +6,7 @@
  * read back and verify pattern B is returned. Tests that the device
  * does not cache stale data across writes to the same sector.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_overwrite(struct virtio_dev *dev,
                                         struct vring *vr)

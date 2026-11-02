@@ -6,7 +6,7 @@
  * has not been enabled (queue_enable still 0). The device must
  * ignore the notification and not crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_notif_data_disabled_q(struct virtio_dev *dev)
 {

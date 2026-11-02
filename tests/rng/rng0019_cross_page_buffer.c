@@ -8,7 +8,7 @@
  * scatter path. The device must fill the buffer without corrupting
  * adjacent memory.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rng_cross_page(struct virtio_dev *dev,
                                          struct vring *vr)

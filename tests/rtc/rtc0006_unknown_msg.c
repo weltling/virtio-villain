@@ -5,7 +5,7 @@
  * Send a header with msg_type = 0xDEAD. Per spec the device must
  * set status=VIRTIO_RTC_S_EOPNOTSUPP for unknown message types.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_unknown_msg(struct virtio_dev *dev,
                                           struct vring *vr)

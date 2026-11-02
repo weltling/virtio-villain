@@ -10,7 +10,7 @@
  * device still consumes the request. Skips when the device does not
  * offer the feature.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_notification_data(struct virtio_dev *dev,
                                                 struct vring *vr)

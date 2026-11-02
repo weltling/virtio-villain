@@ -7,7 +7,7 @@
  * queue 1. Verify the data matches. This tests that different
  * queues share coherent access to the backing store.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_xq_write_read_verify(struct virtio_dev *dev)
 {

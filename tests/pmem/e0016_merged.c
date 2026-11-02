@@ -7,7 +7,7 @@
  * Per spec 2.7.5 device-readable and device-writable bytes must
  * be in separate descriptors; the device should reject.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pmem_merged(struct virtio_dev *dev,
                                       struct vring *vr)

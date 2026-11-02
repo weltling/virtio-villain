@@ -10,7 +10,7 @@
  * guest mapping or crash the VMM. Completing, silently rejecting, or
  * wedging the queue are all acceptable.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_watchdog_addr_len_wrap(struct virtio_dev *dev,
                                                  struct vring *vr)

@@ -6,7 +6,7 @@
  * sizeof(struct virtio_blk_discard_write_zeroes) (16 bytes).
  * The device must reject the malformed payload.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_discard_bad_len(struct virtio_dev *dev,
                                               struct vring *vr)

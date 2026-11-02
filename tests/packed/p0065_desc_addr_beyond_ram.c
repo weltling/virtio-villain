@@ -8,7 +8,7 @@
  * invalid pointer and faults the VMM. The device must reject the
  * address instead of accessing it.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "tests/packed/packed_util.h"
 
 static test_result_t test_packed_desc_addr_beyond_ram(struct virtio_dev *dev,

@@ -7,7 +7,7 @@
  * 5.23.6 says time must be monotonically nondecreasing.
  * The device must return consistent timestamps.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_read_twice(struct virtio_dev *dev,
                                          struct vring *vr)

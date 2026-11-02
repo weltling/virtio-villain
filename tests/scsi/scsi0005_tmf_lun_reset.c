@@ -6,7 +6,7 @@
  * queue and confirm the device answers with a function complete
  * response.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_scsi_tmf_lun_reset(struct virtio_dev *dev,
                                              struct vring *vr)

@@ -8,7 +8,7 @@
  * targeting a conventional or absent zone. The device must
  * remain alive.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_zone_append_conv(struct virtio_dev *dev,
                                            struct vring *vr)

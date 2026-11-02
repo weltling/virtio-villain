@@ -6,7 +6,7 @@
  * ring update. Both must be consumed. Tests that the console device
  * handles multiple pending transmit buffers per notification.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_tx_batch(struct virtio_dev *dev,
                                            struct vring *vr)

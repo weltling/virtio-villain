@@ -14,7 +14,7 @@
  * Correct behavior: reject the request (put an error status in the
  * used ring) or at minimum not corrupt memory.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_desc_write_flag_wrong(struct virtio_dev *dev,
                                                 struct vring *vr)

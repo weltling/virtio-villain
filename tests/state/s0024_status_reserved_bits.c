@@ -6,7 +6,7 @@
  * NEEDS_RESET=64 and FAILED=128) to the device status register.
  * The device should ignore unknown bits or reject the write.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_status_reserved_bits(struct virtio_dev *dev,
                                                struct vring *vr)

@@ -5,7 +5,7 @@
  * Notify all available queues with no descriptors posted to any of
  * them. The device must handle this without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_empty_kicks_all_queues(struct virtio_dev *dev)
 {

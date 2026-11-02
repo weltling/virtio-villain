@@ -6,7 +6,7 @@
  * for completion. This creates a race between in-flight I/O processing
  * and device teardown. Tests for UAF/double-free in async backends.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_kick_reset_race(struct virtio_dev *dev,
                                               struct vring *vr)

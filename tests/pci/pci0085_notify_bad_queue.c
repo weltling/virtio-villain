@@ -7,7 +7,7 @@
  * device must ignore the spurious notification rather than
  * indexing out of bounds.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_notify_bad_queue(struct virtio_dev *dev)
 {

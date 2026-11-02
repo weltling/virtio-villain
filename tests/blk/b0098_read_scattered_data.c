@@ -5,7 +5,7 @@
  * Submit a READ with data split across two 256-byte writable
  * descriptors (total 512 bytes). Tests scatter-gather handling.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_read_scattered_data(struct virtio_dev *dev,
                                                   struct vring *vr)

@@ -7,7 +7,7 @@
  * the driver MUST NOT modify it until it appears in the used ring.
  * A VMM that reads descriptor fields multiple times may see torn data.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_modify_inflight(struct virtio_dev *dev,
                                           struct vring *vr)

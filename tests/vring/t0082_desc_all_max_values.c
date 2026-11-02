@@ -5,7 +5,7 @@
  * Set addr=UINT64_MAX, len=UINT32_MAX, flags=0xFFFF, next=UINT16_MAX
  * on a descriptor. The device must handle extreme values gracefully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_desc_max_values(struct virtio_dev *dev,
                                           struct vring *vr)

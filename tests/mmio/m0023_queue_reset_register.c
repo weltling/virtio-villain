@@ -7,7 +7,7 @@
  * writing 1 to this register resets the selected queue. After
  * reset, QueueReady must read 0.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

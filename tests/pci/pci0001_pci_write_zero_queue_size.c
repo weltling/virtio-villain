@@ -6,7 +6,7 @@
  * driver MUST NOT write 0 to queue_size. A VMM may panic or divide
  * by zero when allocating queue structures.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_write_zero_queue_size(struct virtio_dev *dev,
                                                     struct vring *vr)

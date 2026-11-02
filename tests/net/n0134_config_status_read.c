@@ -8,7 +8,7 @@
  * verify the field is accessible and the value is within the
  * defined bit mask (bits 0 and 1 only).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_config_status(struct virtio_dev *dev)
 {

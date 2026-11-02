@@ -6,7 +6,7 @@
  * through PCI config space. Write to device_status via the cap and
  * verify the value sticks via direct MMIO read.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 /*

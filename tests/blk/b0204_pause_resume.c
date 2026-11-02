@@ -8,7 +8,7 @@
  * expected to have closed. The pause window must not corrupt the
  * device: both reads must complete with status OK.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "tests/blk/blk_mmio_helpers.h"
 
 static test_result_t do_read(struct virtio_dev *dev, struct vring *vr,

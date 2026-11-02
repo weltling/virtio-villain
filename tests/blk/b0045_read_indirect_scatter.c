@@ -7,7 +7,7 @@
  * 4 separate 128-byte buffers instead of one 512-byte buffer.
  * Tests the device's handling of indirect + multi-buffer reads.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_read_indirect_scatter(struct virtio_dev *dev,
                                                     struct vring *vr)

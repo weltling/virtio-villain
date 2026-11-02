@@ -6,7 +6,7 @@
  * device's num_queues. The device must not use this value as an array
  * index without bounds checking.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_notify_wrong_queue(struct virtio_dev *dev,
                                                  struct vring *vr)

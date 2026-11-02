@@ -6,7 +6,7 @@
  * says the driver MUST NOT, but a robust VMM must clamp or ignore
  * rather than index out of bounds.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_qsel_oob(struct virtio_dev *dev)
 {

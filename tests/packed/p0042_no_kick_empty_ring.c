@@ -7,7 +7,7 @@
  * device must observe no available descriptors and produce no
  * completions. The device must not consume garbage.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_empty(struct virtio_dev *dev,
                                        struct vring_packed *vr)

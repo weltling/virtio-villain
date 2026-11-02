@@ -6,7 +6,7 @@
  * with ioprio set to 0xFFFFFFFF to test that the device doesn't
  * misinterpret the reserved field.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_flush_nonzero_ioprio(struct virtio_dev *dev,
                                                    struct vring *vr)

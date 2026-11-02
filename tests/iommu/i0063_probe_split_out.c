@@ -10,7 +10,7 @@
  *
  * Spec 5.13.6.5, 2.7.13.3.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_probe_split_out(struct virtio_dev *dev,

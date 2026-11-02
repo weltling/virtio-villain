@@ -7,7 +7,7 @@
  * the write zeroes command itself (B0170 already verifies the
  * data; this test focuses on the status response).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_wz_status(struct virtio_dev *dev,
                                         struct vring *vr)

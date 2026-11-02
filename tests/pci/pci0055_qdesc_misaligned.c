@@ -6,7 +6,7 @@
  * a misaligned phys_addr to queue_desc and check the VMM does
  * not blindly use it.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_qdesc_misaligned(struct virtio_dev *dev)
 {

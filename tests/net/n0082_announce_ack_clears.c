@@ -10,7 +10,7 @@
  * verifies the device handles a redundant ack without wedging
  * and without setting the bit afterwards.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_announce_ack_clears(struct virtio_dev *dev,
                                                   struct vring *vr)

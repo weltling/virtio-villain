@@ -8,7 +8,7 @@
  * Spec 5.5.6.1: The driver places PFNs on the deflateq to
  * indicate pages that should be returned to the guest.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_deflate(struct virtio_dev *dev)
 {

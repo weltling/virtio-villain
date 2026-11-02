@@ -6,7 +6,7 @@
  * verify VIRTIO_NET_OK. Tests the disable path after the device
  * may have been in promiscuous mode.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_promisc_off(struct virtio_dev *dev,
                                                struct vring *vr)

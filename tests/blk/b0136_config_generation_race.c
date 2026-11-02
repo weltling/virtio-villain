@@ -6,7 +6,7 @@
  * If generation changes between start and end of a multi-field read,
  * the read must be retried.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_config_generation_race(struct virtio_dev *dev)
 {

@@ -8,7 +8,7 @@
  * Submit a write at sector = UINT64_MAX. This is astronomically
  * beyond any device capacity.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_write_max_sector(struct virtio_dev *dev,
                                                struct vring *vr)

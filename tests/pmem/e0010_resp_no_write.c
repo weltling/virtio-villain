@@ -7,7 +7,7 @@
  * reject the malformed chain rather than write to a read-only
  * mapping.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pmem_resp_no_write(struct virtio_dev *dev,
                                              struct vring *vr)

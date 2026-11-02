@@ -6,7 +6,7 @@
  * virt_start. Set virt_start near 0xFFFF_FFFF_FFFF_F000 and
  * virt_end below it (range wraps). The device must reject.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)

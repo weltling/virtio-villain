@@ -5,7 +5,7 @@
  * Spec 4.1.4.5: reading the ISR status register clears it. Read
  * it twice in succession; the second read must return 0.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_isr_clear(struct virtio_dev *dev,
                                         struct vring *vr)

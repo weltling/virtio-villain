@@ -5,7 +5,7 @@
  * Submit a WRITE ZEROES request without having negotiated
  * VIRTIO_BLK_F_WRITE_ZEROES. The device must return UNSUPP.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_wz_no_feature(struct virtio_dev *dev,
                                             struct vring *vr)

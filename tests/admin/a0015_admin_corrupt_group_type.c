@@ -5,7 +5,7 @@
  * Submit a valid admin opcode (LIST_QUERY) but with group_type set
  * to 0xFFFF (invalid). The device should reject gracefully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_admin_corrupt_group_type(struct virtio_dev *dev)
 {

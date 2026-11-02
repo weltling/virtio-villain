@@ -6,7 +6,7 @@
  * Walk the capability list reading type, bar, offset, length for
  * each. The device must survive full enumeration.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_pci_cap_walk(struct virtio_dev *dev,

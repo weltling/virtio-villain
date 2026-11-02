@@ -6,7 +6,7 @@
  * We configure queue_desc with a misaligned physical address, then
  * submit a request to see if the device rejects or crashes.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_desc_table_unaligned(struct virtio_dev *dev)
 {

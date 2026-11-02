@@ -8,7 +8,7 @@
  * feature, read queue_notify_data, write it to the notify register,
  * and verify the device processes the request.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_notif_config_data(struct virtio_dev *dev)
 {

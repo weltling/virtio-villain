@@ -5,7 +5,7 @@
  * Submit a FLUSH request with a data descriptor. The spec says a FLUSH
  * should not include data.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_flush_with_data(struct virtio_dev *dev,
                                               struct vring *vr)

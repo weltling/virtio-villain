@@ -6,7 +6,7 @@
  * in driver features. Spec v1.3 6: reserved feature bits must
  * be ignored and not cause undefined behavior.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_forward_reserved_features(struct virtio_dev *dev)
 {

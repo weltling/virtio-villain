@@ -6,7 +6,7 @@
  * ring batch (one kick). Tests device handling of rapid connection
  * establishment under load - potential hash table/allocation pressure.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define NUM_CONNECTS 32
 

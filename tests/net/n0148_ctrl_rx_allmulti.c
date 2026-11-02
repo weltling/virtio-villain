@@ -6,7 +6,7 @@
  * driver may set all-multicast mode via CTRL_RX_ALLMULTI. Send
  * enable (data=1) and verify VIRTIO_NET_OK.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_allmulti(struct virtio_dev *dev,
                                            struct vring *vr)

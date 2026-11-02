@@ -11,7 +11,7 @@
  * backend cannot perform PKCS#1 RSA; passes on a QEMU built with a
  * crypto library that provides RSA, for example gcrypt.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "tests/crypto/crypto_rsa_key.h"
 
 #define PKCS1_MSG_LEN 16

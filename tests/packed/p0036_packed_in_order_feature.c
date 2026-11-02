@@ -7,7 +7,7 @@
  * descriptors out of order. Submit several requests and verify
  * all complete regardless of order.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define NUM_REQUESTS 4
 

@@ -6,7 +6,7 @@
  * zero. Set them to nonzero values and verify the device either
  * rejects the request or still completes without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_reserved_bits(struct virtio_dev *dev,
                                             struct vring *vr)

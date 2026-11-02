@@ -12,7 +12,7 @@
  * when the backend cannot create the session; passes under a QEMU with
  * a crypto library.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_crypto_reuse_after_destroy(struct virtio_dev *dev,
                                                      struct vring *vr)

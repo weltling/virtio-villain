@@ -6,7 +6,7 @@
  * descriptor index. The device must handle repeated head indices
  * without aliasing internal state or double-completing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_avail_all_same_desc(struct virtio_dev *dev,
                                               struct vring *vr)

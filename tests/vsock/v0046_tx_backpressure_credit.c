@@ -6,7 +6,7 @@
  * The device must handle the over-credit send gracefully (reject
  * or drop, but not crash).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define PAYLOAD_SIZE 4096
 #define NUM_SENDS 32

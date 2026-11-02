@@ -7,7 +7,7 @@
  * Submit a valid frame with partial checksum offload and verify
  * the device consumes it.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_csum_valid(struct virtio_dev *dev,
                                             struct vring *vr)

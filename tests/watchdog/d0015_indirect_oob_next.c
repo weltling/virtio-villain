@@ -8,7 +8,7 @@
  * the device must reject the chain rather than processing the
  * first entry in isolation.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_watchdog_indirect_oob_next(struct virtio_dev *dev,
                                                      struct vring *vr)

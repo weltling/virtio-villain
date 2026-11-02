@@ -6,7 +6,7 @@
  * driver may change the device MAC via CTRL_MAC_ADDR_SET. Send a
  * valid unicast MAC and verify the device responds VIRTIO_NET_OK.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_mac_set(struct virtio_dev *dev,
                                            struct vring *vr)

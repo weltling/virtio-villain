@@ -5,7 +5,7 @@
  * The admin cmd header has 12 reserved bytes. Set them all to 0xFF.
  * The device must ignore reserved fields without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_admin_reserved_nonzero(struct virtio_dev *dev)
 {

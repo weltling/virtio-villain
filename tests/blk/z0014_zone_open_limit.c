@@ -6,7 +6,7 @@
  * ZONE_OPEN commands for many distinct zones. The device should
  * reject opens beyond the limit.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define ZONE_SIZE_SECTORS 524288  /* 256 MiB zone at 512 bytes/sector */
 #define NUM_OPENS 64              /* try to open 64 zones */

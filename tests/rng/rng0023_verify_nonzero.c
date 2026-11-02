@@ -7,7 +7,7 @@
  * returning all zeros for 64 bytes of entropy is statistically
  * implausible and likely indicates the device failed to fill.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rng_nonzero(struct virtio_dev *dev,
                                       struct vring *vr)

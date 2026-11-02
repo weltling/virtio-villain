@@ -5,7 +5,7 @@
  * Send a TX packet with csum_start pointing beyond the packet length.
  * The device must not compute a checksum at an out-of-bounds offset.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_csum_oob(struct virtio_dev *dev,
                                           struct vring *vr)

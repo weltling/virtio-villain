@@ -6,7 +6,7 @@
  * adding mappings to it is meaningless. The device must
  * reject MAP requests targeting a bypass domain.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)

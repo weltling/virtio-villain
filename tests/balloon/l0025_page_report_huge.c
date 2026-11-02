@@ -5,7 +5,7 @@
  * Spec 5.5.6.4: Submit a report descriptor claiming a 1 GiB range.
  * The device must bounds check and not overrun memory.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_report_huge(struct virtio_dev *dev,
                                               struct vring *vr)

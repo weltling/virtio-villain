@@ -8,7 +8,7 @@
  * crash the device; reads of SHMLen should return all ones per
  * spec when the id is invalid.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

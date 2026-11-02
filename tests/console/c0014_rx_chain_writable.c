@@ -7,7 +7,7 @@
  * host input arrives and must not crash on chain handling. On a
  * quiet console the expected outcome is REJECT.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_rx_chain_writable(struct virtio_dev *dev,
                                                     struct vring *vr)

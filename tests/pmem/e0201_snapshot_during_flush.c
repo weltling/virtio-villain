@@ -8,7 +8,7 @@
  * asserts the device never raises FAILED or NEEDS_RESET and that
  * DRIVER_OK is still set on exit.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pmem_survives_snapshot(struct virtio_dev *dev)
 {

@@ -5,7 +5,7 @@
  * Spec 5.3.6.1: VIRTIO_CONSOLE_PORT_OPEN with an out of range
  * port id. The device must reject or ignore gracefully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_ctrl_bad_port(struct virtio_dev *dev)
 {

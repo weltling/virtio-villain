@@ -7,7 +7,7 @@
  * Reading ISR clears it. Submit a read, then check ISR reflects
  * the queue interrupt (bit 0). Only meaningful without MSI-X.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_isr_after_io(struct virtio_dev *dev,
                                            struct vring *vr)

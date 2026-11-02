@@ -8,7 +8,7 @@
  * set, drain the ISR, then submit another with the bit cleared
  * and verify ISR queue bit is set.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static int submit_read(struct virtio_dev *dev, struct vring *vr,
                        uint16_t base, uint16_t avail_slot)

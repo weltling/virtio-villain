@@ -6,7 +6,7 @@
  * The driver should not write it. Attempt a write and confirm the
  * device does not crash or change state unexpectedly.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_watchdog_config_write(struct virtio_dev *dev)
 {

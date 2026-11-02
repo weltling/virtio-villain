@@ -6,7 +6,7 @@
  * request on queue 0 simultaneously. Both queues are independent
  * and the device must service them without deadlock.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_report_with_inflate(struct virtio_dev *dev,
                                                       struct vring *vr)

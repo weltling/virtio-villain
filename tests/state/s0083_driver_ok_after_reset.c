@@ -9,7 +9,7 @@
  * The device must not crash or corrupt host memory, and must be able
  * to recover via a clean reset and handle valid requests afterwards.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_driver_ok_after_reset(struct virtio_dev *dev,
                                                 struct vring *vr)

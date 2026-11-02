@@ -11,7 +11,7 @@
  * dst_cid, len, op, and dispatch on garbage values. The
  * device must reject or handle the non RAM source cleanly.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_hdr_in_bar(struct virtio_dev *dev,
                                            struct vring *vr)

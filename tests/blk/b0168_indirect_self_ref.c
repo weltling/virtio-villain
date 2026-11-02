@@ -12,7 +12,7 @@
  * must reject the malformed request or bound its walk; it must
  * not hang.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_indirect_self_ref(struct virtio_dev *dev,
                                                 struct vring *vr)

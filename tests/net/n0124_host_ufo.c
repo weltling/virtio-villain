@@ -6,7 +6,7 @@
  * if the device can also offload checksumming. Verify HOST_UFO,
  * if offered, comes with CSUM (bit 0).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

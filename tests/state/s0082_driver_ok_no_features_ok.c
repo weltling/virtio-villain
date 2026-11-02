@@ -9,7 +9,7 @@
  * acked_features in an undefined state. The device must not crash;
  * it may degrade to features=0.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_driver_ok_skip_features_ok(struct virtio_dev *dev)
 {

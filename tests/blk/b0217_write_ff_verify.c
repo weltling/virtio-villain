@@ -6,7 +6,7 @@
  * are 0xFF. Tests the device handles the all-ones pattern without
  * confusing it with uninitialized memory.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_ff(struct virtio_dev *dev, struct vring *vr)
 {

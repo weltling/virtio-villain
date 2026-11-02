@@ -6,7 +6,7 @@
  * descriptor. The spec says "A driver MUST NOT set both INDIRECT and
  * NEXT in flags."
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_indirect_and_next(struct virtio_dev *dev,
                                             struct vring *vr)

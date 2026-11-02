@@ -5,7 +5,7 @@
  * Spec 4.1.4.3.1: num_queues is read-only for the driver. Writing
  * to it must not change its value.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_num_queues_ro(struct virtio_dev *dev)
 {

@@ -11,7 +11,7 @@
  * or wedge when a frame arrives. The device must reject or
  * handle the non RAM target cleanly.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_rx_in_bar(struct virtio_dev *dev,
                                         struct vring *vr)

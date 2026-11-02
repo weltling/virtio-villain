@@ -6,7 +6,7 @@
  * defined virtio_mem operation. The device must return an error
  * response without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_invalid_type(struct virtio_dev *dev,
                                            struct vring *vr)

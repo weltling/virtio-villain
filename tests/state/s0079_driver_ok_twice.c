@@ -7,7 +7,7 @@
  * ready. Setting it twice should be idempotent; the device must
  * not treat the second write as a restart or crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_driver_ok_twice(struct virtio_dev *dev)
 {

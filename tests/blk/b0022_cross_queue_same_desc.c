@@ -6,7 +6,7 @@
  * Tests that the VMM handles shared memory between queues without
  * corruption or crashes.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_cross_queue(struct virtio_dev *dev)
 {

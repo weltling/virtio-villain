@@ -6,7 +6,7 @@
  * The watchdog device expects a single flat descriptor per ping,
  * so chains should be either rejected or handled gracefully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_watchdog_multi_chain(struct virtio_dev *dev,
                                                struct vring *vr)

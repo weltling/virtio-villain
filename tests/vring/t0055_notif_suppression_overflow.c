@@ -7,7 +7,7 @@
  * A VMM using naive signed comparison may miscalculate whether to
  * send a notification.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_notif_suppression_overflow(struct virtio_dev *dev,
                                                      struct vring *vr)

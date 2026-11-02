@@ -6,7 +6,7 @@
  * descriptors) on a queue that was configured with size 1. The device
  * cannot complete this chain.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_queue_size_one(struct virtio_dev *dev,
                                              struct vring *vr)

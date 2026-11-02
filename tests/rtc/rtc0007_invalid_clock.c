@@ -6,7 +6,7 @@
  * sets status=VIRTIO_RTC_S_ENODEV when clock_id does not identify
  * a clock.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_invalid_clock(struct virtio_dev *dev,
                                             struct vring *vr)

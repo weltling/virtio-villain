@@ -6,7 +6,7 @@
  * A PORT_OPEN targeting exactly max_nr_ports is off by one and
  * must be rejected without crashing the device.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_ctrl_port_at_max(struct virtio_dev *dev)
 {

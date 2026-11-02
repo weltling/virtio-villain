@@ -12,7 +12,7 @@
  * driver from setting it on a TX queue. The device must not
  * misinterpret the buffer.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_tx_write_flag(struct virtio_dev *dev,
                                                 struct vring *vr)

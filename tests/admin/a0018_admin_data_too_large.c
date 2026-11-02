@@ -7,7 +7,7 @@
  * than the descriptor's len provides. The device must handle this
  * mismatch without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_admin_data_too_large(struct virtio_dev *dev)
 {

@@ -5,7 +5,7 @@
  * Submit a read-only descriptor of length 0 to the transmitq. The
  * device must handle the empty payload edge case without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_tx_zero_len(struct virtio_dev *dev,
                                               struct vring *vr)

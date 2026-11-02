@@ -6,7 +6,7 @@
  * between. The device must handle the idempotent reset gracefully
  * without crashing. Spec 2.2.1 does not prohibit repeated resets.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_ring_reset_twice(struct virtio_dev *dev)
 {

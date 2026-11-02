@@ -6,7 +6,7 @@
  * sets the number of active queue pairs via CTRL_MQ_VQ_PAIRS_SET.
  * Set pairs=1 (minimum valid) and verify VIRTIO_NET_OK.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_mq_set(struct virtio_dev *dev,
                                           struct vring *vr)

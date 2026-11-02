@@ -6,7 +6,7 @@
  * the device no writable buffer for the response header. The device
  * must not write into a read only descriptor; the host must stay alive.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_scsi_no_writable_resp(struct virtio_dev *dev,
                                                 struct vring *vr)

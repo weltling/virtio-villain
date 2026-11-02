@@ -6,7 +6,7 @@
  * pointing back at itself. The device must bound its walk of the
  * chain rather than loop forever.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_rx_self_loop(struct virtio_dev *dev,
                                            struct vring *vr)

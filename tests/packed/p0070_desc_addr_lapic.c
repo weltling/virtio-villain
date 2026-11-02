@@ -8,7 +8,7 @@
  * device must not DMA into platform MMIO; a hang is a guest triggered
  * host denial of service.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "tests/packed/packed_util.h"
 
 static test_result_t test_packed_desc_addr_lapic(struct virtio_dev *dev,

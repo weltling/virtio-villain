@@ -6,7 +6,7 @@
  * buffer ID. The device tracks in-flight buffers by ID; duplicate IDs
  * can cause double-completion, use-after-free, or confused ownership.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_duplicate_id(struct virtio_dev *dev,
                                               struct vring_packed *vr)

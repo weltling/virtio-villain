@@ -6,7 +6,7 @@
  * reading Status must return 0, DeviceID must still be valid, and
  * the device must be re-initializable.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

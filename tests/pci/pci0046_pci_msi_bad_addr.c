@@ -6,7 +6,7 @@
  * Message Address register. The device/VMM must handle this without
  * crashing (may silently drop or reject).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_pci_msi_bad_addr(struct virtio_dev *dev,

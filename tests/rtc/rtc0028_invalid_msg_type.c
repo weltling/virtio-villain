@@ -6,7 +6,7 @@
  * a valid RTC operation. The device must return an error without
  * crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_invalid_msg_type(struct virtio_dev *dev,
                                                struct vring *vr)

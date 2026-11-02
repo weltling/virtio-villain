@@ -6,7 +6,7 @@
  * then attempt to configure it. A VMM that doesn't bounds-check
  * queue_select may write to an out-of-bounds queue array slot.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_queue_select_oob(struct virtio_dev *dev)
 {

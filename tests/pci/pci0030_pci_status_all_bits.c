@@ -6,7 +6,7 @@
  * FAILED(128) + NEEDS_RESET(64) + various other bits. The device
  * must handle this without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_status_all_bits(struct virtio_dev *dev)
 {

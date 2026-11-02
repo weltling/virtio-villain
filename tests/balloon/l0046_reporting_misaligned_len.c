@@ -10,7 +10,7 @@
  * corrupt a page the guest still owns. It must reject the element or
  * ignore the misaligned tail, and stay healthy.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_reporting_misaligned_len(
     struct virtio_dev *dev)

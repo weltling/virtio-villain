@@ -6,7 +6,7 @@
  * descriptors) linked via VRING_DESC_F_NEXT. The device must
  * walk the full chain without overflowing internal limits.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_tx_max_chain(struct virtio_dev *dev,
                                                struct vring *vr)

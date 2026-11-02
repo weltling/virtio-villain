@@ -10,7 +10,7 @@
  * may misread the EtherType or walk past the frame. The device must
  * transmit or drop the frame without wedging the queue.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_qinq_double_tag(struct virtio_dev *dev,
                                                  struct vring *vr)

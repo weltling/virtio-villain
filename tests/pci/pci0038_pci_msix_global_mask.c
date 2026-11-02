@@ -6,7 +6,7 @@
  * the MSI-X Message Control register to globally mask all vectors,
  * then clear it. Verify device survives and interrupts resume.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 #define MSIX_MSGCTRL_FMASK 0x4000  /* Function Mask bit (bit 14) */

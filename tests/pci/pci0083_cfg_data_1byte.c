@@ -6,7 +6,7 @@
  * single byte read and write through the cfg data register.
  * Verifies the basic path works without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_pci_cfg_1byte(struct virtio_dev *dev,

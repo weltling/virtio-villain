@@ -7,7 +7,7 @@
  * within 32-bit range), but their sum exceeds 4 GiB. Tests device
  * arithmetic for total transfer size calculations.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_desc_total_len_overflow(struct virtio_dev *dev,
                                                   struct vring *vr)

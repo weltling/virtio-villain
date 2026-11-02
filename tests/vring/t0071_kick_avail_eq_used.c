@@ -6,7 +6,7 @@
  * perspectives). The device should detect nothing new is available
  * and not process stale descriptors from a previous iteration.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_kick_empty_avail_eq_used(struct virtio_dev *dev,
                                                    struct vring *vr)

@@ -8,7 +8,7 @@
  * still be readable. Read the first 4 bytes (cols, rows) and
  * confirm the device responds to MMIO without a fault.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_config_no_size(struct virtio_dev *dev)
 {

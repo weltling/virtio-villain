@@ -6,7 +6,7 @@
  * a notification. Post two independent request chains in the avail
  * ring and kick once. Both must complete.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_two_chains(struct virtio_dev *dev, struct vring *vr)
 {

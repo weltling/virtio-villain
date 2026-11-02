@@ -6,7 +6,7 @@
  * page, read it back the same way, and verify all bytes. Tests
  * a four segment scatter gather I/O with content verification.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_16k(struct virtio_dev *dev, struct vring *vr)
 {

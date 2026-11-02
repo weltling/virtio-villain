@@ -8,7 +8,7 @@
  * half). A device that assumes a single contiguous response buffer
  * may write past the first descriptor or corrupt guest memory.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_clock_cap_split(struct virtio_dev *dev,
                                               struct vring *vr)

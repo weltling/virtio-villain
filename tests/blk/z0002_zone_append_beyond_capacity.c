@@ -6,7 +6,7 @@
  * the device capacity, without negotiating VIRTIO_BLK_F_ZONED.
  * Tests that the device rejects out-of-bounds zone appends.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_zone_append_oob(struct virtio_dev *dev,
                                               struct vring *vr)

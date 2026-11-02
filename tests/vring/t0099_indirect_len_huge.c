@@ -7,7 +7,7 @@
  * caps the table at queue_size entries. The device must reject
  * the chain rather than reading megabytes of fanout.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vring_indirect_huge(struct virtio_dev *dev,
                                               struct vring *vr)

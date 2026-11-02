@@ -6,7 +6,7 @@
  * datagrams flow on the same tx/rx queues but with type=3.
  * Send a dgram and verify credit fields are ignored.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

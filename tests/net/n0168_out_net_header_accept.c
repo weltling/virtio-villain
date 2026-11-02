@@ -11,7 +11,7 @@
  * widened 128-bit feature path. Skips when the device does not offer
  * OUT_NET_HEADER, as CH does not.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_out_net_header_accept(struct virtio_dev *dev)
 {

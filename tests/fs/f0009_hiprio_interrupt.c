@@ -7,7 +7,7 @@
  * unique that was never sent. The device and daemon must handle
  * the unknown unique cleanly.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_hiprio_interrupt(struct virtio_dev *dev,

@@ -5,7 +5,7 @@
  * Request a zone report with a starting sector beyond the last zone.
  * The device should return an empty report or an error status.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_zone_report_past_end(struct virtio_dev *dev,
                                                struct vring *vr)

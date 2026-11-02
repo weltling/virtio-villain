@@ -5,7 +5,7 @@
  * The status byte must be device-writable. Submit a READ where
  * the final (status) descriptor lacks VRING_DESC_F_WRITE.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_status_readable(struct virtio_dev *dev,
                                               struct vring *vr)

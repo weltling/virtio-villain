@@ -11,7 +11,7 @@
  * the request completes. If the device does not advertise the
  * feature, skip.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_notification_data(struct virtio_dev *dev)
 {

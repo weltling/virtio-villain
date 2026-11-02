@@ -7,7 +7,7 @@
  * around to create an infinite chain.
  * Spec 2.8.17: descriptor list length MUST NOT exceed Queue Size.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_chain_too_long(struct virtio_dev *dev,
                                                 struct vring_packed *vr)

@@ -6,7 +6,7 @@
  * (Write Cache Enable) config field if VIRTIO_BLK_F_CONFIG_WCE
  * is offered. Write 0 then 1 and verify the device accepts both.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_config_wce_toggle(struct virtio_dev *dev,
                                                 struct vring *vr)

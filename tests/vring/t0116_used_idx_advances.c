@@ -6,7 +6,7 @@
  * kick, wait for all completions, and verify used->idx wrapped
  * correctly. Tests that the device handles ring wrap arithmetic.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_used_wrap(struct virtio_dev *dev, struct vring *vr)
 {

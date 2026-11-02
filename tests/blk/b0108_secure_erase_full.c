@@ -5,7 +5,7 @@
  * Submit SECURE_ERASE with sector=0 and num_sectors large enough
  * to cover far beyond any reasonable device capacity.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_secure_erase_full(struct virtio_dev *dev,
                                                 struct vring *vr)

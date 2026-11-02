@@ -6,7 +6,7 @@
  * descriptor length. Verify that used_elem.len does not exceed
  * what was offered in the writable descriptors.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_used_ring_len_mismatch(struct virtio_dev *dev,
                                                  struct vring *vr)

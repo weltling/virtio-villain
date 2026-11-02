@@ -7,7 +7,7 @@
  * actual avail ring has advanced to 1. The device may use this
  * as a hint and must not crash on the discrepancy.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_notif_data_stale_idx(struct virtio_dev *dev)
 {

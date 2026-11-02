@@ -5,7 +5,7 @@
  * A receive buffer spans a full ring of writable descriptors. The
  * device must accept the long chain without overrunning the ring.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define CHAIN 16
 

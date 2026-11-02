@@ -6,7 +6,7 @@
  * contains max_virtqueue_pairs at offset 8. The value must be at
  * least 1 and not exceed 0x8000.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define NET_CFG_MAX_VQ_PAIRS_OFFSET 8
 

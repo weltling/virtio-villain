@@ -8,7 +8,7 @@
  * descriptors without the feature. The device must reject the
  * request rather than dereference the indirect table.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_tx_indirect_no_feature(struct virtio_dev *dev,
                                                          struct vring *vr)

@@ -10,7 +10,7 @@
  * DETACH endpoint=1, all in one batch. Every tail status must
  * read OK, proving domain ids survive endpoint churn.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_domain_reuse(struct virtio_dev *dev,

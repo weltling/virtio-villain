@@ -5,7 +5,7 @@
  * Submit a SECURE ERASE request without having negotiated
  * VIRTIO_BLK_F_SECURE_ERASE. The device must return UNSUPP.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_secure_erase_no_feature(struct virtio_dev *dev,
                                                       struct vring *vr)

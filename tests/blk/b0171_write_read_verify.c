@@ -7,7 +7,7 @@
  * that spec 5.2.6.2 implies: the device must faithfully store and
  * return submitted data.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_write_read_verify(struct virtio_dev *dev,
                                                 struct vring *vr)

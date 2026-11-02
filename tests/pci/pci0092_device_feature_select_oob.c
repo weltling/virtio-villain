@@ -6,7 +6,7 @@
  * window of device_feature to expose. Values beyond what the
  * device implements must return all zeros (no garbage).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

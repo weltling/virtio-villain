@@ -7,7 +7,7 @@
  * unusual combination. The device must tolerate the write
  * without crashing and must accept a subsequent reset.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_state_ok_and_failed(struct virtio_dev *dev)
 {

@@ -6,7 +6,7 @@
  * 17 and verify the VMM either clamps to power-of-two or
  * refuses to honor it without dying.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_qsize_npot(struct virtio_dev *dev)
 {

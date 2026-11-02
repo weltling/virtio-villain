@@ -9,7 +9,7 @@
  * overflow when computing range length and must not corrupt
  * the radix tree at the very top of the virt address space.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_map_top_of_address_space(struct virtio_dev *dev,

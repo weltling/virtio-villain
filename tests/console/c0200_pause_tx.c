@@ -6,7 +6,7 @@
  * resume, submit another TX payload. Both must drain on the
  * transmitq.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "tests/mmio/mmio_helpers.h"
 
 static test_result_t do_tx(struct virtio_dev *dev, struct vring *vr,

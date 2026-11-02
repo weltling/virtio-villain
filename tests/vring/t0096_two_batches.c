@@ -9,7 +9,7 @@
  * that lose track of available entries across notification
  * boundaries.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static int submit_batch(struct virtio_dev *dev, struct vring *vr,
                         uint16_t base_slot, uint16_t avail_base,

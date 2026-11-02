@@ -12,7 +12,7 @@
  * the newly "configured" queue, or may not properly synchronize with
  * the already-running device.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_queue_setup_after_driver_ok(struct virtio_dev *dev,
                                                       struct vring *vr)

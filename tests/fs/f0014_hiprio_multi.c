@@ -7,7 +7,7 @@
  * The device may never fill them, but must not crash when multiple
  * buffers are outstanding on this queue.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_fs_hiprio_multi(struct virtio_dev *dev,
                                           struct vring *vr)

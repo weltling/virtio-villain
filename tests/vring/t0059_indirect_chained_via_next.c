@@ -7,7 +7,7 @@
  * tests the case where descriptor 0 is INDIRECT|NEXT pointing to
  * descriptor 1 which is also INDIRECT - two indirect tables in one chain.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_indirect_chained(struct virtio_dev *dev,
                                            struct vring *vr)

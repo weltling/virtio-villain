@@ -6,7 +6,7 @@
  * The device must consume the whole chain and advance the used
  * ring once.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_tx_chain_legit(struct virtio_dev *dev,
                                                  struct vring *vr)

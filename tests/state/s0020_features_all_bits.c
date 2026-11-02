@@ -6,7 +6,7 @@
  * not-offered. The driver sets every bit in driver_feature. The device
  * must either accept only the bits it offered or reject FEATURES_OK.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_features_all_bits(struct virtio_dev *dev)
 {

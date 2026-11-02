@@ -7,7 +7,7 @@
  * device_status, regardless of in-flight operations. After reset
  * the device should be re-initializable.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_device_reset_during_io(struct virtio_dev *dev,
                                                  struct vring *vr)

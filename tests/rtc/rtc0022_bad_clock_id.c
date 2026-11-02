@@ -6,7 +6,7 @@
  * 5.23.6 says the device must validate clock_id and return
  * an error for unknown clocks without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_bad_clock(struct virtio_dev *dev,
                                         struct vring *vr)

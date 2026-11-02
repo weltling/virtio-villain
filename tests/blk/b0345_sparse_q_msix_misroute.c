@@ -15,7 +15,7 @@
  * numbers its queue workers by their position among the enabled queues
  * instead of by the real queue index signals queue 0's vector.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 #define MSIX_ENABLE        (1u << 31)

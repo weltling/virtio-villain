@@ -6,7 +6,7 @@
  * 0xFF (unclassified), subclass 0x00, prog-if 0x00. Read from PCI
  * config offset 0x09 (3 bytes: prog-if, subclass, class).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_pci_class_code(struct virtio_dev *dev,

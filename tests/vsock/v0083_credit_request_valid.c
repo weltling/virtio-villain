@@ -6,7 +6,7 @@
  * peer for a credit update. Send CONNECT then CREDIT_REQUEST. The
  * device must consume both packets.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_credit_request(struct virtio_dev *dev,
                                                struct vring *vr)

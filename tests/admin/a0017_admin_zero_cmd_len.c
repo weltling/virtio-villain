@@ -6,7 +6,7 @@
  * header. This is an invalid request - the device must handle
  * it without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_admin_zero_cmd_len(struct virtio_dev *dev)
 {

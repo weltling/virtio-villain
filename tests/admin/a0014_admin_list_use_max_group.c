@@ -6,7 +6,7 @@
  * and a large response buffer. Tests device handling of
  * boundary group identifiers.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_admin_list_use_max_group(struct virtio_dev *dev)
 {

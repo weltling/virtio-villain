@@ -9,7 +9,7 @@
  * division by zero. The device must reject the frame rather
  * than crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_tcpv4_gso_zero(struct virtio_dev *dev,
                                                 struct vring *vr)

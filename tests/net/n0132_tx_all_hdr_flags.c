@@ -7,7 +7,7 @@
  * per spec 5.1.6.2 since NEEDS_CSUM and DATA_VALID are mutually
  * exclusive. The device must handle it gracefully without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_all_flags(struct virtio_dev *dev,
                                            struct vring *vr)

@@ -8,7 +8,7 @@
  * Send RSS_CONFIG with indirection_table_mask = 4 (5 entries, not
  * a power of 2).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rss_non_power_of_2(struct virtio_dev *dev)
 {

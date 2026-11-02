@@ -6,7 +6,7 @@
  * VIRTIO_VSOCK_SHUTDOWN_RCV=1 and VIRTIO_VSOCK_SHUTDOWN_SEND=2).
  * The device should ignore undefined bits rather than misinterpreting them.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_shutdown_bad_flags(struct virtio_dev *dev,
                                                    struct vring *vr)

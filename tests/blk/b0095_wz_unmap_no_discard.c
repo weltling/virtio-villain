@@ -5,7 +5,7 @@
  * Spec 5.2.6.1: The unmap flag in write zeroes segments requires
  * VIRTIO_BLK_F_DISCARD. Set unmap without that feature.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_wz_unmap_no_discard(struct virtio_dev *dev,
                                                   struct vring *vr)

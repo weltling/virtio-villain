@@ -8,7 +8,7 @@
  *
  * Send RSS_CONFIG without negotiating VIRTIO_NET_F_RSS.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rss_config_no_feature(struct virtio_dev *dev,
                                                 struct vring *vr)

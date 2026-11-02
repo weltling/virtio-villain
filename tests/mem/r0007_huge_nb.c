@@ -6,7 +6,7 @@
  * region capacity. Device must reject with INVALID_REQUEST or
  * ERROR rather than corrupt internal state.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_huge_nb(struct virtio_dev *dev,
                                       struct vring *vr)

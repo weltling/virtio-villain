@@ -6,7 +6,7 @@
  * wrap counter. This confuses the device about when to send
  * notifications, testing the wrap counter comparison logic.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_notif_stale_wrap(struct virtio_dev *dev,
                                                   struct vring_packed *vr)

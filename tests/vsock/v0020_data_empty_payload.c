@@ -5,7 +5,7 @@
  * Send a DATA packet with len=0 (empty payload). Some implementations
  * may not handle zero-length data transfers gracefully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_data_empty(struct virtio_dev *dev,
                                            struct vring *vr)

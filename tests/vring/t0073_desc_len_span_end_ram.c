@@ -6,7 +6,7 @@
  * exactly at the last valid byte of guest RAM. This boundary case
  * is valid but tests whether the device's range check is off-by-one.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 /* Assume 512 MiB RAM */
 #define RAM_END 0x20000000ULL

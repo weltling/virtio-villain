@@ -6,7 +6,7 @@
  * should cause queue_size to read back as 0, indicating no such
  * queue. The device must not crash or return garbage.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_queue_select_oob(struct virtio_dev *dev)
 {

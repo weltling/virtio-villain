@@ -9,7 +9,7 @@
  * clock id 0xFFFF on the requestq, then verifies the alarmq stays
  * empty and the device remains alive.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_set_alarm_bad_clock(struct virtio_dev *dev,
                                                   struct vring *vr)

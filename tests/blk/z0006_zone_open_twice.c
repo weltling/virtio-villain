@@ -6,7 +6,7 @@
  * handling of idempotent zone management - opening an already-open
  * zone should succeed or be a no-op, not cause errors.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_zone_open_twice(struct virtio_dev *dev,
                                               struct vring *vr)

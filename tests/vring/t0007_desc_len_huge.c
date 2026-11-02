@@ -8,7 +8,7 @@
  * desc.len, or attempts to perform a 4 GiB DMA transfer, may OOM,
  * overflow a size calculation, or write far beyond the intended buffer.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_desc_len_huge(struct virtio_dev *dev,
                                         struct vring *vr)

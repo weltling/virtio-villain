@@ -5,7 +5,7 @@
  * Submit 4096 bytes on the TX queue. Tests that the console
  * device handles a full page transmit buffer.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_tx_4k(struct virtio_dev *dev,
                                         struct vring *vr)

@@ -7,7 +7,7 @@
  * (0..11). If the device supports VIRTIO_BLK_F_LIFETIME and returns
  * S_OK, verify the response fields are within these spec ranges.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_lifetime_fields(struct virtio_dev *dev,
                                               struct vring *vr)

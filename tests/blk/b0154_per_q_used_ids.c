@@ -10,7 +10,7 @@
  * concurrently, then verify both queues see all four IDs in their
  * own used ring with no duplicates and no leaks across queues.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static void plant_read(struct vring *vr, uint16_t base,
                        uint16_t avail_slot, uint64_t sector)

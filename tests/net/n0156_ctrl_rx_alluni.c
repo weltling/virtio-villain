@@ -5,7 +5,7 @@
  * Spec 5.1.6.5.1: Send CTRL_RX_ALLUNI with data=1 (enable
  * all-unicast mode). Verify VIRTIO_NET_OK.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_alluni(struct virtio_dev *dev,
                                           struct vring *vr)

@@ -9,7 +9,7 @@
  * supported set. Walk selectors 2 through 7 and verify zero, then
  * read selector 0 again and verify it matches what was read first.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_dev_feat_past_pages(struct virtio_dev *dev)
 {

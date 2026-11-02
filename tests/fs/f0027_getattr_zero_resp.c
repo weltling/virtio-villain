@@ -6,7 +6,7 @@
  * writable response descriptor length set to 0. The daemon must not
  * write to a zero length buffer or crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_getattr_zero_resp(struct virtio_dev *dev,

@@ -7,7 +7,7 @@
  * partially unplugging and to leave the map state idempotent on a
  * follow up state query.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_unplug_straddle(struct virtio_dev *dev,
                                               struct vring *vr)

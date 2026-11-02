@@ -8,7 +8,7 @@
  * 0xFFFFFFFF; reset select and verify low and high windows
  * remain zero.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

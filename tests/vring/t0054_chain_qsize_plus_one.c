@@ -6,7 +6,7 @@
  * the last slot point to descriptor 0 (which was already used as head).
  * Different from T02 which wraps all slots - this is exactly one over.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_chain_qsize_plus_one(struct virtio_dev *dev,
                                                struct vring *vr)

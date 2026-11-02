@@ -6,7 +6,7 @@
  * VIRTIO_F_INDIRECT_DESC. The spec says the driver MUST NOT set this
  * flag unless the feature was negotiated.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_indirect_without_feature(struct virtio_dev *dev,
                                                    struct vring *vr)

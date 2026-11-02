@@ -6,7 +6,7 @@
  * each port the device adds with PORT_READY. Send PORT_READY
  * for port id 0 on the control queue.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

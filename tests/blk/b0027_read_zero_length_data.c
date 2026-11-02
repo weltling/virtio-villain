@@ -6,7 +6,7 @@
  * must handle the case where it's asked to read 0 bytes without crashing
  * or corrupting adjacent memory.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_read_zero_length(struct virtio_dev *dev,
                                                struct vring *vr)

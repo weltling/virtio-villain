@@ -7,7 +7,7 @@
  * binding an endpoint to two domains. The second attach must
  * fail and the first binding must remain usable.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_two_domains(struct virtio_dev *dev,

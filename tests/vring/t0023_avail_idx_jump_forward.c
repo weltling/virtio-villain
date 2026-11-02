@@ -13,7 +13,7 @@
  * Correct behavior: process only the valid entries (the ones between
  * old avail.idx and new avail.idx that fit within the ring).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_avail_idx_jump_forward(struct virtio_dev *dev,
                                                  struct vring *vr)

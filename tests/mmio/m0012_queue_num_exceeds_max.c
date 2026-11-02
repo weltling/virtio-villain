@@ -6,7 +6,7 @@
  * QueueNumMax to QueueNum. Test that the VMM handles it gracefully
  * when the driver violates this.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

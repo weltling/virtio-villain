@@ -6,7 +6,7 @@
  * points back at itself. The device must detect the cycle instead
  * of looping forever.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_tx_self_loop(struct virtio_dev *dev,
                                                struct vring *vr)

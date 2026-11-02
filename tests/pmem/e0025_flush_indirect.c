@@ -10,7 +10,7 @@
  * The device must accept the indirect form and complete the
  * flush normally.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pmem_flush_indirect(struct virtio_dev *dev,
                                               struct vring *vr)

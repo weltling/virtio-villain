@@ -5,7 +5,7 @@
  * Send CONNECT then RW with 4096 bytes of data. Tests the device
  * handles a full page payload on an established connection.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_large(struct virtio_dev *dev, struct vring *vr)
 {

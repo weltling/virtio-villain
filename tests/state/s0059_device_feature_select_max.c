@@ -7,7 +7,7 @@
  * deterministic; in practice the value is zero. The device must
  * not crash and the read must not stall the bus.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_state_dev_feat_max(struct virtio_dev *dev)
 {

@@ -7,7 +7,7 @@
  * that WRITE_ZEROES actually clears the referenced sector rather
  * than being silently ignored (spec 5.2.6.2).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_wz_read_back(struct virtio_dev *dev,
                                            struct vring *vr)

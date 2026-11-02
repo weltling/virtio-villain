@@ -4,7 +4,7 @@
  *
  * Set queue_used to an address not aligned to 4 bytes.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_queue_used_unaligned(struct virtio_dev *dev)
 {

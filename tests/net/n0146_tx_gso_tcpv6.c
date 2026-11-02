@@ -6,7 +6,7 @@
  * driver may set gso_type=VIRTIO_NET_HDR_GSO_TCPV6. Submit a
  * minimal IPv6+TCP frame with TSO parameters.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_gso_tcp6(struct virtio_dev *dev,
                                           struct vring *vr)

@@ -17,7 +17,7 @@
  * starts at 0x100 so it is GPA contiguous. The device must reject the
  * range or stay alive.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_rw_contig_wrap(struct virtio_dev *dev,
                                                struct vring *vr)

@@ -6,7 +6,7 @@
  * With EVENT_IDX semantics, the used_event field at the end of the
  * avail ring might cause issues near the wrap boundary.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_avail_ring_wrap_event_idx(struct virtio_dev *dev,
                                                     struct vring *vr)

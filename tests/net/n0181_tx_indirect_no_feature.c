@@ -7,7 +7,7 @@
  * MUST NOT set the flag unless the feature was negotiated, so the
  * device must refuse the request without harm to the host.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_indirect_no_feature(struct virtio_dev *dev,
                                                      struct vring *vr)

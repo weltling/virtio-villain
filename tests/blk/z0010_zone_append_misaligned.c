@@ -12,7 +12,7 @@
  * is that sector must equal the start of a zone. Use a sector value
  * that is clearly not a zone start (odd value like 3).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_zone_append_misaligned(struct virtio_dev *dev,
                                                  struct vring *vr)

@@ -6,7 +6,7 @@
  * to test device handling of non-STREAM, non-SEQPACKET types.
  * The device must reject without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_reserved_type(struct virtio_dev *dev,
                                               struct vring *vr)

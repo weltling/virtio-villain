@@ -5,7 +5,7 @@
  * Spec 5.2.6: The header is driver-readable (device-readable).
  * Mark it with WRITE flag (device-writable) - wrong direction.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_header_device_writable(struct virtio_dev *dev,
                                                      struct vring *vr)

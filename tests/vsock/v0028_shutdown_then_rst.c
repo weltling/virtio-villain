@@ -7,7 +7,7 @@
  * where both endpoints race to close, potentially causing double-free
  * or use-after-free of connection state.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_shutdown_then_rst(struct virtio_dev *dev,
                                                   struct vring *vr)

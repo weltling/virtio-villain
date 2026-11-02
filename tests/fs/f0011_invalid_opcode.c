@@ -6,7 +6,7 @@
  * value beyond any defined FUSE operation. The virtiofs device
  * (or the backing daemon) must return ENOSYS without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_invalid_opcode(struct virtio_dev *dev,

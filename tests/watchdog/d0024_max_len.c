@@ -7,7 +7,7 @@
  * not overflow internal calculations when presented with a
  * maximum length writable descriptor.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_watchdog_max_len(struct virtio_dev *dev,
                                            struct vring *vr)

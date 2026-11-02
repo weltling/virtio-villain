@@ -6,7 +6,7 @@
  * kick all. Tests multiqueue stress - exercises the VMM's ability
  * to handle concurrent I/O on all queues at once.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define MAX_QUEUES 16
 

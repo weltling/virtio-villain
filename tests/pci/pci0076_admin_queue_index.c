@@ -6,7 +6,7 @@
  * PCI common cfg. Spec v1.3 4.1.4.3.1: these fields identify the
  * admin virtqueue(s) when the device supports admin commands.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_admin_queue_index(struct virtio_dev *dev)
 {

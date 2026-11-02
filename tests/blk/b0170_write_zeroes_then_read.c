@@ -7,7 +7,7 @@
  * command is completed, reads of the specified ranges of sectors
  * MUST return zeroes." Verify the read data is all zeros.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_wz_then_read(struct virtio_dev *dev,
                                            struct vring *vr)

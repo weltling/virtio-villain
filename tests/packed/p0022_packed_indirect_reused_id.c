@@ -6,7 +6,7 @@
  * was previously used and "completed." Tests whether the device
  * correctly handles buffer_id recycling with indirect descriptors.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_indirect_reused_id(struct virtio_dev *dev,
                                                     struct vring_packed *vr)

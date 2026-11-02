@@ -8,7 +8,7 @@
  * having received DEVICE_ADD for it. The device must reject the
  * stray ack without setting up new port state.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_port_ready_unannounced(struct virtio_dev *dev)
 {

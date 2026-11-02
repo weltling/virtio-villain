@@ -7,7 +7,7 @@
  * descriptors, each holding two entries. The device must accept
  * the scattered buffer as a single contiguous stats payload.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_stats_split(struct virtio_dev *dev,
                                               struct vring *vr)

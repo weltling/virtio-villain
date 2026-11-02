@@ -6,7 +6,7 @@
  * Spec 5.1.6.5.1: Setting promisc mode causes the device to receive
  * all incoming packets regardless of destination MAC.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_rx_promisc(struct virtio_dev *dev,
                                              struct vring *vr)

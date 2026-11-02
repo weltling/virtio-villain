@@ -6,7 +6,7 @@
  * registers multiple times. The values must remain consistent
  * across reads when no config change is occurring.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

@@ -8,7 +8,7 @@
  * checks both complete with status OK. The default test disk is
  * a few MiB so sector 1023 is well within bounds.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t one_read(struct virtio_dev *dev, struct vring *vr,
                               uint16_t base, uint16_t avail_slot,

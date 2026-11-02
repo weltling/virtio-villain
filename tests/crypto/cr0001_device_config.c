@@ -10,7 +10,7 @@
  * service, and that it reached DRIVER_OK without setting NEEDS_RESET.
  * CH has no crypto model, so this skips there and runs under QEMU.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_crypto_device_config(struct virtio_dev *dev)
 {

@@ -5,7 +5,7 @@
  * Spec 5.1.6.5.3: Send CTRL_VLAN_ADD for ID 100, then
  * CTRL_VLAN_DEL for the same ID. Both must return VIRTIO_NET_OK.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_vlan_del(struct virtio_dev *dev, struct vring *vr)
 {

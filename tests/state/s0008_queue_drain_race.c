@@ -11,7 +11,7 @@
  * that may have been partially filled by the device during its shutdown
  * path. This stresses the VMM's cleanup of in-flight descriptors.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define NUM_REQUESTS 4
 

@@ -6,7 +6,7 @@
  * Spec 5.10.6: driver MUST NOT send data when peer buf_alloc minus
  * peer fwd_cnt is zero.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_rw_zero_credit(struct virtio_dev *dev,
                                                struct vring *vr)

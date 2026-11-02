@@ -4,7 +4,7 @@
  *
  * Set queue_avail to an odd address (must be 2-byte aligned).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_queue_avail_unaligned(struct virtio_dev *dev)
 {

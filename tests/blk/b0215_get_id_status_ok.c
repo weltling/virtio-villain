@@ -6,7 +6,7 @@
  * the status byte is S_OK. Explicitly checks the status field
  * rather than just used ring advancement.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_get_id_ok(struct virtio_dev *dev,
                                         struct vring *vr)

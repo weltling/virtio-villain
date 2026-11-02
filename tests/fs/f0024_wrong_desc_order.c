@@ -7,7 +7,7 @@
  * chain. The device must reject or handle the malformed chain
  * gracefully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_wrong_desc_order(struct virtio_dev *dev,

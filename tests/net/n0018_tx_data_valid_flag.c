@@ -6,7 +6,7 @@
  * in a TX header. Spec 5.1.6.2.1: driver MUST NOT set these flags
  * (they are device-to-driver only). Device must ignore or reject.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_data_valid_flag(struct virtio_dev *dev,
                                                  struct vring *vr)

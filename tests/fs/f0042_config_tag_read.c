@@ -6,7 +6,7 @@
  * (NUL padded UTF-8 string). Read it and verify it is not empty
  * and contains only printable ASCII or NUL padding.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_fs_config_tag(struct virtio_dev *dev)
 {

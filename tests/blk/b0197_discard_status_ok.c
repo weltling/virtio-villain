@@ -5,7 +5,7 @@
  * Submit DISCARD for sectors 0..7 and verify the device writes
  * S_OK in the status byte. Positive discard path test.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_discard_ok(struct virtio_dev *dev,
                                          struct vring *vr)

@@ -19,8 +19,8 @@
  * disk verb, the guest cannot tell the difference and reports
  * SKIP rather than FAIL.
  */
-#include "tests/test.h"
-#include "tests/hotplug.h"
+#include "lib/virtio_test.h"
+#include "lib/pci_hotplug.h"
 #include "lib/pci.h"
 
 static test_result_t test_blk_hotplug_add(struct virtio_dev *dev)

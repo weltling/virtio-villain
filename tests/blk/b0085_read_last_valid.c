@@ -7,7 +7,7 @@
  * should succeed (it's the last valid range), testing that the
  * device correctly handles the boundary without off-by-one.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_read_last_valid(struct virtio_dev *dev,
                                               struct vring *vr)

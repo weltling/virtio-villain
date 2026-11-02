@@ -7,7 +7,7 @@
  * code (typically 2+ bytes). This tests whether the device validates
  * the writable buffer length before writing the result.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_admin_status_tiny(struct virtio_dev *dev,
                                             struct vring *vr)

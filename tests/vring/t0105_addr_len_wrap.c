@@ -11,7 +11,7 @@
  * walk a wrapped range and access unrelated memory. The device
  * must reject the overflowing range.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_desc_addr_len_wrap(struct virtio_dev *dev,
                                              struct vring *vr)

@@ -6,7 +6,7 @@
  * The device MUST NOT consume them while suspended.
  * Spec 3.2: device MUST NOT access any virtqueues while suspended.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_suspend_no_consume(struct virtio_dev *dev,
                                              struct vring *vr)

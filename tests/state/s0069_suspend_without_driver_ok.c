@@ -6,7 +6,7 @@
  * MUST ignore operations on SUSPEND if it has not been completely
  * initialized.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_suspend_no_driver_ok(struct virtio_dev *dev,
                                                struct vring *vr)

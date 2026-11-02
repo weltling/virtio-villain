@@ -17,7 +17,7 @@
  * the SHOULD as a non-fatal note. It does not fail on the subsystem
  * vendor ID.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_pci_subsystem(struct virtio_dev *dev,

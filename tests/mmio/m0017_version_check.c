@@ -6,7 +6,7 @@
  * for a modern MMIO device. These are the minimum checks a driver
  * should perform before proceeding with initialization.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

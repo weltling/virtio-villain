@@ -10,7 +10,7 @@
  * the discard handler; the write zeroes path (opcode 13) is covered
  * by B0018.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_discard_sector_wrap(struct virtio_dev *dev,
                                                   struct vring *vr)

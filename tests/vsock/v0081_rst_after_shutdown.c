@@ -7,7 +7,7 @@
  * then SHUTDOWN(BOTH), then RST. The device must consume all three
  * packets representing a complete graceful close sequence.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_rst_after_shutdown(struct virtio_dev *dev,
                                                    struct vring *vr)

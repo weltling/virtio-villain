@@ -12,7 +12,7 @@
  * an ASan VMM. Skips on Cloud Hypervisor, when the cipher service is not
  * advertised, and when indirect descriptors are not negotiated.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define INDIRECT_OVERLONG_ENTRIES 64
 

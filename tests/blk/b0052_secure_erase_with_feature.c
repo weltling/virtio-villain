@@ -5,7 +5,7 @@
  * Negotiate VIRTIO_BLK_F_SECURE_ERASE and submit a secure erase
  * command for sector 0. Verify the device completes successfully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_secure_erase(struct virtio_dev *dev,
                                            struct vring *vr)

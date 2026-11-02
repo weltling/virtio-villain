@@ -6,7 +6,7 @@
  * Read it to exercise the config access path. The device must
  * not crash on a config read and must return a sensible value.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_watchdog_config_timer(struct virtio_dev *dev)
 {

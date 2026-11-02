@@ -6,7 +6,7 @@
  *
  * Spec 5.15.6.2: The device unplugs all currently plugged blocks.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_unplug_all(struct virtio_dev *dev,
                                          struct vring *vr)

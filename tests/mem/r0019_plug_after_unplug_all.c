@@ -6,7 +6,7 @@
  * is unplugged. A subsequent PLUG of the first block must be
  * accepted. Verify the device handles the transition correctly.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_plug_after_unplug_all(struct virtio_dev *dev,
                                                     struct vring *vr)

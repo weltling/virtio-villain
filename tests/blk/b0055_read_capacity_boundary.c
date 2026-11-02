@@ -5,7 +5,7 @@
  * Read exactly the last valid sector (capacity - 1). This should
  * succeed since the request is entirely in-bounds.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_read_capacity_boundary(struct virtio_dev *dev,
                                                      struct vring *vr)

@@ -14,7 +14,7 @@
 #include "../lib/perf_engine.h"
 #include "../lib/vring.h"
 #include "../lib/vring_packed.h"
-#include "../tests/test.h"
+#include "../lib/virtio_test.h"
 
 static int tests_run;
 static int tests_passed;

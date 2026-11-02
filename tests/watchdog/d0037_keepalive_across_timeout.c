@@ -11,7 +11,7 @@
  * instead stay alive through every ping. The total stays within the
  * per test wall clock budget that D0029 already relies on.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define PING_COUNT 3
 #define PING_GAP_S 8

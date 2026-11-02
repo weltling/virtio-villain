@@ -8,7 +8,7 @@
  * word (the u32 that was formerly ioprio). Write a sector with the
  * FUA flag set, then read it back and verify the data persisted.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_fua_write_read(struct virtio_dev *dev,
                                              struct vring *vr)

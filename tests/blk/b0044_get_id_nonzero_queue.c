@@ -6,7 +6,7 @@
  * Some VMMs only handle GET_ID on queue 0. If multiqueue is
  * advertised, the device should handle GET_ID on any request queue.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_get_id_nonzero_queue(struct virtio_dev *dev,
                                                    struct vring *vr)

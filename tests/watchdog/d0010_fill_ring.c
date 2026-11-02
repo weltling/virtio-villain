@@ -7,7 +7,7 @@
  * consume the full batch and respond to every ping without
  * crashing or losing entries.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_watchdog_fill_ring(struct virtio_dev *dev,
                                              struct vring *vr)

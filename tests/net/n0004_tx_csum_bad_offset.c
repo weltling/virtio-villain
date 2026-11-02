@@ -5,7 +5,7 @@
  * Submit a TX frame where csum_start + csum_offset extends beyond the
  * packet length. The device must not write to memory past the buffer.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_csum_bad_offset(struct virtio_dev *dev,
                                                  struct vring *vr)

@@ -10,7 +10,7 @@
  * GUEST_CSUM. Skips when the device does not offer the feature, as CH
  * does not.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_guest_udp_tunnel_gso_csum_accept(
     struct virtio_dev *dev, struct vring *vr)

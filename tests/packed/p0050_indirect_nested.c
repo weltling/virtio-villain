@@ -10,7 +10,7 @@
  * the self referential pointer. The device must reject the
  * nested indirect rather than walking into the loop.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_indirect_nested(
         struct virtio_dev *dev, struct vring_packed *vr)

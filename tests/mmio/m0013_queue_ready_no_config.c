@@ -6,7 +6,7 @@
  * QueueDevice before setting QueueReady. This test sets QueueReady
  * without providing any addresses. The VMM must not crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

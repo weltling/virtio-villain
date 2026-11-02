@@ -7,7 +7,7 @@
  * reject readable descriptors in an RX queue or at minimum not
  * write data into a readable buffer.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_rx_mixed_rw(struct virtio_dev *dev,
                                           struct vring *vr)

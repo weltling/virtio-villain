@@ -6,7 +6,7 @@
  * at least a fuse_in_header (40 bytes). Provide only 4 bytes.
  * The device must detect the short buffer and not read beyond.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_fs_truncated_header(struct virtio_dev *dev,
                                               struct vring *vr)

@@ -5,7 +5,7 @@
  * Submit a request where the status descriptor has len = 0. The device
  * needs at least 1 byte to write the completion status.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_status_too_short(struct virtio_dev *dev,
                                                struct vring *vr)

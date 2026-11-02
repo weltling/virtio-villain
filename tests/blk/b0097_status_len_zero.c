@@ -5,7 +5,7 @@
  * Spec 5.2.6: The final status byte is device-writable, 1 byte.
  * Provide a status descriptor with length 0.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_status_len_zero(struct virtio_dev *dev,
                                               struct vring *vr)

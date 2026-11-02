@@ -8,7 +8,7 @@
  * Set driver_event.flags to 3 and submit a request to see how the
  * device handles the reserved notification suppression value.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_event_reserved(struct virtio_dev *dev,
                                                 struct vring_packed *vr)

@@ -6,7 +6,7 @@
  * sector (not aligned to zone size) without ZONED feature negotiated.
  * Tests that the device handles invalid zone management commands.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_zone_mgmt_invalid(struct virtio_dev *dev,
                                                  struct vring *vr)

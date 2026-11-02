@@ -6,7 +6,7 @@
  * field. The device must either ignore unknown flags or reject the
  * packet, but must not interpret them as valid operations.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_data_reserved_flags(struct virtio_dev *dev,
                                                     struct vring *vr)

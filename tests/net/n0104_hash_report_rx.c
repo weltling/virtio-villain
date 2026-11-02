@@ -7,7 +7,7 @@
  * Spec v1.3 5.1.6.4: device writes hash_value and hash_report_type
  * into the header of received packets.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_hash_report_rx(struct virtio_dev *dev,
                                              struct vring *vr)

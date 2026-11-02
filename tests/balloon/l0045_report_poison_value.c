@@ -11,7 +11,7 @@
  * configured poison_val. Any other value violates the requirement.
  * Skips when the device does not offer both features.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define BALLOON_CFG_POISON_VAL_OFFSET 12
 #define FILL_PATTERN 0xA5A5A5A5u

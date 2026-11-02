@@ -6,7 +6,7 @@
  * of the S_* codes. Submit a MAP into an unattached domain;
  * the device must respond with a non OK status.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)

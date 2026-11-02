@@ -7,7 +7,7 @@
  * vector 0, reset before and after DRIVER_OK and check NO_VECTOR.
  * Vector 0 remains masked to prevent delivery without an IRQ handler.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 #include <errno.h>

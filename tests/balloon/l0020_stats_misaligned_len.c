@@ -7,7 +7,7 @@
  * not partially parse the buffer. The device must reject or stay
  * silent without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_stats_misaligned(struct virtio_dev *dev,
                                                    struct vring *vr)

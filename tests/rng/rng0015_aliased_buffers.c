@@ -9,7 +9,7 @@
  * The test passes if at least one chain is consumed without
  * wedging the device.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rng_aliased(struct virtio_dev *dev, struct vring *vr)
 {

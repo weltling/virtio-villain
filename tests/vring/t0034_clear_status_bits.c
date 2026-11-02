@@ -6,7 +6,7 @@
  * set). The spec says the driver MUST NOT clear a status bit. A VMM
  * that interprets the partial status as a state transition may crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_clear_status_bits(struct virtio_dev *dev)
 {

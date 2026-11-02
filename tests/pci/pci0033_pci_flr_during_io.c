@@ -7,7 +7,7 @@
  * reset. The device must cleanly handle in-flight requests and
  * return to a usable state after re-initialization.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_flr_during_io(struct virtio_dev *dev,
                                             struct vring *vr)

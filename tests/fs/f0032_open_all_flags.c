@@ -7,7 +7,7 @@
  * after INIT; the daemon must reject the unknown flag combination
  * cleanly rather than crashing on undefined open semantics.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_open_all_flags(struct virtio_dev *dev,

@@ -7,7 +7,7 @@
  * MUST NOT negotiate the ZONED feature if incapable, and MUST NOT
  * issue zoned commands without the feature.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 /* Zoned block request types (v1.3) */
 

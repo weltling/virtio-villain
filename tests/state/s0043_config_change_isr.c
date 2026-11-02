@@ -8,7 +8,7 @@
  * (requires VIRTIO_BLK_F_CONFIG_WCE), then read ISR and confirm
  * the config bit is set and the generation counter advanced.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_config_change_isr(struct virtio_dev *dev,
                                             struct vring *vr)

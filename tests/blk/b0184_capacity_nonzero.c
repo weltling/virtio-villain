@@ -6,7 +6,7 @@
  * the device size in 512 byte sectors. It must be non zero for
  * a functional block device.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_capacity_nonzero(struct virtio_dev *dev)
 {

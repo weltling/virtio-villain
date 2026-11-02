@@ -7,7 +7,7 @@
  * but poll the used ring. This checks request progress, not interrupt
  * suppression or pending interrupt delivery after unmasking.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 #include <errno.h>

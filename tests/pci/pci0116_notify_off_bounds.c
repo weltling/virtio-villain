@@ -7,7 +7,7 @@
  * notify BAR region. Verify the resulting offset for queue 0 is
  * within the mapped notify region bounds.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_notify_off(struct virtio_dev *dev)
 {

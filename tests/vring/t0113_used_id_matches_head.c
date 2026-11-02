@@ -6,7 +6,7 @@
  * the id field of each used ring entry. Submit a request starting
  * at descriptor 0, verify used->ring[0].id == 0.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_used_id(struct virtio_dev *dev, struct vring *vr)
 {

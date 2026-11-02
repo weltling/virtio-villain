@@ -7,7 +7,7 @@
  * to back unaligned reads with byte width and verify the device
  * continues to honor a final aligned read of num_queues.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_3byte(struct virtio_dev *dev)
 {

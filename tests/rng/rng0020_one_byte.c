@@ -6,7 +6,7 @@
  * writes random data into the buffer. A single byte buffer is a
  * boundary condition that must not confuse the device model.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rng_one_byte(struct virtio_dev *dev,
                                        struct vring *vr)

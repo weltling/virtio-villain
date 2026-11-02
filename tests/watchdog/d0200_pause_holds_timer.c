@@ -7,7 +7,7 @@
  * The guest watches device_status and asserts the watchdog does
  * not raise FAILED or NEEDS_RESET and that DRIVER_OK remains set.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_watchdog_survives_pause(struct virtio_dev *dev)
 {

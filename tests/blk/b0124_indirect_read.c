@@ -5,7 +5,7 @@
  * Submit a read using an indirect descriptor table containing the
  * header, data, and status descriptors.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_indirect_read(struct virtio_dev *dev,
                                             struct vring *vr)

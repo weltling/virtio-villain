@@ -6,7 +6,7 @@
  * Spec 4.1.4.3.2: driver MUST configure queue before enabling.
  * The VMM may use stale/default values.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_enable_before_config(struct virtio_dev *dev)
 {

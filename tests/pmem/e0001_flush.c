@@ -7,7 +7,7 @@
  *
  * Spec 5.19.6.1: The driver sends flush requests to persist writes.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pmem_flush(struct virtio_dev *dev,
                                      struct vring *vr)

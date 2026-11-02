@@ -8,7 +8,7 @@
  * present the sidecar pauses, snapshots, and resumes, and the
  * guest watches device_status across the window.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "tests/mmio/mmio_helpers.h"
 
 static test_result_t test_rtc_survives_snapshot(struct virtio_dev *dev,

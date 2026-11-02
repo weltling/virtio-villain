@@ -6,7 +6,7 @@
  * to memory into the used ring entry's len field. For a blk READ
  * of 512 bytes, the used len must be 512 + 1 (data + status byte).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_used_len_verify(struct virtio_dev *dev,
                                           struct vring *vr)

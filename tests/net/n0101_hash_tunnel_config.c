@@ -7,7 +7,7 @@
  * VIRTIO_NET_F_HASH_TUNNEL is negotiated, the device can hash on
  * inner packet headers for tunneled traffic.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_hash_tunnel(struct virtio_dev *dev,
                                           struct vring *vr)

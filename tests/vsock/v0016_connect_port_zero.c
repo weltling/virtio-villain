@@ -5,7 +5,7 @@
  * Send a CONNECT with dst_port=0. Port 0 may be treated as invalid
  * or reserved by some implementations. The device must not crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_connect_port_zero(struct virtio_dev *dev,
                                                   struct vring *vr)

@@ -9,7 +9,7 @@
  * the endpoint to already be attached before allowing PROBE will
  * reject the first request.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_probe_before_attach(struct virtio_dev *dev,

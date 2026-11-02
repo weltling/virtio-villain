@@ -6,7 +6,7 @@
  * driver may add a VLAN ID via CTRL_VLAN_ADD. Send a valid VLAN ID
  * (1) and verify the device responds with VIRTIO_NET_OK.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_vlan_add(struct virtio_dev *dev,
                                             struct vring *vr)

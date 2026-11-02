@@ -5,7 +5,7 @@
  * Set queue_desc, queue_avail, and queue_used to the same address so
  * they overlap in guest memory. The VMM must detect or handle this.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_queue_addrs_overlap(struct virtio_dev *dev)
 {

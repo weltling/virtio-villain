@@ -8,7 +8,7 @@
  * above requested_size. The device must reject with NACK or
  * ERROR rather than silently grow plugged_size.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_nack_overplug(struct virtio_dev *dev,
                                             struct vring *vr)

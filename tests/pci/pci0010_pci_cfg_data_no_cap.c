@@ -9,7 +9,7 @@
  *
  * This exercises the VMM's PCI config space access capability handling.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_pci_cfg_data_no_cap(struct virtio_dev *dev,

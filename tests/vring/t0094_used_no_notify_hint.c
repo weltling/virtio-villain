@@ -8,7 +8,7 @@
  * device is free to ignore it. Writing the bit from the driver
  * must not break processing of subsequent requests.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_used_no_notify_hint(struct virtio_dev *dev,
                                               struct vring *vr)

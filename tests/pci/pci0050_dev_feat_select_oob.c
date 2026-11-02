@@ -7,7 +7,7 @@
  * undefined slices; the device must read back 0 for any slice not
  * defined and not crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_dev_feat_select_oob(struct virtio_dev *dev)
 {

@@ -6,7 +6,7 @@
  * Writing a queue index beyond num_queues to the notify region
  * must not crash the VMM.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_notify_oob(struct virtio_dev *dev)
 {

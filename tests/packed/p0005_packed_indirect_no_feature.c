@@ -7,7 +7,7 @@
  * Spec 2.8.19: INDIRECT flag MUST NOT be used unless the feature
  * was negotiated.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_indirect_no_feature(struct virtio_dev *dev,
                                                      struct vring_packed *vr)

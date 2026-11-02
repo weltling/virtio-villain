@@ -12,7 +12,7 @@
  * memory unsafety, which the harness reports separately as a wedge,
  * timeout, or sanitizer abort.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 /* virtio-blk request header */
 static test_result_t test_duplicate_head(struct virtio_dev *dev, struct vring *vr)

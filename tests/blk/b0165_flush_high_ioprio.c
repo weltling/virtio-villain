@@ -7,7 +7,7 @@
  * device must ignore the field and complete the flush normally,
  * not treat it as a request length or sector hint.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_flush_high_ioprio(struct virtio_dev *dev,
                                                 struct vring *vr)

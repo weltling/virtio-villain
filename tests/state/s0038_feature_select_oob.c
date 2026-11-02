@@ -8,7 +8,7 @@
  * far past page 1 must not crash the device or return uninitialized
  * memory. Most devices return 0 for unknown pages.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_feature_select_oob(struct virtio_dev *dev)
 {

@@ -5,7 +5,7 @@
  * Submit a WRITE ZEROES request with reserved flag bits set.
  * The device should return UNSUPP for unknown flags.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_wz_unknown_flags(struct virtio_dev *dev,
                                                struct vring *vr)

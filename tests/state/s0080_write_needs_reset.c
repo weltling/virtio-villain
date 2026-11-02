@@ -7,7 +7,7 @@
  * writing it is a protocol violation; the device must ignore or
  * mask the write without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_write_needs_reset(struct virtio_dev *dev)
 {

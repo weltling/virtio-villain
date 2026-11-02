@@ -9,7 +9,7 @@
  * and process the descriptor normally rather than rejecting or
  * crashing on the unrecognised flag.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_desc_flags_reserved_bit(struct virtio_dev *dev,
                                                   struct vring *vr)

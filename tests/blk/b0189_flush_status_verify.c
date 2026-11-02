@@ -6,7 +6,7 @@
  * status byte. Existing flush tests only check the used ring advances;
  * this test explicitly validates the status field value.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_flush_status(struct virtio_dev *dev,
                                            struct vring *vr)

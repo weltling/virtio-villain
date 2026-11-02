@@ -9,7 +9,7 @@
  * depends on whether the host pushes any input, REJECT (silent) is
  * the expected outcome on a quiet console.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_rx_no_write(struct virtio_dev *dev,
                                               struct vring *vr)

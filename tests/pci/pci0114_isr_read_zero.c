@@ -6,7 +6,7 @@
  * reason. When no interrupt is pending it should read 0.
  * Read ISR after init (before any I/O) and verify zero.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_isr_zero(struct virtio_dev *dev,
                                        struct vring *vr)

@@ -6,7 +6,7 @@
  * Tests device validation of the target member before executing the
  * command operation.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_admin_bad_member(struct virtio_dev *dev,
                                            struct vring *vr)

@@ -7,7 +7,7 @@
  * reorder requests. Submit 32 small payloads one at a time and
  * verify each one completes before submitting the next.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_tx_burst(struct virtio_dev *dev,
                                            struct vring *vr)

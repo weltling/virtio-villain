@@ -6,7 +6,7 @@
  * Spec 5.2.6.2: The device MUST NOT process a discard that extends
  * beyond the device capacity.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_discard_beyond_capacity(struct virtio_dev *dev,
                                                       struct vring *vr)

@@ -9,7 +9,7 @@
  * EINTR, without deadlock.
  * Adapted from QEMU virtio-9p-test flush_success pattern.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_interrupt_inflight(struct virtio_dev *dev,

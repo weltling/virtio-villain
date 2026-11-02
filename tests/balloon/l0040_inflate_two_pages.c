@@ -6,7 +6,7 @@
  * descriptor to the inflate queue. The device must consume both
  * PFNs from the same buffer. Tests batch inflate.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_inflate_two(struct virtio_dev *dev,
                                               struct vring *vr)

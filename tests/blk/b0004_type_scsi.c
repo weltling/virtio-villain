@@ -5,7 +5,7 @@
  * Submit a SCSI command (type = 2) which requires VIRTIO_BLK_F_SCSI
  * that is never offered by modern devices.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_type_scsi(struct virtio_dev *dev,
                                         struct vring *vr)

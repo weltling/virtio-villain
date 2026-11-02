@@ -7,7 +7,7 @@
  * While not a spec violation, large I/Os stress different code
  * paths in VMM backend buffer handling.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_read_large(struct virtio_dev *dev,
                                          struct vring *vr)

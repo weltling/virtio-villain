@@ -7,7 +7,7 @@
  * device must drop the in flight work and reach status zero. A
  * follow up reinit and submission must work cleanly.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_reset_during_io(struct virtio_dev *dev,
                                           struct vring *vr)

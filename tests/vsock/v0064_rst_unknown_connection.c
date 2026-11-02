@@ -7,7 +7,7 @@
  * OP_REQUEST or OP_RESPONSE. The device must drop the spurious
  * reset without crashing or allocating per connection state.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_rst_unknown(struct virtio_dev *dev,
                                             struct vring *vr)

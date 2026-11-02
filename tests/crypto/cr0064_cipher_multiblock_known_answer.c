@@ -10,7 +10,7 @@
  * is not advertised, and when the backend cannot perform the algorithm;
  * passes under a QEMU with a crypto library.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define KAT_LEN 32
 

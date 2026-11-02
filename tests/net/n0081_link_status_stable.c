@@ -9,7 +9,7 @@
  * value, which indicates the device is not racing internal state
  * onto the config register.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_link_status_stable(struct virtio_dev *dev,
                                                  struct vring *vr)

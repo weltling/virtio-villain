@@ -7,7 +7,7 @@
  * the current version's config must return defined values (zero)
  * and not crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_forward_large_config(struct virtio_dev *dev)
 {

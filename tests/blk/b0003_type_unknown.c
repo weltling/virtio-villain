@@ -5,7 +5,7 @@
  * Submit a request with an unknown type (0xDEADBEEF). The device should
  * return UNSUPP status, not crash.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_type_unknown(struct virtio_dev *dev,
                                            struct vring *vr)

@@ -6,7 +6,7 @@
  * zone (ZONE_OPEN + ZONE_CLOSE). Tests that the device serializes
  * or handles concurrent zone operations correctly.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_zone_concurrent(struct virtio_dev *dev,
                                               struct vring *vr)

@@ -7,7 +7,7 @@
  * The daemon must reject with ENOENT or EINVAL and must not read
  * past the end of the request descriptor.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_lookup_zero_name(struct virtio_dev *dev,

@@ -6,7 +6,7 @@
  * This is the degenerate minimum ring size. The device must still
  * process a single-descriptor indirect request correctly.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_qsize_one_indirect(struct virtio_dev *dev,
                                                     struct vring_packed *vr)

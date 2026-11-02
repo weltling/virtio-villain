@@ -6,7 +6,7 @@
  * the driver sends CTRL_ANNOUNCE_ACK after it has completed a
  * gratuitous ARP burst. The device must consume the command.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_announce(struct virtio_dev *dev,
                                             struct vring *vr)

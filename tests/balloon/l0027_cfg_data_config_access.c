@@ -9,7 +9,7 @@
  * The device must handle cfg_data routed config reads at boundary
  * offsets without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_balloon_cfg_data_config(struct virtio_dev *dev,

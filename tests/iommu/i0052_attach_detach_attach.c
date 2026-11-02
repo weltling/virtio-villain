@@ -8,7 +8,7 @@
  *
  * Spec 5.13.5.1, 5.13.5.2.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_attach_detach_attach(struct virtio_dev *dev,

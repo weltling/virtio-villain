@@ -6,7 +6,7 @@
  * queue 1 (if MQ available) to test device handles the request
  * type regardless of which request queue processes it.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_get_id_alt_queue(struct virtio_dev *dev)
 {

@@ -7,7 +7,7 @@
  * descriptors whose addr/len describe free page ranges. The device
  * consumes them and returns the buffers via the used ring.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_balloon_page_report(struct virtio_dev *dev,
                                               struct vring *vr)

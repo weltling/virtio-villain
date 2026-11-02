@@ -9,7 +9,7 @@
  * Submit ZONE_REPORT with only a header and a data buffer but
  * no status descriptor (incomplete request chain).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_zone_report_no_status(struct virtio_dev *dev,
                                                 struct vring *vr)

@@ -8,7 +8,7 @@
  * requires the device to consume or drop the descriptor and
  * remain alive.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_tx_huge(struct virtio_dev *dev,
                                           struct vring *vr)

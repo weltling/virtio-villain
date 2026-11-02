@@ -6,7 +6,7 @@
  * pointing back at itself, forming an endless chain. The device must
  * bound its walk of the descriptor chain rather than loop forever.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_self_loop(struct virtio_dev *dev,
                                            struct vring *vr)

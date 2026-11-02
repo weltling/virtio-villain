@@ -6,7 +6,7 @@
  * to a BAR, read back to determine size, then restore the original
  * value. The device must survive this probe sequence.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_pci_bar_resize_probe(struct virtio_dev *dev,

@@ -6,7 +6,7 @@
  * Spec 5.2.6.2: The device MUST zero the specified range if the
  * VIRTIO_BLK_F_WRITE_ZEROES feature has been negotiated.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_write_zeroes(struct virtio_dev *dev,
                                            struct vring *vr)

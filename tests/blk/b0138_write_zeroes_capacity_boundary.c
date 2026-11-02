@@ -5,7 +5,7 @@
  * Submit a WRITE_ZEROES request where sector + num_sectors reaches
  * exactly the device capacity boundary.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_write_zeroes_capacity_boundary(
     struct virtio_dev *dev, struct vring *vr)

@@ -5,7 +5,7 @@
  * Submit a request with type = 0x80000000 (bit 31 set). This
  * is not a valid block request type and should be rejected.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_type_high_bit(struct virtio_dev *dev,
                                             struct vring *vr)

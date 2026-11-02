@@ -9,8 +9,8 @@
  * 4.1.4.3.1. When no new function appears the sidecar did not run
  * or the backend cannot honour add-net, and the guest reports SKIP.
  */
-#include "tests/test.h"
-#include "tests/hotplug.h"
+#include "lib/virtio_test.h"
+#include "lib/pci_hotplug.h"
 #include "lib/pci.h"
 
 static test_result_t test_net_hotplug_add(struct virtio_dev *dev)

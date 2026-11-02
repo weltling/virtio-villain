@@ -1,5 +1,5 @@
 /* Spec 5.15.6.1 requires ERROR for PLUG outside the usable region. */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_plug_beyond_usable(struct virtio_dev *dev,
                                                struct vring *vr)

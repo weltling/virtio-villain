@@ -7,7 +7,7 @@
  * header as a single contiguous structure. A VMM that reads the header
  * from only the first descriptor will get a truncated/corrupt header.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_header_split(struct virtio_dev *dev,
                                            struct vring *vr)

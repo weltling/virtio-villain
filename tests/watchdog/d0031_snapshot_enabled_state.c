@@ -9,7 +9,7 @@
  * a ping cycle completes; a paired Python wrapper that drives
  * snapshot/restore can be added later.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_watchdog_snapshot_enabled(struct virtio_dev *dev,
                                                     struct vring *vr)

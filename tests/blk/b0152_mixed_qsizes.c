@@ -8,7 +8,7 @@
  * with size 64 and queue 1 with size 16, submit a read on each,
  * and verify both complete with status OK.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static int submit_read(struct vring *vr, uint64_t sector, uint8_t **st_out)
 {

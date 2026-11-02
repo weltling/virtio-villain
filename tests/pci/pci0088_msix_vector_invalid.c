@@ -6,7 +6,7 @@
  * VIRTIO_MSI_NO_VECTOR and not a valid vector). The device must
  * handle the invalid vector gracefully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_msix_vector_invalid(struct virtio_dev *dev)
 {

@@ -5,7 +5,7 @@
  * Submit write requests to the same sector from two different queues
  * simultaneously. Tests device-side serialization / race handling.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_same_sector_two_queues(struct virtio_dev *dev)
 {

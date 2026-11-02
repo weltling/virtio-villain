@@ -9,7 +9,7 @@
  * full le64 page_size_mask and, where the feature is offered, that
  * range starts do not exceed range ends and bypass is 0 or 1.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_config_consistent(struct virtio_dev *dev,

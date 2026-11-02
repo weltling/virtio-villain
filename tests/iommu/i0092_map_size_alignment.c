@@ -6,7 +6,7 @@
  * Submit a MAP with virt_start = 0x100 and virt_end = 0xFFE
  * (sub page boundaries); the device must reject.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)

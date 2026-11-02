@@ -7,7 +7,7 @@
  * the vring on queue 1 (TX) but make the descriptor layout look like
  * an RX buffer (writable). Tests device's per-queue direction checking.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_wrong_queue(struct virtio_dev *dev,
                                              struct vring *vr)

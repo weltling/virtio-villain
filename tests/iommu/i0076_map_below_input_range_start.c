@@ -7,7 +7,7 @@
  * advertised input_range must be rejected. The device must
  * return RANGE without panicking.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_map_below_range(struct virtio_dev *dev,

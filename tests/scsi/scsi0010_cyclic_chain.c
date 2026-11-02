@@ -6,7 +6,7 @@
  * walker would loop forever. The device must bound the walk and keep
  * the host alive; the queue may reject or wedge.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_scsi_cyclic_chain(struct virtio_dev *dev,
                                             struct vring *vr)

@@ -6,7 +6,7 @@
  * PCM streams, and channel maps. Verify that the complete structure is
  * accessible and that the configured topology is usable.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_snd.h"
 
 static test_result_t test_sound_device_config(struct virtio_dev *dev,

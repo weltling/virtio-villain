@@ -11,7 +11,7 @@
  * the writable region. The device must validate the chain
  * shape and reject the malformed order.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_admin_status_before_data(struct virtio_dev *dev)
 {

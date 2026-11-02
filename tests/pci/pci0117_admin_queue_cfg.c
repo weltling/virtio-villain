@@ -9,7 +9,7 @@
  * Verify admin_queue_num is at least one and the admin range starts
  * at or after the regular queues.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_admin_queue_cfg(struct virtio_dev *dev)
 {

@@ -8,7 +8,7 @@
  * completion makes the write's persistence "undefined" but the
  * device must not crash, hang or corrupt unrelated state.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_wce_toggle_flush_inflight(struct virtio_dev *dev,
                                                         struct vring *vr)

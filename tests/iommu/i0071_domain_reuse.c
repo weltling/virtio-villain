@@ -8,7 +8,7 @@
  * after the first detach exercises domain reuse semantics where a
  * VMM that ties domain state to the first endpoint will trip up.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static int submit_pair(struct vring *vr, uint16_t slot, uint64_t req_phys,

@@ -7,7 +7,7 @@
  * descriptor size. Spec 2.7.5.3.1 says the length must be a multiple
  * of the descriptor size, so the device must refuse it without harm.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_indirect_unaligned(struct virtio_dev *dev,
                                                     struct vring *vr)

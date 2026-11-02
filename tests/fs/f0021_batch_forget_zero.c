@@ -6,7 +6,7 @@
  * The daemon must handle this degenerate case without crashing
  * or looping.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_batch_forget_zero(struct virtio_dev *dev,

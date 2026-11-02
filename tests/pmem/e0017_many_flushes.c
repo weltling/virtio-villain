@@ -8,7 +8,7 @@
  * leaks per flush, or that fuses multiple in flight flushes
  * incorrectly, will fail or wedge after enough iterations.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define FLUSH_COUNT 64
 

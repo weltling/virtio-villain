@@ -13,7 +13,7 @@
  * CTRL_VQ, so require it and skip when it is not offered. Skip when
  * the device offers VQ_NOTF_COAL, since then the command is valid.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_vq_notf_coal_no_feature(struct virtio_dev *dev,
                                                       struct vring *vr)

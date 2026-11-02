@@ -6,7 +6,7 @@
  * header. The device must accept or refuse the empty payload without
  * harm to the host.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_zero_len(struct virtio_dev *dev,
                                           struct vring *vr)

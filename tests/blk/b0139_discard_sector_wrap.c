@@ -5,7 +5,7 @@
  * Submit a DISCARD request with sector and num_sectors chosen so that
  * their sum overflows a 64-bit integer. The device must reject this.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_discard_sector_wrap(struct virtio_dev *dev,
                                                   struct vring *vr)

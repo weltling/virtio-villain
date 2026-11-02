@@ -6,7 +6,7 @@
  * ethernet). This is the boundary case - N17 tests exceeding MTU.
  * The device should accept this frame without error.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_exactly_mtu(struct virtio_dev *dev,
                                              struct vring *vr)

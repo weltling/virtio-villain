@@ -6,7 +6,7 @@
  * per-queue notification offsets. Verify it's consistent and
  * that computed offsets don't exceed the notify BAR region.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_notify_multiplier(struct virtio_dev *dev)
 {

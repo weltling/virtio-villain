@@ -12,7 +12,7 @@
  * next test can still run. Most valuable under an ASan VMM. Skips on
  * Cloud Hypervisor and when the MAC service is not advertised.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_crypto_mac_authkeylen_overflow(struct virtio_dev *dev)
 {

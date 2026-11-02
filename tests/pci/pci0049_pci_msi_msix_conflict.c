@@ -6,7 +6,7 @@
  * Enable MSI-X first (via common_cfg msix_config), then attempt to
  * enable legacy MSI. The VMM must handle this conflict gracefully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 #define MSIX_CTRL_ENABLE  0x8000  /* Bit 15 of MSI-X Message Control */

@@ -6,7 +6,7 @@
  * request queue and advance avail->idx accordingly. The device
  * must consume the full batch without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_fill_ring(struct virtio_dev *dev,

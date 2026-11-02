@@ -7,7 +7,7 @@
  * to send interrupts, a bogus value could suppress all notifications
  * or cause an infinite interrupt storm.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_avail_used_event_poison(struct virtio_dev *dev,
                                                   struct vring *vr)

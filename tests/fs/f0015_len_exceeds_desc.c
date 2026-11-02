@@ -7,7 +7,7 @@
  * readable descriptor. The device must use the descriptor length
  * as the true bound and not trust the header len.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_len_exceeds_desc(struct virtio_dev *dev,

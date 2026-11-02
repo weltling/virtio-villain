@@ -8,7 +8,7 @@
  * inline IPsec processing. Skips when the device does not offer the
  * feature, as CH does not.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ipsec_accept(struct virtio_dev *dev)
 {

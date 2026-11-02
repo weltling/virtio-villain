@@ -7,7 +7,7 @@
  * data. Tests that the device handles concurrent reads to the
  * same LBA without corruption.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_concurrent_reads(struct virtio_dev *dev,
                                                struct vring *vr)

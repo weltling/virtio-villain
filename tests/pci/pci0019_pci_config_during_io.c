@@ -6,7 +6,7 @@
  * an I/O request is in-flight. Tests concurrent access to config vs
  * data path without device internal locking issues.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_config_during_io(struct virtio_dev *dev,
                                                struct vring *vr)

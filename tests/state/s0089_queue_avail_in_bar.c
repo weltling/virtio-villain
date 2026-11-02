@@ -11,7 +11,7 @@
  * dispatch garbage descriptor indices. The device must reject
  * the impossible avail ring base or stay safely idle.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_state_queue_avail_in_bar(struct virtio_dev *dev,
                                                    struct vring *vr)

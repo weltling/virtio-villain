@@ -7,7 +7,7 @@
  * guest RAM end. The device must not crash when accessing invalid
  * physical addresses.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_desc_spanning_hole(struct virtio_dev *dev,
                                              struct vring *vr)

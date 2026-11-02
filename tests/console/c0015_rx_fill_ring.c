@@ -6,7 +6,7 @@
  * device must accept the whole batch without crashing. With no host
  * input pending, the expected outcome is REJECT (no used entries).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_console_rx_fill_ring(struct virtio_dev *dev,
                                                struct vring *vr)

@@ -8,7 +8,7 @@
  *
  * Submit SECURE_ERASE with flags=0x80000000 (bit 31, undefined).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_secure_erase_unknown_flags(struct virtio_dev *dev,
                                                          struct vring *vr)

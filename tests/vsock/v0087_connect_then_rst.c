@@ -6,7 +6,7 @@
  * same port, aborting the connection before it is established.
  * The device must handle the abort without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_connect_rst(struct virtio_dev *dev,
                                             struct vring *vr)

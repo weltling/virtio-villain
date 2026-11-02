@@ -6,7 +6,7 @@
  * num_queues. The device must ignore spurious notifications for
  * non-existent queues without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_notify_beyond_queues(struct virtio_dev *dev,
                                                    struct vring *vr)

@@ -5,7 +5,7 @@
  * Spec 6: A device MUST offer VIRTIO_F_VERSION_1. Read feature
  * bits word 1 and verify bit 0 (VERSION_1 at global bit 32) is set.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_version_1(struct virtio_dev *dev)
 {

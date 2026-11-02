@@ -6,7 +6,7 @@
  * is exactly 0 (S_OK). Prior attach tests often batch with MAP
  * or DETACH; this isolates the attach response.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 static test_result_t test_iommu_attach_verify(struct virtio_dev *dev,

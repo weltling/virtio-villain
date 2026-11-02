@@ -8,7 +8,7 @@
  * side effect each select must also expose a non zero queue_size
  * for queues the device actually has.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_queue_select_roundtrip(struct virtio_dev *dev)
 {

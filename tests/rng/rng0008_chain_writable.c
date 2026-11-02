@@ -7,7 +7,7 @@
  * The device must walk the chain and fill bytes across the
  * segments without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rng_chain_writable(struct virtio_dev *dev,
                                              struct vring *vr)

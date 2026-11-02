@@ -9,7 +9,7 @@
  * guest-written field indicating the poison byte pattern used
  * when freeing pages.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define BALLOON_CFG_POISON_VAL_OFFSET 12
 

@@ -8,7 +8,7 @@
  * back to verify the first write persisted through the flush and
  * the second write completed after it.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_flush_ordering(struct virtio_dev *dev,
                                              struct vring *vr)

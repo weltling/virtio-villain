@@ -9,7 +9,7 @@
  *
  * Spec 5.23.6.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_cfg_num_clocks(struct virtio_dev *dev,
                                              struct vring *vr)

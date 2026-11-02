@@ -6,7 +6,7 @@
  * the device type. A value of 0 means no device is present at this
  * MMIO location. Verify it is non zero for a discovered device.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

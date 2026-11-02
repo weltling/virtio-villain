@@ -8,7 +8,7 @@
  * high 16 bits. Encode this correctly and verify the device processes
  * the request.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_notif_data_correct(struct virtio_dev *dev,
                                              struct vring *vr)

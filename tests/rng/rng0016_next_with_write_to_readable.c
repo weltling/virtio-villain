@@ -7,7 +7,7 @@
  * writable descriptors must follow all device readable ones in a
  * chain. The device must reject or stay silent.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rng_next_write_then_read(struct virtio_dev *dev,
                                                    struct vring *vr)

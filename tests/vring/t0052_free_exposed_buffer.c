@@ -7,7 +7,7 @@
  * Simulates a driver freeing buffers before the device returns them
  * in the used ring.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_free_exposed_buffer(struct virtio_dev *dev,
                                               struct vring *vr)

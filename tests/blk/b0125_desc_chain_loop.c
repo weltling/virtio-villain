@@ -5,7 +5,7 @@
  * Create a request where the data descriptor's next index points back
  * to the header, forming a loop. The device must detect the cycle.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_desc_chain_loop(struct virtio_dev *dev,
                                               struct vring *vr)

@@ -8,7 +8,7 @@
  * reset and confirm a fresh reinit completes, exercising the
  * post DRIVER_OK fail path which is rare in normal driver flow.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_failed_after_driver_ok(struct virtio_dev *dev,
                                                  struct vring *vr)

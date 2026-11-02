@@ -7,7 +7,7 @@
  * is complete. This races the reset path and tests whether the
  * device handles concurrent config space access during teardown.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_status_read_during_reset(struct virtio_dev *dev)
 {

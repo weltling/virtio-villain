@@ -6,7 +6,7 @@
  * message with len=0 (zero-length record boundary). The device must
  * handle empty records gracefully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 #define VSOCK_FLAGS_EOR             4  /* end of record */
 

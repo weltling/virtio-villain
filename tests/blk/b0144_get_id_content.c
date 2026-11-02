@@ -9,7 +9,7 @@
  * sentinel the driver pre filled. This catches devices that ack
  * the request with status OK but never touch the buffer.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_get_id_content(struct virtio_dev *dev,
                                              struct vring *vr)

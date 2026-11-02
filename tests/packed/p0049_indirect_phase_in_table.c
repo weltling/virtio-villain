@@ -10,7 +10,7 @@
  * device must follow the indirect entry as a plain descriptor
  * and ignore the spurious phase bits inside the table.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_indirect_phase_in_table(
         struct virtio_dev *dev, struct vring_packed *vr)

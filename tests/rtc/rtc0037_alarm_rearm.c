@@ -8,7 +8,7 @@
  * SET_ALARM requests with FLAG_ALARM_ENABLED and different future
  * times and checks that each is acknowledged with status OK.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_rtc_alarm_rearm(struct virtio_dev *dev,
                                           struct vring *vr)

@@ -6,7 +6,7 @@
  * with opcode=0xFFFF which is not a valid FUSE operation. The daemon
  * must return ENOSYS or similar without crashing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/fuse.h"
 
 static test_result_t test_fs_unknown_opcode(struct virtio_dev *dev,

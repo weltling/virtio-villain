@@ -5,7 +5,7 @@
  * Set all flag bits (including reserved ones) on a packed descriptor.
  * The device must handle reserved bits gracefully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_all_flags(struct virtio_dev *dev,
                                            struct vring_packed *vr)

@@ -6,7 +6,7 @@
  * Spec 5.1.6.4.2: driver MUST NOT place device-readable buffers into
  * the rx queue. The device must reject.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_rx_readable_desc(struct virtio_dev *dev,
                                                struct vring *vr)

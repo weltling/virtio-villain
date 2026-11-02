@@ -6,7 +6,7 @@
  * IOMMU mapping. The device must reject I/O since the platform flag
  * means addresses need translation but none is configured.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_desc_access_platform_no_iommu(struct virtio_dev *dev,
                                                         struct vring *vr)

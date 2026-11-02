@@ -5,7 +5,7 @@
  * Set an indirect descriptor's len to 0. This means the indirect table
  * contains zero descriptors - there is no request to process.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_indirect_len_zero(struct virtio_dev *dev,
                                             struct vring *vr)

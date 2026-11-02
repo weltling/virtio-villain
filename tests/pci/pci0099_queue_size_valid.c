@@ -6,7 +6,7 @@
  * elements in the queue. It must be non zero (queue exists) and
  * should be a power of two for split virtqueues.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_pci_queue_size(struct virtio_dev *dev)
 {

@@ -6,7 +6,7 @@
  * negotiated. Verify the device offers it and accepts it.
  * Also try NOT accepting it to test transitional behavior.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_version_1_negotiation(struct virtio_dev *dev)
 {

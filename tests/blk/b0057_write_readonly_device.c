@@ -6,7 +6,7 @@
  * write. The device should report an error status or reject.
  * Also verify reads still work and the rejected write leaves data unchanged.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_write_readonly(struct virtio_dev *dev,
                                              struct vring *vr)

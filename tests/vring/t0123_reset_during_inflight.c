@@ -10,7 +10,7 @@
  * The device outcome is up to it as long as the host survives and the
  * next test can still run.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_reset_during_inflight(struct virtio_dev *dev,
                                                 struct vring *vr)

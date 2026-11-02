@@ -11,7 +11,7 @@
  * (2) the device wrote into the properties area, and (3) the first
  * property type code is NONE (empty) or RESV_MEM.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/virtio_iommu.h"
 
 #define VIRTIO_IOMMU_PROBE_T_NONE     0

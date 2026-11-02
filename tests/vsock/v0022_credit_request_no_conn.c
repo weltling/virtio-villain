@@ -6,7 +6,7 @@
  * The device must not crash when asked for credit info on a
  * nonexistent connection.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_credit_req_noconn(struct virtio_dev *dev,
                                                   struct vring *vr)

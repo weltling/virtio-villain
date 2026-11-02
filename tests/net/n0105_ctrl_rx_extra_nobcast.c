@@ -7,7 +7,7 @@
  * when VIRTIO_NET_F_CTRL_RX_EXTRA is negotiated, additional
  * filter commands become available.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_ctrl_rx_extra(struct virtio_dev *dev,
                                             struct vring *vr)

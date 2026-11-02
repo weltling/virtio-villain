@@ -5,7 +5,7 @@
  * Set the FAILED status bit and then kick a queue. Once FAILED is set,
  * the device should not process any more requests.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_set_failed_then_kick(struct virtio_dev *dev)
 {

@@ -6,7 +6,7 @@
  * VMM's MSI state machine transitions. The device must not wedge
  * or corrupt state under rapid toggling.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_pci_msi_toggle(struct virtio_dev *dev,

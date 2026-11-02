@@ -6,7 +6,7 @@
  * the device handles the degenerate case where the ring can only hold
  * a single descriptor at a time.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_packed_qsize_one(struct virtio_dev *dev,
                                            struct vring_packed *vr)

@@ -5,7 +5,7 @@
  * Send data after writing 0 to device status (device reset).
  * The device should not process packets after reset.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_vsock_data_after_reset(struct virtio_dev *dev,
                                                  struct vring *vr)

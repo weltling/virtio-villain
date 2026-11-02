@@ -11,7 +11,7 @@
  * spawn an async reset task; a second reset arriving before the first
  * completes may corrupt internal state or double-free resources.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_back_to_back_resets(struct virtio_dev *dev)
 {

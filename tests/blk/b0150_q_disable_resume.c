@@ -10,7 +10,7 @@
  * 1, kick again, and verify the previously parked request now
  * completes. Queue 0 must continue to function throughout.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static int submit_read(struct vring *vr, uint64_t sector, uint8_t **st_out)
 {

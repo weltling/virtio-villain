@@ -7,7 +7,7 @@
  * plugged (plugged_size == 0) a single-block query at the region
  * start must return ACK with state UNPLUGGED.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_mem_state_unplugged(struct virtio_dev *dev,
                                               struct vring *vr)

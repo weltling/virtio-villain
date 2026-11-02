@@ -10,7 +10,7 @@
  * advertised, and when the backend cannot perform the algorithm; passes
  * under a QEMU with a crypto library.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static uint64_t make_session(struct virtio_dev *dev, struct vring *cvr,
                              uint16_t *cseq, uint32_t op, uint8_t *key,

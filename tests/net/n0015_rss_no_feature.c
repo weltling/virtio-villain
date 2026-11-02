@@ -6,7 +6,7 @@
  * VIRTIO_NET_F_RSS. Spec 5.1.6.5.7.2: driver MUST NOT send
  * RSS_CONFIG if the feature has not been negotiated.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_rss_no_feature(struct virtio_dev *dev,
                                              struct vring *vr)

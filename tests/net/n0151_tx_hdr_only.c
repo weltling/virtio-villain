@@ -6,7 +6,7 @@
  * with only the virtio header and zero bytes of Ethernet data. The
  * device should handle the zero length payload gracefully.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_hdr_only(struct virtio_dev *dev,
                                           struct vring *vr)

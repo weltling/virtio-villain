@@ -8,7 +8,7 @@
  * Cloud Hypervisor watchdog: single queue, driver submits writable
  * descriptors as keepalive pings.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_watchdog_ping(struct virtio_dev *dev,
                                         struct vring *vr)

@@ -8,7 +8,7 @@
  * valid reset. This catches devices that only act on a single
  * write of 0, ignoring the intermediate values.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_piecewise_reset(struct virtio_dev *dev)
 {

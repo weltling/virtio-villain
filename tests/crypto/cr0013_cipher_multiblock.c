@@ -13,7 +13,7 @@
  * when the backend cannot perform the algorithm; passes under a QEMU
  * with a crypto library.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_crypto_cipher_multiblock(struct virtio_dev *dev,
                                                    struct vring *vr)

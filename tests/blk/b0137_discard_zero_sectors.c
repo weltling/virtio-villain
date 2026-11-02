@@ -5,7 +5,7 @@
  * Submit a DISCARD request with a segment where num_sectors is 0.
  * The device should handle this gracefully (no-op or error status).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_discard_zero_sectors(struct virtio_dev *dev,
                                                    struct vring *vr)

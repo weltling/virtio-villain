@@ -5,7 +5,7 @@
  * Submit three valid Ethernet frames in one avail ring update.
  * All three must complete. Tests deeper batch processing.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_net_tx_triple(struct virtio_dev *dev,
                                         struct vring *vr)

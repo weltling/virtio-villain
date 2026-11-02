@@ -5,7 +5,7 @@
  * Notify the device with an empty available ring. The device must
  * handle this gracefully without processing any requests.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_empty_avail_kick(struct virtio_dev *dev,
                                                struct vring *vr)

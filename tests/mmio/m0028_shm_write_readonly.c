@@ -6,7 +6,7 @@
  * are read only registers. Writing garbage to them must not crash
  * the device and the values must remain unchanged.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

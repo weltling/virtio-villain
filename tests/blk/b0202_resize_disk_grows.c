@@ -11,7 +11,7 @@
  * capacity is strictly greater and that config_generation
  * incremented.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "tests/blk/blk_mmio_helpers.h"
 
 static test_result_t test_blk_resize_disk_grows(struct virtio_dev *dev,

@@ -4,7 +4,7 @@
  *
  * Submit a read request with sector far beyond the device capacity.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_sector_beyond_capacity(struct virtio_dev *dev,
                                                      struct vring *vr)

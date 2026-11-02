@@ -11,7 +11,7 @@
  * queues treats queue 2 as queue 1 and sets bit 1. B0350 is the dense
  * control.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 #define MSIX_ENABLE        (1u << 31)

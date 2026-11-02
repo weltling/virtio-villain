@@ -11,7 +11,7 @@
  * on its first command after reset, so the first READ clears it and
  * the second is checked for a good status.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t submit_read(struct virtio_dev *dev, struct vring *vr,
                                  struct virtio_scsi_cmd_req *req,

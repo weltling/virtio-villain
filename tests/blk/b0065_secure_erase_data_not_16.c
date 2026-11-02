@@ -7,7 +7,7 @@
  *
  * Submit SECURE_ERASE with data length = 24 (1.5 segments).
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_blk_secure_erase_bad_len(struct virtio_dev *dev,
                                                    struct vring *vr)

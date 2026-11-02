@@ -13,7 +13,7 @@
  * could confuse a recovering driver or cause a use-after-free if
  * buffers were already freed.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_interrupt_after_failed(struct virtio_dev *dev,
                                                  struct vring *vr)

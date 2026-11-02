@@ -11,7 +11,7 @@
  * rapid interleaved reads of generation + config to stress the path.
  * We also attempt a reset mid-read to trigger a generation bump.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 #include "lib/pci.h"
 
 static test_result_t test_config_generation_race(struct virtio_dev *dev,

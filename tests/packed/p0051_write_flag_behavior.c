@@ -6,7 +6,7 @@
  * as device writable. Submit a BLK_IN with explicit F_WRITE on
  * the data descriptor and verify the device fills it.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring_packed *vr)
 {

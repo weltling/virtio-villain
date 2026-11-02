@@ -7,7 +7,7 @@
  * and writes to control registers. The VMM must not crash on
  * wrong-width accesses.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t do_test(struct virtio_mmio_dev *dev)
 {

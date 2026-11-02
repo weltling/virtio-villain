@@ -5,7 +5,7 @@
  * Skip setting FEATURES_OK and go straight to queue setup and DRIVER_OK.
  * The spec says FEATURES_OK must be set before configuring queues.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static test_result_t test_skip_features_ok(struct virtio_dev *dev)
 {
