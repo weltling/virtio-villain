@@ -116,10 +116,7 @@ must not exceed 61 characters. The encoded selection must not exceed
 32 characters. This mode requires `CONFIG_DMI=y` and `CONFIG_DMIID=y`.
 Missing, invalid or mixed configuration is an infrastructure failure.
 
-Tests return `TEST_PASS`, `TEST_FAIL`, or `TEST_SKIP`. Other verdicts fail unless
-a suite applies its own remapping before returning. Use skips only for optional
-capabilities. Missing execution prerequisites belong in `preflight`. An empty,
-unexecuted, or entirely skipped suite is not a pass.
+Tests return `TEST_PASS`, `TEST_FAIL`, or `TEST_SKIP`. Register a known expected failure with `VV_REGISTER_TEST_SPEC_XFAIL` using the same arguments as `VV_REGISTER_TEST_SPEC`. An assertion failure becomes `XFAIL` and does not fail the run. A pass becomes `XPASS` and fails the run so stale markers remain visible. Skips remain skips. Cleanup failures and other error verdicts remain failures. Missing execution prerequisites belong in `preflight`. An empty, unexecuted, or entirely skipped suite is not a pass.
 
 `TFAIL` and related helpers return immediately. Keep owned resources in the
 context so the cleanup callback can release them. These callbacks cannot
@@ -300,7 +297,7 @@ guest commands and results. Selecting the same ID more than once is an
 error, even when its spelling differs only in letter case. Catalog IDs
 must also be unique without regard to letter case.
 
-A policy can override `list_tests(self, binary)` to return IDs and descriptions from its sources before an executable has been built. Values can also be tuples of description, specification version and section. `villain.appliance.source_catalog(paths, macro, metadata=True, definitions=[header])` returns these tuples from registrations. The last two arguments are optional specification fields. The version can be a string literal or a named constant with a string literal definition in a supplied header. The section must be a string literal. Unknown or conflicting constants are errors. An initial registry argument is also supported. Without `metadata=True` the helper returns descriptions as before. It ignores comments and rejects empty, duplicate or malformed entries. This is a source index, not a C preprocessor. Execution always uses the catalog of the compiled executable, including its conditional build choices.
+A policy can override `list_tests(self, binary)` to return IDs and descriptions from its sources before an executable has been built. Values can also be tuples of description, specification version and section. `villain.appliance.source_catalog(paths, macro, metadata=True, definitions=[header])` returns these tuples from registrations, including variants with an `_XFAIL` suffix. The last two arguments are optional specification fields. The version can be a string literal or a named constant with a string literal definition in a supplied header. The section must be a string literal. Unknown or conflicting constants are errors. An initial registry argument is also supported. Without `metadata=True` the helper returns descriptions as before. It ignores comments and rejects empty, duplicate or malformed entries. This is a source index, not a C preprocessor. Execution always uses the catalog of the compiled executable, including its conditional build choices.
 
 Each selected test runs in a fresh appliance VM with its own run identifier,
 console log and timeout. `--repeat N` repeats that sequence N times.
@@ -338,7 +335,9 @@ VV-SUMMARY RUN_ID 1 0 0 0
 VV-END RUN_ID 0
 ```
 
-Summary counters are pass, fail, skip, infrastructure. The host checks the run
+Summary counters are pass, fail, skip, infrastructure. When a run contains `XFAIL` or `XPASS`, the guest appends separate xfail and xpass counters. Expected failures allow status zero. Unexpected passes require status one unless infrastructure failed.
+
+The host checks the run
 identifier and contract. It verifies execution ordering and exact selected
 IDs. It also checks individual verdicts, counters and final status.
 Missing, stale, duplicate, malformed or
