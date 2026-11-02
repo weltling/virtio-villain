@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """B0201 sidecar. Removes and readds a disk with guest handshakes."""
 
-from host_helpers import add_disk, ch_command, readd_disk, remove_disk, wait_ready
+from villain.sidecar_helpers import add_disk, ch_command, readd_disk, remove_disk, wait_ready
 import os
 
 SUPPORTED_BACKENDS = ("ch", "qemu")

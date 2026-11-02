@@ -4,7 +4,7 @@ L0200 sidecar. Resizes the balloon target on the host. The guest
 watches num_pages and config_generation for the change.
 """
 
-from host_helpers import ch_command, qmp, wait_ready
+from villain.sidecar_helpers import ch_command, qmp, wait_ready
 
 SUPPORTED_BACKENDS = ("ch", "qemu", "qemu-mmio")
 REQUIRED_TOOLS = {"ch": ("ch-remote",)}

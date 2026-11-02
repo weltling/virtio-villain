@@ -17,6 +17,7 @@ ROOT_DIR = os.path.dirname(SCRIPT_DIR)
 sys.path.insert(0, ROOT_DIR)
 sys.path.insert(0, os.path.join(ROOT_DIR, "lib", "python"))
 from villain import diagnostics, host as HOST_MOD, vmm as VMM_MOD  # noqa: E402
+from villain import sidecar_helpers  # noqa: E402
 INIT_BINARY = os.path.join(ROOT_DIR, "target", "init")
 RUN = os.path.join(ROOT_DIR, "run")
 RUN_FUZZ = os.path.join(ROOT_DIR, "run-fuzz")
@@ -3012,11 +3013,14 @@ def test_unit_sidecar_backing_images_use_shared_creation():
     from types import SimpleNamespace
     from unittest.mock import Mock, patch
 
-    for relative, action, filename in (
-            ("host_helpers.py", "add_disk", "hp.raw"),
-            ("pmem/e0200_hotplug_add.py", "run", "hp_pmem.raw"),
-            ("scsi/scsi_helpers.py", "hot_add", "hp.raw")):
-        module = RUN_MOD._load_sidecar(os.path.join(ROOT_DIR, "tests", relative))
+    for module, action, filename in (
+            (sidecar_helpers, "add_disk", "hp.raw"),
+            (RUN_MOD._load_sidecar(os.path.join(
+                ROOT_DIR, "tests", "pmem", "e0200_hotplug_add.py")),
+             "run", "hp_pmem.raw"),
+            (RUN_MOD._load_sidecar(os.path.join(
+                ROOT_DIR, "tests", "scsi", "scsi_helpers.py")),
+             "hot_add", "hp.raw")):
         with tempfile.TemporaryDirectory() as work:
             ctx = SimpleNamespace(
                 tmpdir=work, backend=SimpleNamespace(name="qemu"), api_sock="api",
@@ -3198,8 +3202,7 @@ def test_unit_host_action_completion():
     from types import SimpleNamespace
     from unittest.mock import Mock, patch
 
-    helpers = RUN_MOD._load_sidecar(
-        os.path.join(ROOT_DIR, "tests", "host_helpers.py"))
+    helpers = sidecar_helpers
     for states, file_contents, error in (
             ([{"status": "active"}, {"status": "completed"}], b"state", None),
             ([{"status": "failed"}], b"state", RuntimeError),

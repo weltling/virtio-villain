@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Shared checked host actions."""
+"""Shared checked host actions for test sidecars."""
 
 import os
 import time

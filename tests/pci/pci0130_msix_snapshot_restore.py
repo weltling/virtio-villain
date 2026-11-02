@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
-from host_helpers import wait_ready
-from msix_host import check_disk, restore_mapping, wait_phase
+from villain.sidecar_helpers import wait_ready
+from villain.msix_host import check_disk, restore_mapping, wait_phase
 
 SUPPORTED_BACKENDS = ("ch", "qemu", "openvmm")
 REQUIRED_TOOLS = {"ch": ("ch-remote",)}

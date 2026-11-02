@@ -5,7 +5,7 @@ Backs it with a fresh sparse file in ctx.tmpdir.
 """
 import os
 
-from host_helpers import ch_command, qmp, wait_ready
+from villain.sidecar_helpers import ch_command, qmp, wait_ready
 
 SUPPORTED_BACKENDS = ("ch", "qemu")
 REQUIRED_TOOLS = {"ch": ("ch-remote",)}

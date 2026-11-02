@@ -4,7 +4,7 @@ V0200 sidecar. Hot adds a vsock function with cid 44 and id hp_vsock.
 """
 import os
 
-from host_helpers import qmp, wait_ready
+from villain.sidecar_helpers import qmp, wait_ready
 
 SUPPORTED_BACKENDS = ("ch", "qemu")
 REQUIRED_TOOLS = {"ch": ("ch-remote",)}

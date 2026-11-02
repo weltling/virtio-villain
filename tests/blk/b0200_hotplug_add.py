@@ -3,7 +3,7 @@
 B0200 sidecar. Hot adds a virtio-blk function on the host side
 while the guest waits for a new PCI device.
 """
-from host_helpers import add_disk, wait_ready
+from villain.sidecar_helpers import add_disk, wait_ready
 
 SUPPORTED_BACKENDS = ("ch", "qemu")
 REQUIRED_TOOLS = {"ch": ("ch-remote",)}

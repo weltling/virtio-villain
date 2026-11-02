@@ -11,8 +11,8 @@ from types import SimpleNamespace
 import unittest
 from unittest import mock
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tests"))
-import msix_host  # noqa: E402
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "lib/python"))
+from villain import msix_host  # noqa: E402
 
 
 class HostTests(unittest.TestCase):

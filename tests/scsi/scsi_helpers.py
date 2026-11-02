@@ -3,7 +3,7 @@
 
 import os
 
-from host_helpers import HOTPLUG_DISK_SIZE, qmp
+from villain.sidecar_helpers import HOTPLUG_DISK_SIZE, qmp
 
 
 def wait_armed(ctx):

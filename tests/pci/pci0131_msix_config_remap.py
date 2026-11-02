@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
-from host_helpers import ch_command, qmp, wait_ready
-from msix_host import disk_capacity, wait_phase
+from villain.sidecar_helpers import ch_command, qmp, wait_ready
+from villain.msix_host import disk_capacity, wait_phase
 
 SUPPORTED_BACKENDS = ("ch", "qemu")
 REQUIRED_TOOLS = {"ch": ("ch-remote",)}

@@ -5,7 +5,7 @@ The guest watches device_cfg.capacity and config_generation.
 """
 import os
 
-from host_helpers import qmp, wait_ready
+from villain.sidecar_helpers import qmp, wait_ready
 
 SUPPORTED_BACKENDS = ("ch", "qemu", "qemu-mmio")
 REQUIRED_TOOLS = {"ch": ("ch-remote",)}

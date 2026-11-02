@@ -5,7 +5,7 @@ import json
 import os
 import subprocess
 
-from host_helpers import ch_command, qmp
+from villain.sidecar_helpers import ch_command, qmp
 
 
 def check_disk(ctx):

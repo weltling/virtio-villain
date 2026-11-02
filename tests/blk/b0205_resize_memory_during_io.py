@@ -6,7 +6,7 @@ across a guest memory map change.
 """
 import json
 
-from host_helpers import ch_command, qmp, wait_ready
+from villain.sidecar_helpers import ch_command, qmp, wait_ready
 
 SUPPORTED_BACKENDS = ("ch", "qemu")
 REQUIRED_TOOLS = {"ch": ("ch-remote",)}
