@@ -73,6 +73,33 @@ static inline uint64_t vv_parse_ram_top(void)
 }
 
 /*
+ * Find the first System RAM region in /proc/iomem that holds at least len
+ * bytes and write its guest physical base to *base. Returns 0 on success,
+ * -1 if there is no such region or /proc/iomem hides the addresses.
+ */
+static inline int vv_find_ram_range(uint64_t len, uint64_t *base)
+{
+    FILE *f = fopen("/proc/iomem", "r");
+    if (!f)
+        return -1;
+
+    int ret = -1;
+    char line[256];
+    while (fgets(line, sizeof(line), f)) {
+        uint64_t lo, hi;
+        char rest[128];
+        if (sscanf(line, " %lx-%lx : %127[^\n]", &lo, &hi, rest) == 3 &&
+            strstr(rest, "System RAM") && hi - lo + 1 >= len) {
+            *base = lo;
+            ret = 0;
+            break;
+        }
+    }
+    fclose(f);
+    return ret;
+}
+
+/*
  * Allocate one locked, zeroed page whose guest physical base sits as
  * close as possible below ram_top. On a device that fills a writable
  * descriptor front to back before it faults on the part past the end of
