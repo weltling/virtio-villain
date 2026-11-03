@@ -3878,6 +3878,24 @@ def _load_fuzz_module():
     return mod
 
 
+def test_gen_test_uses_shared_virtio_header():
+    from types import SimpleNamespace
+    from unittest.mock import patch
+
+    with tempfile.TemporaryDirectory() as work:
+        blob = os.path.join(work, "seed.bin")
+        with open(blob, "wb") as stream:
+            stream.write(FUZZ_MOD.make_seed())
+        args = SimpleNamespace(blob=blob, device="blk", id="B9000", force=False)
+        with patch.object(FUZZ_MOD, "_SCRIPT_DIR", work):
+            FUZZ_MOD.cmd_gen_test(args)
+        generated = os.path.join(work, "tests", "blk", "fuzz", "b9000_replay.c")
+        with open(generated) as stream:
+            source = stream.read()
+        assert '#include "lib/virtio_test.h"' in source
+        assert '#include "tests/test.h"' not in source
+
+
 def test_parse_len_decimal():
     assert FUZZ_MOD._parse_len("42") == 42
 
