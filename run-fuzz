@@ -1804,7 +1804,7 @@ def cmd_gen_test(args):
  * Mirrors the bin/fuzz.c replay path: a contiguous payload region is
  * allocated and each descriptor points into it by cumulative offset.
  */
-#include "tests/test.h"
+#include "lib/virtio_test.h"
 
 static const uint8_t fuzz_payload[{payload_bytes_total}] = {{
 {payload_block}
