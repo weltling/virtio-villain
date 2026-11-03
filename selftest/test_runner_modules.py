@@ -100,16 +100,18 @@ class ModuleTests(unittest.TestCase):
                 self.assertEqual(result.stderr,
                                  "" if mode == "pass" else "Kernel checksum failed\n")
 
-    def test_standalone_host_helpers_do_not_require_the_framework_package(self):
+    def test_sidecar_helpers_import_without_loading_runner_entry_points(self):
         check = (
             "import sys\n"
-            "sys.path.insert(0, sys.argv[1])\n"
-            "import msix_host\n"
-            "sys.path.insert(0, sys.argv[1] + '/scsi')\n"
-            "import scsi_helpers\n"
-            "assert 'villain' not in sys.modules\n")
+            "sys.path.insert(0, sys.argv[1] + '/lib/python')\n"
+            "from villain import msix_host, sidecar_helpers\n"
+            "sys.path.insert(0, sys.argv[1] + '/tests')\n"
+            "from scsi import scsi_helpers\n"
+            "assert msix_host.qmp is sidecar_helpers.qmp\n"
+            "assert scsi_helpers.qmp is sidecar_helpers.qmp\n"
+            "assert not any(name.startswith('vv_run') for name in sys.modules)\n")
         result = subprocess.run(
-            [sys.executable, "-I", "-c", check, str(ROOT / "tests")],
+            [sys.executable, "-I", "-c", check, str(ROOT)],
             cwd="/", capture_output=True, text=True, timeout=10)
         self.assertEqual(result.returncode, 0, result.stderr)
 
