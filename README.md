@@ -78,8 +78,8 @@ virtio-villain/
     pci.c/.h             # PCI config space read/write via sysfs
     mmio.h               # shared MMIO access primitives
     util.h               # mmap helpers, virt_to_phys, logging
+    virtio_test.h        # virtio test registration and queue helpers
   tests/
-    test.h               # test registration macros, result types
     vring/              # T - split vring descriptor and ring violations
     packed/             # P - packed virtqueue violations
     pci/                # PCI - PCI transport specific violations
