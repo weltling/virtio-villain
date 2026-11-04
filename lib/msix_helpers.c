@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: Apache-2.0 */
 #include "msix_helpers.h"
-#include "lib/pci.h"
+#include "pci.h"
 
 #include <errno.h>
 #include <time.h>

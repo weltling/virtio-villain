@@ -6,7 +6,7 @@
 #ifndef VV_HOTPLUG_H
 #define VV_HOTPLUG_H
 
-#include "tests/test.h"
+#include "virtio_test.h"
 
 #include <dirent.h>
 

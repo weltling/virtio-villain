@@ -7,13 +7,13 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "../lib/util.h"
-#include "../lib/virtio_pci.h"
-#include "../lib/virtio_mmio.h"
-#include "../lib/vring.h"
-#include "../lib/vring_packed.h"
+#include "util.h"
+#include "virtio_pci.h"
+#include "virtio_mmio.h"
+#include "vring.h"
+#include "vring_packed.h"
 
-#include "../lib/test.h"
+#include "test.h"
 
 /* Return the result of expr from the calling test unless it is TEST_PASS. */
 #define VV_TRY(expr) do { \

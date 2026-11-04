@@ -2,8 +2,8 @@
 #ifndef VV_MSIX_HELPERS_H
 #define VV_MSIX_HELPERS_H
 
-#include "tests/test.h"
-#include "lib/irq.h"
+#include "virtio_test.h"
+#include "irq.h"
 
 struct msix_test {
     struct virtio_dev *dev;
