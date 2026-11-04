@@ -9,7 +9,7 @@
  * host denial of service.
  */
 #include "lib/virtio_test.h"
-#include "tests/packed/packed_util.h"
+#include "lib/packed_util.h"
 
 static test_result_t test_packed_desc_addr_lapic(struct virtio_dev *dev,
                                                 struct vring_packed *vr)

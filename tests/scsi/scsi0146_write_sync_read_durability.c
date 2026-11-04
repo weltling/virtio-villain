@@ -6,7 +6,7 @@
  * SYNCHRONIZE CACHE(10), then read the block back and confirm the data
  * survived.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_durability(struct virtio_dev *dev,
                                           struct vring *vr)

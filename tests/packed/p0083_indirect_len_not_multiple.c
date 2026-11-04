@@ -7,7 +7,7 @@
  * descriptors, so the length must divide evenly. The device must
  * reject the ragged length rather than reading a partial entry.
  */
-#include "tests/packed/packed_util.h"
+#include "lib/packed_util.h"
 
 static test_result_t test_packed_indirect_len_not_multiple(struct virtio_dev *dev,
                                                           struct vring_packed *vr)

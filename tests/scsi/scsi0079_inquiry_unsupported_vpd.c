@@ -5,7 +5,7 @@
  * INQUIRY for an unsupported vital product data page is answered with a
  * CHECK CONDITION status.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_inquiry_bad_vpd(struct virtio_dev *dev,
                                                struct vring *vr)

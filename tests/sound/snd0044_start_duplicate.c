@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-#include "tests/sound/sound_util.h"
+#include "lib/sound_util.h"
 
 static test_result_t test_start_duplicate(struct virtio_dev *dev,
                                           struct vring *vr)

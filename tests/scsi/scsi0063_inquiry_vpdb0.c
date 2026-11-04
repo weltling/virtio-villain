@@ -5,7 +5,7 @@
  * INQUIRY for VPD page 0xB0 returns the block limits page, whose page
  * code field echoes 0xB0.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_inquiry_vpdb0(struct virtio_dev *dev,
                                              struct vring *vr)

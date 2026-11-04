@@ -5,7 +5,7 @@
  * Reading the same block with READ(6) and READ(10) returns identical
  * data.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_read6_read10(struct virtio_dev *dev,
                                             struct vring *vr)

@@ -5,7 +5,7 @@
  * The unit serial number VPD page 0x80 carries the serial configured on
  * the backing disk, which starts with the letter v.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_vpd80_serial(struct virtio_dev *dev,
                                             struct vring *vr)

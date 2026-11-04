@@ -10,7 +10,7 @@
  * Runs under QEMU with the API socket enabled. When no event arrives
  * the test skips.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_events_missed(struct virtio_dev *dev,
                                              struct vring *vr)

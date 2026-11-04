@@ -6,7 +6,7 @@
  * device type byte. For the attached direct access block device with a
  * connected logical unit both are zero, so the byte is 0x00.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_inq_byte0(struct virtio_dev *dev,
                                          struct vring *vr)

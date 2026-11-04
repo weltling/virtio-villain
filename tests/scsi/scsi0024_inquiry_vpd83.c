@@ -5,7 +5,7 @@
  * INQUIRY with the EVPD bit for page 0x83 returns the device
  * identification page, whose page code field echoes 0x83.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_inquiry_vpd83(struct virtio_dev *dev,
                                              struct vring *vr)

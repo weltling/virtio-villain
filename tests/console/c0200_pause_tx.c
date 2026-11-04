@@ -7,7 +7,7 @@
  * transmitq.
  */
 #include "lib/virtio_test.h"
-#include "tests/mmio/mmio_helpers.h"
+#include "lib/mmio_helpers.h"
 
 static test_result_t do_tx(struct virtio_dev *dev, struct vring *vr,
                            const char *msg, size_t mlen)

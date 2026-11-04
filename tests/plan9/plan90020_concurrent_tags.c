@@ -2,7 +2,7 @@
 /*
  * PLAN90020: submit two valid requests with distinct tags together.
  */
-#include "tests/plan9/plan9_util.h"
+#include "lib/plan9_util.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

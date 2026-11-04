@@ -5,7 +5,7 @@
  * A READ(16) with a logical block address in the high 32 bits, far
  * beyond the disk, is answered with a CHECK CONDITION status.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_read16_high(struct virtio_dev *dev,
                                            struct vring *vr)

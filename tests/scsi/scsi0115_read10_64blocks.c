@@ -5,7 +5,7 @@
  * READ(10) of sixty four consecutive blocks, a 32 KiB transfer, returns
  * a good status once the power-on UNIT ATTENTION is cleared.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_read10_64(struct virtio_dev *dev,
                                          struct vring *vr)

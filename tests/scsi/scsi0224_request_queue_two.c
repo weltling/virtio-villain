@@ -5,7 +5,7 @@
  * A READ(10) submitted on the first request queue completes with a good
  * status, confirming that request queue is serviced.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_reqq2(struct virtio_dev *dev, struct vring *vr)
 {

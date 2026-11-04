@@ -5,7 +5,7 @@
  * WRITE(10) a 4096-byte block to LUN 1, read it back and confirm the
  * data matches, covering a full 4K logical block round trip.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_wr_lun1(struct virtio_dev *dev,
                                        struct vring *vr)

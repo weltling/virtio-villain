@@ -7,7 +7,7 @@
  * it, confirming the aborted response applies to a larger transfer as
  * well. Skips when the throttle is not applied.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 #define ABORT_TAG 0x54540001ULL
 

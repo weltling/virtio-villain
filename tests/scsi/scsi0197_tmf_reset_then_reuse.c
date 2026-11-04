@@ -6,7 +6,7 @@
  * the control queue both complete with defined response codes,
  * confirming the control queue keeps working after a reset.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_tmf_reuse(struct virtio_dev *dev,
                                          struct vring *vr)

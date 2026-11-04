@@ -5,7 +5,7 @@
  * Kicking the queue twice for a single posted request yields exactly
  * one completion, not a duplicate.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_double_kick(struct virtio_dev *dev,
                                            struct vring *vr)

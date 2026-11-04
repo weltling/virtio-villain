@@ -5,7 +5,7 @@
  * Scatter the READ(10) data-in buffer across four descriptors and
  * confirm the device fills them and completes with a good status.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_datain_gather(struct virtio_dev *dev,
                                              struct vring *vr)

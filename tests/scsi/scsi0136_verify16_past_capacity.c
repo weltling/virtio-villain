@@ -5,7 +5,7 @@
  * A VERIFY(16) with byte check that transfers a compare block beyond
  * the last logical block is answered with a CHECK CONDITION status.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_verify16_past(struct virtio_dev *dev,
                                              struct vring *vr)

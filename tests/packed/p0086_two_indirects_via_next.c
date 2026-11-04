@@ -7,7 +7,7 @@
  * descriptor of its chain, so it may not carry NEXT. The device must
  * reject the illegal chaining rather than following it.
  */
-#include "tests/packed/packed_util.h"
+#include "lib/packed_util.h"
 
 static test_result_t test_packed_two_indirects_via_next(struct virtio_dev *dev,
                                                        struct vring_packed *vr)

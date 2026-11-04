@@ -8,7 +8,7 @@
  * from platform or its own MMIO; a hang is a guest triggered host
  * denial of service.
  */
-#include "tests/packed/packed_util.h"
+#include "lib/packed_util.h"
 
 static test_result_t test_packed_desc_addr_mmio_read_dir(struct virtio_dev *dev,
                                                         struct vring_packed *vr)

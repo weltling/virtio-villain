@@ -7,7 +7,7 @@
  * The device must reject the oversized table rather than walking past
  * its own limit.
  */
-#include "tests/packed/packed_util.h"
+#include "lib/packed_util.h"
 
 static test_result_t test_packed_indirect_too_many_entries(struct virtio_dev *dev,
                                                           struct vring_packed *vr)

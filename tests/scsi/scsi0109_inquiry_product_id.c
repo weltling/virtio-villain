@@ -5,7 +5,7 @@
  * The standard INQUIRY product identification field is populated rather
  * than left blank.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_inq_product(struct virtio_dev *dev,
                                            struct vring *vr)

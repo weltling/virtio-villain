@@ -9,7 +9,7 @@
  * into any device's registers; a hang or a sanitizer fault is a guest
  * triggered host problem. Skips when no second device is found.
  */
-#include "tests/packed/packed_util.h"
+#include "lib/packed_util.h"
 #include "lib/pci.h"
 
 #define PCI_CAP_ID_VNDR        0x09

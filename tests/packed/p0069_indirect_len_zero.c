@@ -7,7 +7,7 @@
  * nonzero multiple of the descriptor size. The device must reject it
  * rather than reading an empty or unbounded table.
  */
-#include "tests/packed/packed_util.h"
+#include "lib/packed_util.h"
 
 static test_result_t test_packed_indirect_len_zero(struct virtio_dev *dev,
                                                   struct vring_packed *vr)

@@ -4,7 +4,7 @@
  *
  * READ(16) of the final block at LBA 32767 returns a good status.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_read16_last(struct virtio_dev *dev,
                                            struct vring *vr)

@@ -7,7 +7,7 @@
  * so a device readable status descriptor is invalid. The device must
  * reject it instead of writing into a read only buffer.
  */
-#include "tests/packed/packed_util.h"
+#include "lib/packed_util.h"
 
 static test_result_t test_packed_desc_status_not_writable(struct virtio_dev *dev,
                                                          struct vring_packed *vr)

@@ -10,7 +10,7 @@
  * Runs under QEMU with the API socket enabled. When the throttle is
  * not applied the read completes normally and the test skips.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 #define ABORT_TAG 0xABCD1234ULL
 

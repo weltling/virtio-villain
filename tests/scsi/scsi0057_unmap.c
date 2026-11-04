@@ -5,7 +5,7 @@
  * UNMAP with a single block descriptor returns a defined completion
  * status, exercising the discard path.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_unmap(struct virtio_dev *dev, struct vring *vr)
 {

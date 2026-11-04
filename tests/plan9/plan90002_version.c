@@ -5,7 +5,7 @@
  * A valid Rversion must preserve NOTAG, report a bounded message size, and
  * select the requested protocol version.
  */
-#include "tests/plan9/plan9_util.h"
+#include "lib/plan9_util.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

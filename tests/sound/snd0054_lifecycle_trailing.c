@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-#include "tests/sound/sound_util.h"
+#include "lib/sound_util.h"
 
 struct lifecycle_request_trailing {
     struct virtio_snd_pcm_hdr hdr;

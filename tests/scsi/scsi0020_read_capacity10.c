@@ -6,7 +6,7 @@
  * block length. The backing LUN is a 16 MiB image of 512-byte blocks,
  * so the last LBA is 32767 and the block length is 512.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_read_capacity10(struct virtio_dev *dev,
                                                struct vring *vr)

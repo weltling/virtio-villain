@@ -9,7 +9,7 @@
  * reading one byte past the slot.
  */
 #include "lib/virtio_test.h"
-#include "tests/packed/packed_util.h"
+#include "lib/packed_util.h"
 
 /* Assume 512 MiB RAM, matching the split ring twin. */
 #define RAM_END 0x20000000ULL

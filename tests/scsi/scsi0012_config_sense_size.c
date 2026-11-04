@@ -5,7 +5,7 @@
  * The device reports the sense buffer size it uses in the
  * configuration space. The default and the value QEMU uses is 96 bytes.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_cfg_sense_size(struct virtio_dev *dev)
 {

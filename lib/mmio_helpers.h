@@ -2,7 +2,7 @@
 #ifndef VV_MMIO_HELPERS_H
 #define VV_MMIO_HELPERS_H
 
-#include "lib/virtio_test.h"
+#include "virtio_test.h"
 
 static inline test_result_t mmio_bind_queue(struct virtio_mmio_dev *dev,
                                             struct vring *ring,

@@ -8,7 +8,7 @@
  * packed misreads the id and flags fields. It must reject or safely
  * handle the malformed table rather than follow garbage flags.
  */
-#include "tests/packed/packed_util.h"
+#include "lib/packed_util.h"
 
 static test_result_t test_packed_cross_format_indirect(struct virtio_dev *dev,
                                                       struct vring_packed *vr)

@@ -5,7 +5,7 @@
  * VERIFY(12) with the byte check bit clear performs a medium verify and
  * returns a good status once the power-on UNIT ATTENTION is cleared.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_verify12(struct virtio_dev *dev,
                                         struct vring *vr)

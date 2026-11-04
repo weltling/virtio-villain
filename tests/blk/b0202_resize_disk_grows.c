@@ -12,7 +12,7 @@
  * incremented.
  */
 #include "lib/virtio_test.h"
-#include "tests/blk/blk_mmio_helpers.h"
+#include "lib/blk_mmio_helpers.h"
 
 static test_result_t test_blk_resize_disk_grows(struct virtio_dev *dev,
                                                 struct vring *vr)

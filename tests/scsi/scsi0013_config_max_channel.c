@@ -5,7 +5,7 @@
  * virtio-scsi supports only channel 0, so the device reports a
  * max_channel of 0 in the configuration space.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_cfg_max_channel(struct virtio_dev *dev)
 {

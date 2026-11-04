@@ -5,7 +5,7 @@
  * MAINTENANCE IN report supported task management functions returns a
  * defined status.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_report_tmf(struct virtio_dev *dev,
                                           struct vring *vr)

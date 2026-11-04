@@ -5,7 +5,7 @@
  * READ CAPACITY(16) returns a good status and a block length of 512 in
  * the returned parameter data.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_read_capacity16(struct virtio_dev *dev,
                                                struct vring *vr)

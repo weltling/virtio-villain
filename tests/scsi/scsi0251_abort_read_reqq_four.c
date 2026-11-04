@@ -7,7 +7,7 @@
  * control queue terminates it. Skips when the throttle is not
  * applied.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 #define ABORT_TAG 0x51510001ULL
 

@@ -7,7 +7,7 @@
  * completion status into a mandatory one byte writable descriptor; a
  * device that assumes it is present may read past the chain or fault.
  */
-#include "tests/packed/packed_util.h"
+#include "lib/packed_util.h"
 
 static test_result_t test_packed_desc_no_status(struct virtio_dev *dev,
                                                struct vring_packed *vr)

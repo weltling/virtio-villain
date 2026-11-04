@@ -5,7 +5,7 @@
  * The device offers the hot plug feature so the driver can rely on
  * transport reset events for logical units that appear or disappear.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_feat_hotplug(struct virtio_dev *dev)
 {

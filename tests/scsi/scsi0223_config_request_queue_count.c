@@ -5,7 +5,7 @@
  * The runner advertises four request queues, so the configuration
  * num_queues reports 4.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_reqq_count(struct virtio_dev *dev)
 {

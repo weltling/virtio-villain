@@ -4,7 +4,7 @@
  *
  * INQUIRY for a vendor specific VPD page returns a defined status.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_inquiry_vpd_c0(struct virtio_dev *dev,
                                               struct vring *vr)

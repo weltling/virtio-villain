@@ -6,7 +6,7 @@
  * The device tolerates the extra buffer, completing with a defined
  * response, and the host stays alive.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_extra_writable(struct virtio_dev *dev,
                                               struct vring *vr)

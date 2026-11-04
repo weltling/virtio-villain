@@ -6,7 +6,7 @@
  * READ(16) and confirm the data matches, exercising a durable write on
  * the 16-byte command path.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_w16_fua_rt(struct virtio_dev *dev,
                                           struct vring *vr)

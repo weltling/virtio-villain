@@ -5,7 +5,7 @@
  * Write a pattern to logical block zero, read it back and confirm the
  * data matches, covering the first block of the disk.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_lba0(struct virtio_dev *dev, struct vring *vr)
 {

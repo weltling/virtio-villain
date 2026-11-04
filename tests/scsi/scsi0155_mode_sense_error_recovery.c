@@ -5,7 +5,7 @@
  * MODE SENSE(6) for the read write error recovery mode page returns a
  * defined status.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_mode_sense_err(struct virtio_dev *dev,
                                               struct vring *vr)

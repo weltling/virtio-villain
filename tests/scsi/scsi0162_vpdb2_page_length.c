@@ -5,7 +5,7 @@
  * The logical block provisioning VPD page 0xB2 reports a nonzero page
  * length so it carries the provisioning fields.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_vpdb2_len(struct virtio_dev *dev,
                                          struct vring *vr)

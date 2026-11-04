@@ -5,7 +5,7 @@
  * The device reports the CDB buffer size it uses in the configuration
  * space. The default and the value QEMU uses is 32 bytes.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_cfg_cdb_size(struct virtio_dev *dev)
 {

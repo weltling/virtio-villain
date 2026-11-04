@@ -2,7 +2,7 @@
 /*
  * PLAN90006: provide too little writable space for Rversion.
  */
-#include "tests/plan9/plan9_util.h"
+#include "lib/plan9_util.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

@@ -5,7 +5,7 @@
  * Write one pattern to a block, overwrite it with a second pattern,
  * then read the block back and confirm the second pattern is returned.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_overwrite(struct virtio_dev *dev,
                                          struct vring *vr)

@@ -5,7 +5,7 @@
  * WRITE(10) eight blocks of a known pattern, read them back with
  * READ(10) and confirm the whole 4 KiB transfer matches.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_multiblock_rt(struct virtio_dev *dev,
                                              struct vring *vr)

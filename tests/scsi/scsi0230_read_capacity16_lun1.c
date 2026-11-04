@@ -4,7 +4,7 @@
  *
  * READ CAPACITY(16) on LUN 1 reports its 4096-byte logical block size.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_rc16_lun1(struct virtio_dev *dev,
                                          struct vring *vr)

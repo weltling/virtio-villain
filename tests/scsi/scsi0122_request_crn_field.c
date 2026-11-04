@@ -5,7 +5,7 @@
  * A request with a nonzero command reference number completes with a
  * good status, confirming the field is accepted.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_crn(struct virtio_dev *dev, struct vring *vr)
 {

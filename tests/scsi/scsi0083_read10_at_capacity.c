@@ -5,7 +5,7 @@
  * A READ(10) of the block one past the last valid LBA is answered with
  * a CHECK CONDITION status.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_read10_at_cap(struct virtio_dev *dev,
                                              struct vring *vr)

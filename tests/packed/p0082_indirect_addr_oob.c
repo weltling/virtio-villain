@@ -7,7 +7,7 @@
  * reading it; a device that translates the address blindly faults when
  * it fetches the table.
  */
-#include "tests/packed/packed_util.h"
+#include "lib/packed_util.h"
 
 static test_result_t test_packed_indirect_addr_oob(struct virtio_dev *dev,
                                                   struct vring_packed *vr)

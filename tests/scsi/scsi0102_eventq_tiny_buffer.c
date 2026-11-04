@@ -5,7 +5,7 @@
  * Post a one-byte writable buffer to the event queue and confirm the
  * device tolerates the undersized buffer and stays operational.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_eventq_tiny(struct virtio_dev *dev,
                                            struct vring *vr)

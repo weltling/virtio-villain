@@ -5,7 +5,7 @@
  * REPORT LUNS with select report 0x00 returns a good status and a LUN
  * list that accounts for the attached logical unit.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_report_luns0(struct virtio_dev *dev,
                                             struct vring *vr)

@@ -5,7 +5,7 @@
  * A READ(10) that requests protection information from a disk without
  * protection is answered with a defined status.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_read10_rdprotect(struct virtio_dev *dev,
                                                 struct vring *vr)

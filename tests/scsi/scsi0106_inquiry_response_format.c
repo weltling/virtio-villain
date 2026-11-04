@@ -5,7 +5,7 @@
  * The standard INQUIRY response data format field reports the current
  * standard value of 2.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_inq_format(struct virtio_dev *dev,
                                           struct vring *vr)

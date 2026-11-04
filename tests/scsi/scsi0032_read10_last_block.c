@@ -5,7 +5,7 @@
  * READ(10) of the final block at LBA 32767 returns a good status,
  * confirming the last addressable block is accessible.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_read10_last(struct virtio_dev *dev,
                                            struct vring *vr)

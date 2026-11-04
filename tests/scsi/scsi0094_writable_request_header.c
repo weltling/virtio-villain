@@ -6,7 +6,7 @@
  * as a device readable buffer. The device must refuse the request
  * without a completion; the host must stay alive.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_writable_header(struct virtio_dev *dev,
                                                struct vring *vr)

@@ -5,7 +5,7 @@
  * The supported VPD pages list returned for page 0x00 includes the
  * device identification page 0x83.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_vpd00_lists_83(struct virtio_dev *dev,
                                               struct vring *vr)

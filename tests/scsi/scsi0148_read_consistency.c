@@ -4,7 +4,7 @@
  *
  * Reading the same block twice returns identical data.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_read_consistent(struct virtio_dev *dev,
                                                struct vring *vr)

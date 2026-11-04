@@ -8,7 +8,7 @@
  * pins the per task scope of ABORT TASK. Skips when the throttle is
  * not applied.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 #define TAG_A 0x45450001ULL
 #define TAG_B 0x45450002ULL

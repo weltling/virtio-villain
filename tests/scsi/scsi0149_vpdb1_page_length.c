@@ -5,7 +5,7 @@
  * The block device characteristics VPD page 0xB1 reports a nonzero page
  * length so it carries the rotation rate and related fields.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_vpdb1_len(struct virtio_dev *dev,
                                          struct vring *vr)

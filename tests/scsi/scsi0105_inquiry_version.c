@@ -5,7 +5,7 @@
  * The standard INQUIRY version byte reports a ratified SCSI standard,
  * at least SPC-2, so the value is 3 or greater.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_inq_version(struct virtio_dev *dev,
                                            struct vring *vr)

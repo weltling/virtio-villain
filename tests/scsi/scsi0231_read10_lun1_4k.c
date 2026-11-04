@@ -5,7 +5,7 @@
  * READ(10) of one 4096-byte block from LUN 1 returns a good status,
  * exercising the non 512 logical block geometry.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_read10_lun1(struct virtio_dev *dev,
                                            struct vring *vr)

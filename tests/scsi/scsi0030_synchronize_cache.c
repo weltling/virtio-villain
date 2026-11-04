@@ -5,7 +5,7 @@
  * SYNCHRONIZE CACHE(10) returns a good status once the power-on UNIT
  * ATTENTION is cleared.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_sync_cache(struct virtio_dev *dev,
                                           struct vring *vr)

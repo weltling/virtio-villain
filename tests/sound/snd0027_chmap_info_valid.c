@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: Apache-2.0 */
-#include "tests/sound/sound_util.h"
+#include "lib/sound_util.h"
 
 #define SND_CHMAP_POSITION_MAX  37
 

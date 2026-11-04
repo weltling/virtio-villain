@@ -5,7 +5,7 @@
  * The device reports the suggested number of commands per logical unit
  * in cmd_per_lun. It must be a nonzero value the driver can rely on.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_cfg_cmd_per_lun(struct virtio_dev *dev)
 {

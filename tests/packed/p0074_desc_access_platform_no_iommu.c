@@ -9,7 +9,7 @@
  * device must reject the I/O rather than treat the raw address as a
  * guest physical address.
  */
-#include "tests/packed/packed_util.h"
+#include "lib/packed_util.h"
 
 static test_result_t test_packed_access_platform_no_iommu(struct virtio_dev *dev,
                                                          struct vring_packed *vr)

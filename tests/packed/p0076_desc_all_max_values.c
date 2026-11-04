@@ -7,7 +7,7 @@
  * flag bit including AVAIL is set. The device must handle the extreme
  * values without faulting on the impossible address or length.
  */
-#include "tests/packed/packed_util.h"
+#include "lib/packed_util.h"
 
 static test_result_t test_packed_desc_all_max_values(struct virtio_dev *dev,
                                                     struct vring_packed *vr)

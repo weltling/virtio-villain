@@ -8,7 +8,7 @@
  * FAILED or NEEDS_RESET and that DRIVER_OK remains set.
  */
 #include "lib/virtio_test.h"
-#include "tests/mmio/mmio_helpers.h"
+#include "lib/mmio_helpers.h"
 
 static test_result_t test_vsock_survives_pause(struct virtio_dev *dev,
                                                struct vring *vr)

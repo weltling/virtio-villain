@@ -5,7 +5,7 @@
  * TEST UNIT READY on LUN 1 returns a good status once its power-on UNIT
  * ATTENTION is cleared.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_tur_lun1(struct virtio_dev *dev,
                                         struct vring *vr)

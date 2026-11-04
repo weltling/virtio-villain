@@ -7,7 +7,7 @@
  * the request type. The device must reject the mismatch rather than
  * writing into a buffer the driver meant to send.
  */
-#include "tests/packed/packed_util.h"
+#include "lib/packed_util.h"
 
 static test_result_t test_packed_desc_write_flag_wrong_out(struct virtio_dev *dev,
                                                           struct vring_packed *vr)

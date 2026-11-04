@@ -9,7 +9,7 @@
  * empty segment, and must stay healthy.
  */
 #include "lib/virtio_test.h"
-#include "tests/packed/packed_util.h"
+#include "lib/packed_util.h"
 
 static test_result_t test_packed_desc_addr_len_zero(struct virtio_dev *dev,
                                                    struct vring_packed *vr)

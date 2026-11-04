@@ -5,7 +5,7 @@
  * A READ(10) tagged with the HEAD OF QUEUE task attribute completes
  * with a good status, confirming the attribute is accepted.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_task_head(struct virtio_dev *dev,
                                          struct vring *vr)

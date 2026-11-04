@@ -5,7 +5,7 @@
  * An unsupported operation code is answered with a CHECK CONDITION
  * status rather than being silently accepted.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_bad_opcode(struct virtio_dev *dev,
                                           struct vring *vr)

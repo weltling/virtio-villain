@@ -5,7 +5,7 @@
  * Append a zero-length writable descriptor after the data-in buffer and
  * confirm the device tolerates it and completes with a good status.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_zero_trailing(struct virtio_dev *dev,
                                              struct vring *vr)

@@ -5,7 +5,7 @@
  * Post two READ(10) requests before kicking and confirm the device
  * completes both.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_two_reads(struct virtio_dev *dev,
                                          struct vring *vr)

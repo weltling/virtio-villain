@@ -5,7 +5,7 @@
  * WRITE(10) a known pattern to a block, then READ(10) it back and
  * confirm the data matches, exercising the data-out and data-in paths.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_write_read(struct virtio_dev *dev,
                                           struct vring *vr)

@@ -2,7 +2,7 @@
 /*
  * PLAN90021: validate attributes for the exported root.
  */
-#include "tests/plan9/plan9_util.h"
+#include "lib/plan9_util.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

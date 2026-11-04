@@ -5,7 +5,7 @@
  * WRITE(16) a known pattern to a block, then READ(16) it back and
  * confirm the data matches.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_write16_read16(struct virtio_dev *dev,
                                               struct vring *vr)

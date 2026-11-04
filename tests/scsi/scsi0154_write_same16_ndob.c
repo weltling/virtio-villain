@@ -5,7 +5,7 @@
  * WRITE SAME(16) with the no data-out buffer bit requests a zero fill
  * without a data-out payload and returns a defined status.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_write_same16_ndob(struct virtio_dev *dev,
                                                  struct vring *vr)

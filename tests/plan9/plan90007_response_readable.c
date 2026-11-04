@@ -2,7 +2,7 @@
 /*
  * PLAN90007: mark the response descriptor device-readable.
  */
-#include "tests/plan9/plan9_util.h"
+#include "lib/plan9_util.h"
 
 static test_result_t test(struct virtio_dev *dev, struct vring *vr)
 {

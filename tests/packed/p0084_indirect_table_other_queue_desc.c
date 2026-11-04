@@ -8,7 +8,7 @@
  * device through another queue's state. The device must not read an
  * indirect table that overlaps another queue's ring.
  */
-#include "tests/packed/packed_util.h"
+#include "lib/packed_util.h"
 
 static test_result_t test_packed_indirect_other_queue_desc(struct virtio_dev *dev,
                                                           struct vring_packed *vr)

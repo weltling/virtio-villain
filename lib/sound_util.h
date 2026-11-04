@@ -2,8 +2,8 @@
 #ifndef VV_SOUND_UTIL_H
 #define VV_SOUND_UTIL_H
 
-#include "lib/virtio_test.h"
-#include "lib/virtio_snd.h"
+#include "virtio_test.h"
+#include "virtio_snd.h"
 
 #define SND_JACK_INFO_SIZE   24
 #define SND_PCM_INFO_SIZE    32

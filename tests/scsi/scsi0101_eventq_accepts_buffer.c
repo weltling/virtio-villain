@@ -6,7 +6,7 @@
  * takes it without harm and stays operational, since no event is
  * generated the buffer simply waits.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_eventq_buffer(struct virtio_dev *dev,
                                              struct vring *vr)

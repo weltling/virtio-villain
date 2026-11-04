@@ -7,7 +7,7 @@
  * The device must reject the combination rather than treating the
  * indirect table page as a writable data buffer.
  */
-#include "tests/packed/packed_util.h"
+#include "lib/packed_util.h"
 
 static test_result_t test_packed_write_and_indirect(struct virtio_dev *dev,
                                                    struct vring_packed *vr)

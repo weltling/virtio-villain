@@ -6,7 +6,7 @@
  * byte of 1 is refused, either without a completion or with a
  * BAD_TARGET response or CHECK CONDITION status.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_bad_lun_format(struct virtio_dev *dev,
                                               struct vring *vr)

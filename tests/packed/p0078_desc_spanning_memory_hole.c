@@ -7,7 +7,7 @@
  * memory hole. The device must range check the buffer and not fault
  * when it reaches the unbacked region.
  */
-#include "tests/packed/packed_util.h"
+#include "lib/packed_util.h"
 
 static test_result_t test_packed_desc_spanning_memory_hole(struct virtio_dev *dev,
                                                           struct vring_packed *vr)

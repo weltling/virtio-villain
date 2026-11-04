@@ -5,7 +5,7 @@
  * REPORT LUNS with select report 0x02 for all logical units returns a
  * good status and lists the attached logical unit.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_report_luns_all(struct virtio_dev *dev,
                                                struct vring *vr)

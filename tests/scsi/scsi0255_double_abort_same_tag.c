@@ -7,7 +7,7 @@
  * for the same tag finds no task and reports the function complete.
  * Skips when the throttle is not applied.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 #define ABORT_TAG 0x55550001ULL
 

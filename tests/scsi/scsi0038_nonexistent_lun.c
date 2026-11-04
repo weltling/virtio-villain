@@ -6,7 +6,7 @@
  * is answered either with a BAD_TARGET response or a CHECK CONDITION
  * status, never silently accepted.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_bad_lun(struct virtio_dev *dev,
                                        struct vring *vr)

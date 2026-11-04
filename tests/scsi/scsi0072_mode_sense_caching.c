@@ -5,7 +5,7 @@
  * MODE SENSE(6) for the caching mode page returns a good status once
  * the power-on UNIT ATTENTION is cleared.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_mode_sense_caching(struct virtio_dev *dev,
                                                   struct vring *vr)

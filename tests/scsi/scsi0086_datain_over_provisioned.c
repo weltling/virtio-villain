@@ -6,7 +6,7 @@
  * confirm the device completes with a good status and reports the
  * unused residual.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_datain_over(struct virtio_dev *dev,
                                            struct vring *vr)

@@ -6,7 +6,7 @@
  * queue in event_info_size. It must be a nonzero value so the driver
  * can size its event buffers.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_cfg_event_info_size(struct virtio_dev *dev,
                                                    struct vring *vr)

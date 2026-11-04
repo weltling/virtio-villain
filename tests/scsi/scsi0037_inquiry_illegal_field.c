@@ -5,7 +5,7 @@
  * INQUIRY with the EVPD bit clear but a nonzero page code is an illegal
  * request and is answered with a CHECK CONDITION status.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_inquiry_illegal(struct virtio_dev *dev,
                                                struct vring *vr)

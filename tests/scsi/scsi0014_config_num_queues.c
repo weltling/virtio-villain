@@ -6,7 +6,7 @@
  * virtqueue count reported in the common configuration adds the control
  * queue and the event queue, so it must be num_queues plus two.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_cfg_num_queues(struct virtio_dev *dev,
                                               struct vring *vr)

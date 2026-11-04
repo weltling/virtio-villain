@@ -2,8 +2,8 @@
 #ifndef VV_BLK_MMIO_HELPERS_H
 #define VV_BLK_MMIO_HELPERS_H
 
-#include "lib/virtio_test.h"
-#include "tests/mmio/mmio_helpers.h"
+#include "virtio_test.h"
+#include "mmio_helpers.h"
 
 static inline test_result_t blk_mmio_attach(struct virtio_mmio_dev *dev,
                                            struct vring *ring)

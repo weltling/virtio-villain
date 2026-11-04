@@ -5,7 +5,7 @@
  * READ CAPACITY(16) reports the expected last logical block address and
  * a 512-byte block length across the full parameter data.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_rc16_full(struct virtio_dev *dev,
                                          struct vring *vr)

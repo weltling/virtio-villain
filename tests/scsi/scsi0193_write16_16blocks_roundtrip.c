@@ -5,7 +5,7 @@
  * WRITE(16) sixteen blocks of a known pattern, read them back with
  * READ(16) and confirm the whole 8 KiB transfer matches.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_w16_rt(struct virtio_dev *dev,
                                       struct vring *vr)

@@ -7,7 +7,7 @@
  * unit as having a pending task. Skips when the throttle is not
  * applied or the device does not distinguish the query.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 #define QUERY_TAG 0x49490001ULL
 

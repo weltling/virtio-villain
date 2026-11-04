@@ -5,7 +5,7 @@
  * REPORT LUNS returns a good status and a LUN list whose length field
  * accounts for at least the single attached logical unit.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_report_luns(struct virtio_dev *dev,
                                            struct vring *vr)

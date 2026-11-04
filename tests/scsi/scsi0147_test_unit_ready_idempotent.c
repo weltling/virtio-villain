@@ -5,7 +5,7 @@
  * TEST UNIT READY issued twice after the power-on UNIT ATTENTION is
  * cleared returns a good status each time.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_tur_twice(struct virtio_dev *dev,
                                          struct vring *vr)

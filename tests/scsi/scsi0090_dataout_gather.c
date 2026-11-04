@@ -6,7 +6,7 @@
  * descriptors and confirm the device gathers it and completes with a
  * good status.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_dataout_gather(struct virtio_dev *dev,
                                               struct vring *vr)

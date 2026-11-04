@@ -5,7 +5,7 @@
  * REPORT LUNS lists both attached logical units, so the LUN list length
  * accounts for at least two eight-byte entries.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_report_luns_two(struct virtio_dev *dev,
                                                struct vring *vr)

@@ -5,7 +5,7 @@
  * REASSIGN BLOCKS with an empty defect list returns a defined
  * completion status.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_reassign(struct virtio_dev *dev,
                                         struct vring *vr)

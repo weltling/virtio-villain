@@ -7,7 +7,7 @@
  * The individual lengths are legal but their sum exceeds 4 GiB. The
  * device must compute the total safely and not wrap or over allocate.
  */
-#include "tests/packed/packed_util.h"
+#include "lib/packed_util.h"
 
 static test_result_t test_packed_desc_total_len_overflow(struct virtio_dev *dev,
                                                         struct vring_packed *vr)

@@ -7,7 +7,7 @@
  * buffer. Submit such a bidirectional layout and confirm the device
  * completes it with a defined status. Skips when INOUT is not offered.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_inout(struct virtio_dev *dev, struct vring *vr)
 {

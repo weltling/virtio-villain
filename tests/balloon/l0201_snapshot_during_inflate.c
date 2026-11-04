@@ -9,7 +9,7 @@
  * DRIVER_OK is still set on exit.
  */
 #include "lib/virtio_test.h"
-#include "tests/mmio/mmio_helpers.h"
+#include "lib/mmio_helpers.h"
 
 static test_result_t test_balloon_survives_snapshot(struct virtio_dev *dev,
                                                     struct vring *vr)

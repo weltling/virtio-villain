@@ -5,7 +5,7 @@
  * The device offers the reported change feature so the driver can rely
  * on parameter change events for the attached logical units.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_feat_change(struct virtio_dev *dev)
 {

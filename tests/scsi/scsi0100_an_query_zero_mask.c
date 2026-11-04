@@ -5,7 +5,7 @@
  * An asynchronous notification query with an empty event mask completes
  * with a defined response code.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_an_query_zero(struct virtio_dev *dev,
                                              struct vring *vr)

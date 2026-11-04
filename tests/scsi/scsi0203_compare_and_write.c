@@ -6,7 +6,7 @@
  * and a new write block, and confirm the atomic compare and write
  * succeeds with a good status.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_caw(struct virtio_dev *dev, struct vring *vr)
 {

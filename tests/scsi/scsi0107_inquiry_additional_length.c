@@ -5,7 +5,7 @@
  * The standard INQUIRY additional length field accounts for at least
  * the mandatory 36-byte standard data, so it is 31 or greater.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_inq_addlen(struct virtio_dev *dev,
                                           struct vring *vr)

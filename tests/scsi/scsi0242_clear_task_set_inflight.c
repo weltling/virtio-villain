@@ -7,7 +7,7 @@
  * pending task and the device completes the read with the aborted
  * response. Skips when the throttle is not applied.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_clear_task_set(struct virtio_dev *dev,
                                               struct vring *vr)

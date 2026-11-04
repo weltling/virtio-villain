@@ -5,7 +5,7 @@
  * READ(6) of one block at a nonzero LBA returns a good status once the
  * power-on UNIT ATTENTION is cleared.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_read6_lba(struct virtio_dev *dev,
                                          struct vring *vr)

@@ -5,7 +5,7 @@
  * READ CAPACITY(10) with the partial medium indicator set returns a
  * good status and a 512-byte block length.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_rc10_pmi(struct virtio_dev *dev,
                                         struct vring *vr)

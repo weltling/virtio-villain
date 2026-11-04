@@ -5,7 +5,7 @@
  * READ CAPACITY(16) reports the last logical block address of 32767 for
  * the 16 MiB backing image.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_rc16_last_lba(struct virtio_dev *dev,
                                              struct vring *vr)

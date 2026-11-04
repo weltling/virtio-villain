@@ -5,7 +5,7 @@
  * A WRITE(10) beyond the last logical block is answered with a CHECK
  * CONDITION status rather than writing out of range.
  */
-#include "tests/scsi/scsi_util.h"
+#include "lib/scsi_util.h"
 
 static test_result_t test_scsi_write_past_cap(struct virtio_dev *dev,
                                               struct vring *vr)
