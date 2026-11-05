@@ -13,6 +13,7 @@
  * gcrypt.
  */
 #include "lib/virtio_test.h"
+#include "lib/crypto_rsa_helpers.h"
 #include "tests/crypto/crypto_rsa_key.h"
 
 #define SHA1_DIGEST_LEN 20

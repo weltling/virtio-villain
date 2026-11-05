@@ -12,6 +12,7 @@
  * crypto library that provides RSA, for example gcrypt.
  */
 #include "lib/virtio_test.h"
+#include "lib/crypto_rsa_helpers.h"
 #include "tests/crypto/crypto_rsa_key.h"
 
 #define PKCS1_MSG_LEN 16
