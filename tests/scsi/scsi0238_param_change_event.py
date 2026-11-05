@@ -5,7 +5,7 @@ device reports a parameter change event for the capacity change.
 QEMU only.
 """
 
-from scsi.scsi_helpers import qmp, scsi_config, wait_armed
+from villain.scsi_helpers import qmp, scsi_config, wait_armed
 
 SUPPORTED_BACKENDS = ("qemu", "qemu-mmio")
 vmm_config = scsi_config

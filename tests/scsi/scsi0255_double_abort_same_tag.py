@@ -5,7 +5,7 @@ long enough for a first ABORT TASK to terminate it before a second
 one is issued. QEMU only.
 """
 
-from scsi.scsi_helpers import scsi_config, throttle
+from villain.scsi_helpers import scsi_config, throttle
 
 SUPPORTED_BACKENDS = ("qemu", "qemu-mmio")
 run = throttle

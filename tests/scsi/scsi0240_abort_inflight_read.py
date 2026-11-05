@@ -5,7 +5,7 @@ operation per second so a guest read stays queued long enough to be
 aborted by tag. QEMU only.
 """
 
-from scsi.scsi_helpers import scsi_config, throttle
+from villain.scsi_helpers import scsi_config, throttle
 
 SUPPORTED_BACKENDS = ("qemu", "qemu-mmio")
 run = throttle

@@ -17,7 +17,7 @@ ROOT_DIR = os.path.dirname(SCRIPT_DIR)
 sys.path.insert(0, ROOT_DIR)
 sys.path.insert(0, os.path.join(ROOT_DIR, "lib", "python"))
 from villain import diagnostics, host as HOST_MOD, vmm as VMM_MOD  # noqa: E402
-from villain import sidecar_helpers  # noqa: E402
+from villain import scsi_helpers, sidecar_helpers  # noqa: E402
 INIT_BINARY = os.path.join(ROOT_DIR, "target", "init")
 RUN = os.path.join(ROOT_DIR, "run")
 RUN_FUZZ = os.path.join(ROOT_DIR, "run-fuzz")
@@ -3018,9 +3018,7 @@ def test_unit_sidecar_backing_images_use_shared_creation():
             (RUN_MOD._load_sidecar(os.path.join(
                 ROOT_DIR, "tests", "pmem", "e0200_hotplug_add.py")),
              "run", "hp_pmem.raw"),
-            (RUN_MOD._load_sidecar(os.path.join(
-                ROOT_DIR, "tests", "scsi", "scsi_helpers.py")),
-             "hot_add", "hp.raw")):
+            (scsi_helpers, "hot_add", "hp.raw")):
         with tempfile.TemporaryDirectory() as work:
             ctx = SimpleNamespace(
                 tmpdir=work, backend=SimpleNamespace(name="qemu"), api_sock="api",

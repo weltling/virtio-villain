@@ -5,7 +5,7 @@ while a QUERY TASK SET asks whether the set has a pending task.
 QEMU only.
 """
 
-from scsi.scsi_helpers import scsi_config, throttle
+from villain.scsi_helpers import scsi_config, throttle
 
 SUPPORTED_BACKENDS = ("qemu", "qemu-mmio")
 run = throttle

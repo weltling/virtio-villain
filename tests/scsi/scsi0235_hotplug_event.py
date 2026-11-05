@@ -5,7 +5,7 @@ virtio-scsi controller so the device delivers a transport reset
 event to the guest event queue. QEMU only.
 """
 
-from scsi.scsi_helpers import hot_add, scsi_config, wait_armed
+from villain.scsi_helpers import hot_add, scsi_config, wait_armed
 
 SUPPORTED_BACKENDS = ("qemu", "qemu-mmio")
 vmm_config = scsi_config
