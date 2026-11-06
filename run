@@ -506,9 +506,6 @@ def _find_sidecar(test_name):
 def _load_sidecar(path):
     """Import a sidecar file as an anonymous module."""
     import importlib.util
-    helpers_dir = os.path.dirname(os.path.dirname(os.path.abspath(path)))
-    if helpers_dir not in sys.path:
-        sys.path.append(helpers_dir)
     spec = importlib.util.spec_from_file_location(
         "vv_sidecar_" + os.path.splitext(os.path.basename(path))[0], path)
     if spec is None or spec.loader is None:
