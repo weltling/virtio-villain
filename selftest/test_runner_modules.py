@@ -104,9 +104,7 @@ class ModuleTests(unittest.TestCase):
         check = (
             "import sys\n"
             "sys.path.insert(0, sys.argv[1] + '/lib/python')\n"
-            "from villain import msix_host, sidecar_helpers\n"
-            "sys.path.insert(0, sys.argv[1] + '/tests')\n"
-            "from scsi import scsi_helpers\n"
+            "from villain import msix_host, scsi_helpers, sidecar_helpers\n"
             "assert msix_host.qmp is sidecar_helpers.qmp\n"
             "assert scsi_helpers.qmp is sidecar_helpers.qmp\n"
             "assert not any(name.startswith('vv_run') for name in sys.modules)\n")
