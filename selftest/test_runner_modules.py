@@ -113,6 +113,23 @@ class ModuleTests(unittest.TestCase):
             cwd="/", capture_output=True, text=True, timeout=10)
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_sidecar_loading_does_not_change_module_search_paths(self):
+        check = (
+            "from pathlib import Path\n"
+            "import runpy, sys\n"
+            "root = Path(sys.argv[1])\n"
+            "entry = runpy.run_path(str(root / 'run'), run_name='runner_import_test')\n"
+            "search_path = list(sys.path)\n"
+            "sidecars = sorted((root / 'tests').glob('*/*.py'))\n"
+            "assert sidecars\n"
+            "for sidecar in sidecars:\n"
+            "    entry['_load_sidecar'](str(sidecar))\n"
+            "    assert sys.path == search_path, str(sidecar)\n")
+        result = subprocess.run(
+            [sys.executable, "-I", "-c", check, str(ROOT)],
+            cwd="/", capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_backend_detection_is_owned_by_the_shared_module(self):
         for name, backend in (
                 ("cloud-hypervisor", vmm.CloudHypervisor),
