@@ -252,6 +252,15 @@ class LaunchCommandTests(unittest.TestCase):
                         expected = f"{cmdline} acpi=on" if cmdline else "acpi=on"
                     self.assertEqual(actual, expected)
 
+    def test_ch_virtio_builder_preserves_explicit_acpi_arguments(self):
+        for cmdline in ("acpi=off console=ttyAMA0", "console=ttyAMA0 acpi=force",
+                        "console=ttyAMA0\tacpi=on vv.test=probe"):
+            with self.subTest(cmdline=cmdline), \
+                 patch.object(vmm.platform, "machine", return_value="aarch64"):
+                command = vmm.CloudHypervisor("/vmm").build_cmd(
+                    "/kernel", "/initramfs", "/disk.raw", cmdline, {"fuzz_device": "rng"})
+                self.assertEqual(command[command.index("--cmdline") + 1], cmdline)
+
     def test_firmware_launch_has_no_implicit_virtio_fixtures_or_host_policy(self):
         backend = vmm.CloudHypervisor("/vmm")
         with patch.dict(os.environ, {"VV_CH_DEBUG": "1"}), \
