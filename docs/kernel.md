@@ -61,6 +61,12 @@ VFIO support for the existing appliance. A new kernel release may change
 Kconfig dependencies. If requested values cannot be retained, the
 builder fails rather than silently dropping them.
 
+The bundled configs include ACPI PCI hotplug support. Custom kernels for
+these tests need `CONFIG_ACPI`, `CONFIG_HOTPLUG_PCI` and
+`CONFIG_HOTPLUG_PCI_ACPI` enabled. On aarch64 they also need
+`CONFIG_EFI`. The runner enables ACPI by default when launching Cloud
+Hypervisor PCI tests on aarch64.
+
 ### Custom configs through make
 
 `make guest-kernel` accepts `KERNEL_CONFIGS` as a space separated list of
