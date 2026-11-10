@@ -305,6 +305,17 @@ class ReleaseTests(unittest.TestCase):
 
 
 class ConfigTests(unittest.TestCase):
+    def test_bundled_profiles_enable_acpi_pci_hotplug(self):
+        for arch in ("x86_64", "aarch64"):
+            values = BUILD.config_values(BUILD.merge_configs([
+                BUILD.CONFIG_DIR / "common.config", BUILD.CONFIG_DIR / f"{arch}.config"]))
+            required = ("CONFIG_ACPI", "CONFIG_HOTPLUG_PCI", "CONFIG_HOTPLUG_PCI_ACPI")
+            if arch == "aarch64":
+                required += ("CONFIG_EFI",)
+            for option in required:
+                with self.subTest(arch=arch, option=option):
+                    self.assertEqual(values.get(option), "y")
+
     def test_unchanged_base_config_does_not_warn(self):
         errors = io.StringIO()
         with contextlib.redirect_stderr(errors):
