@@ -238,6 +238,20 @@ class LaunchCommandTests(unittest.TestCase):
                 for flag in ("--kernel", "--cpus", "--memory", "-kernel", "-m", "-smp", "-k", "-p"):
                     self.assertNotIn(flag, command)
 
+    def test_ch_virtio_builder_enables_acpi_on_aarch64(self):
+        for arch in ("x86_64", "aarch64"):
+            for cmdline in ("console=ttyAMA0 vv.transport=pci vv.test=B0201", "", None):
+                with self.subTest(arch=arch, cmdline=cmdline), \
+                     patch.object(vmm.platform, "machine", return_value=arch):
+                    command = vmm.CloudHypervisor("/vmm").build_cmd(
+                        "/kernel", "/initramfs", "/disk.raw", cmdline, {"fuzz_device": "rng"})
+                    actual = (command[command.index("--cmdline") + 1]
+                              if "--cmdline" in command else None)
+                    expected = cmdline
+                    if arch == "aarch64":
+                        expected = f"{cmdline} acpi=on" if cmdline else "acpi=on"
+                    self.assertEqual(actual, expected)
+
     def test_firmware_launch_has_no_implicit_virtio_fixtures_or_host_policy(self):
         backend = vmm.CloudHypervisor("/vmm")
         with patch.dict(os.environ, {"VV_CH_DEBUG": "1"}), \
