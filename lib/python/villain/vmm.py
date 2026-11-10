@@ -239,6 +239,11 @@ class CloudHypervisor(VmmBackend):
 
     def build_cmd(self, kernel, initramfs, disk_path, cmdline, opts=None):
         opts = opts or {}
+        if platform.machine() == "aarch64":
+            # DT boot cannot deliver ACPI PCI hotplug notifications.
+            arguments = cmdline.split() if cmdline else []
+            if not any(argument.startswith("acpi=") for argument in arguments):
+                cmdline = f"{cmdline} acpi=on" if cmdline else "acpi=on"
         cpus = opts.get("cpus", 4)
         mem = opts.get("memory", "512M")
         blk_queues = opts.get("blk_queues", 4)
